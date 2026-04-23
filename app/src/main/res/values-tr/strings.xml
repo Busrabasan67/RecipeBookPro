@@ -3,7 +3,7 @@
     <string name="login">Giriş Yap</string>
     <string name="register">Kayıt Ol</string>
     <string name="welcome">RecipeBook Pro\'ya Hoş Geldiniz</string>
-    <string name="loading">Yükleniyor...</string>
+    <string name="loading">Yükleniyor…</string>
     <string name="no_recipes_yet">Henüz tarif yok. Eklemek için +\'ya dokunun!</string>
     <string name="email">E-posta</string>
     <string name="password">Şifre</string>
@@ -22,4 +22,23 @@
     <string name="sign_in">Giriş Yap</string>
     <string name="sign_in_with_google">Google ile Giriş Yap</string>
     <string name="google_sign_in_failed">Google girişi başarısız. Lütfen tekrar deneyin.</string>
+
+    <!-- Phase 3: Tarif CRUD -->
+    <string name="add_recipe">Tarif Ekle</string>
+    <string name="recipe_title">Tarif Adı</string>
+    <string name="recipe_description">Açıklama</string>
+    <string name="ingredients">Malzemeler</string>
+    <string name="steps">Yapılış Adımları</string>
+    <string name="save">Kaydet</string>
+    <string name="delete">Sil</string>
+    <string name="cancel">İptal</string>
+    <string name="no_recipes">Henüz tarif yok. İlk tarifinizi eklemek için +\'ya dokunun!</string>
+    <string name="recipe_saved">Tarif başarıyla kaydedildi!</string>
+    <string name="recipe_deleted">Tarif silindi.</string>
+    <string name="recipe_save_failed">Tarif kaydedilemedi. Lütfen tekrar deneyin.</string>
+    <string name="recipe_delete_failed">Tarif silinemedi. Lütfen tekrar deneyin.</string>
+    <string name="fill_all_fields">Lütfen başlık, malzemeler ve adımları doldurun.</string>
+    <string name="my_recipes">Tariflerim</string>
+    <string name="view_details">Tarif Detayı</string>
+    <string name="confirm_delete">Bu tarifi silmek istediğinize emin misiniz?</string>
 </resources>

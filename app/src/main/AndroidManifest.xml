@@ -34,6 +34,16 @@
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
 
+        <activity
+            android:name=".ui.recipe.AddRecipeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
+
+        <activity
+            android:name=".ui.recipe.RecipeDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
+
     </application>
 
 </manifest>
