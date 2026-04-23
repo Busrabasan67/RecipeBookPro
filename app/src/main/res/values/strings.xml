@@ -1,0 +1,25 @@
+<resources>
+    <string name="app_name">RecipeBook Pro</string>
+    <string name="login">Login</string>
+    <string name="register">Register</string>
+    <string name="welcome">Welcome to RecipeBook Pro</string>
+    <string name="loading">Loading...</string>
+    <string name="no_recipes_yet">No recipes yet. Tap + to add!</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="display_name">Display Name</string>
+    <string name="logout">Logout</string>
+    <string name="invalid_email">Invalid email format</string>
+    <string name="empty_fields">Please fill all fields</string>
+    <string name="password_too_short">Password must be at least 6 characters</string>
+    <string name="passwords_not_match">Passwords do not match</string>
+    <string name="login_failed">Login failed. Check your credentials.</string>
+    <string name="register_failed">Registration failed. Please try again.</string>
+    <string name="no_account">Don\'t have an account? Sign Up</string>
+    <string name="already_have_account">Already have an account? Sign In</string>
+    <string name="sign_up">Sign Up</string>
+    <string name="sign_in">Sign In</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="google_sign_in_failed">Google sign-in failed. Please try again.</string>
+</resources>

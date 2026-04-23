@@ -1,0 +1,25 @@
+<resources>
+    <string name="app_name">RecipeBook Pro</string>
+    <string name="login">Giriş Yap</string>
+    <string name="register">Kayıt Ol</string>
+    <string name="welcome">RecipeBook Pro\'ya Hoş Geldiniz</string>
+    <string name="loading">Yükleniyor...</string>
+    <string name="no_recipes_yet">Henüz tarif yok. Eklemek için +\'ya dokunun!</string>
+    <string name="email">E-posta</string>
+    <string name="password">Şifre</string>
+    <string name="confirm_password">Şifreyi Onayla</string>
+    <string name="display_name">Ad Soyad</string>
+    <string name="logout">Çıkış Yap</string>
+    <string name="invalid_email">Geçersiz e-posta formatı</string>
+    <string name="empty_fields">Lütfen tüm alanları doldurun</string>
+    <string name="password_too_short">Şifre en az 6 karakter olmalıdır</string>
+    <string name="passwords_not_match">Şifreler eşleşmiyor</string>
+    <string name="login_failed">Giriş başarısız. Bilgilerinizi kontrol edin.</string>
+    <string name="register_failed">Kayıt başarısız. Lütfen tekrar deneyin.</string>
+    <string name="no_account">Hesabınız yok mu? Kayıt Olun</string>
+    <string name="already_have_account">Zaten hesabınız var mı? Giriş Yapın</string>
+    <string name="sign_up">Kayıt Ol</string>
+    <string name="sign_in">Giriş Yap</string>
+    <string name="sign_in_with_google">Google ile Giriş Yap</string>
+    <string name="google_sign_in_failed">Google girişi başarısız. Lütfen tekrar deneyin.</string>
+</resources>
