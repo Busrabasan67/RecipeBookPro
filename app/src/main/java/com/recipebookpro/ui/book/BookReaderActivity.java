@@ -3,7 +3,7 @@ package com.recipebookpro.ui.book;
 import android.os.Bundle;
 import android.view.View;
 
-import androidx.appcompat.app.AppCompatActivity;
+import com.recipebookpro.ui.BaseActivity;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
@@ -25,7 +25,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-public class BookReaderActivity extends AppCompatActivity {
+public class BookReaderActivity extends BaseActivity {
 
     private MaterialTextView tvToolbarTitle;
     private MaterialTextView tvToolbarSubtitle;
@@ -41,6 +41,8 @@ public class BookReaderActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_book_reader);
+
+        applyInsetsToView(findViewById(R.id.bookReaderRoot));
 
         rootView = findViewById(R.id.bookReaderRoot);
         MaterialToolbar toolbar = findViewById(R.id.toolbarBook);

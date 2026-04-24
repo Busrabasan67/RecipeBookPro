@@ -6,7 +6,7 @@ import android.text.TextUtils;
 import android.util.Patterns;
 import android.view.View;
 
-import androidx.appcompat.app.AppCompatActivity;
+import com.recipebookpro.ui.BaseActivity;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
@@ -23,7 +23,7 @@ import com.recipebookpro.ui.MainActivity;
 /**
  * RegisterActivity -> user registration
  */
-public class RegisterActivity extends AppCompatActivity {
+public class RegisterActivity extends BaseActivity {
 
     private TextInputEditText etDisplayName;
     private TextInputEditText etEmail;
@@ -40,6 +40,8 @@ public class RegisterActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
+
+        applyInsetsToView(findViewById(R.id.registerRoot));
 
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();

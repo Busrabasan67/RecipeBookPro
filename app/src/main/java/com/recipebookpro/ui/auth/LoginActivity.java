@@ -4,10 +4,11 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.CancellationSignal;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
 
-import androidx.appcompat.app.AppCompatActivity;
+import com.recipebookpro.ui.BaseActivity;
 import androidx.credentials.Credential;
 import androidx.credentials.CredentialManager;
 import androidx.credentials.CredentialManagerCallback;
@@ -37,8 +38,9 @@ import java.util.concurrent.Executors;
 /**
  * LoginActivity -> user sign in
  */
-public class LoginActivity extends AppCompatActivity {
+public class LoginActivity extends BaseActivity {
 
+    private static final String TAG = "GoogleSignIn";
     private static final String WEB_CLIENT_ID =
             "1071679993343-oscn2063e5v3rdv0qnu4t8937sd5pna8.apps.googleusercontent.com";
 
@@ -57,6 +59,8 @@ public class LoginActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+
+        applyInsetsToView(findViewById(R.id.loginRoot));
 
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
@@ -127,6 +131,7 @@ public class LoginActivity extends AppCompatActivity {
 
                     @Override
                     public void onError(GetCredentialException e) {
+                        Log.e(TAG, "Credential request failed: " + e.getType(), e);
                         runOnUiThread(() -> {
                             setLoading(false);
                             showMessage(R.string.google_sign_in_failed);
@@ -143,6 +148,7 @@ public class LoginActivity extends AppCompatActivity {
                     GoogleIdTokenCredential.createFrom(credential.getData());
             firebaseAuthWithGoogle(googleIdTokenCredential.getIdToken());
         } else {
+            Log.e(TAG, "Unexpected credential type: " + credential.getType());
             setLoading(false);
             showMessage(R.string.google_sign_in_failed);
         }
@@ -166,6 +172,7 @@ public class LoginActivity extends AppCompatActivity {
                             goToMain();
                         }
                     } else {
+                        Log.e(TAG, "Firebase auth with Google failed", task.getException());
                         setLoading(false);
                         showMessage(R.string.google_sign_in_failed);
                     }

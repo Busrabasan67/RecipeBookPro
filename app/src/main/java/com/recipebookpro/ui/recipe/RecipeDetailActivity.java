@@ -4,7 +4,7 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
 
-import androidx.appcompat.app.AppCompatActivity;
+import com.recipebookpro.ui.BaseActivity;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
@@ -21,7 +21,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-public class RecipeDetailActivity extends AppCompatActivity {
+public class RecipeDetailActivity extends BaseActivity {
 
     public static final String EXTRA_RECIPE = "extra_recipe";
 
@@ -35,6 +35,8 @@ public class RecipeDetailActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_recipe_detail);
+
+        applyInsetsToView(findViewById(R.id.recipeDetailRoot));
 
         recipe = (Recipe) getIntent().getSerializableExtra(EXTRA_RECIPE);
         if (recipe == null) {

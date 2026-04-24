@@ -9,7 +9,7 @@ import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 import android.widget.Scroller;
 
-import androidx.appcompat.app.AppCompatActivity;
+import com.recipebookpro.ui.BaseActivity;
 import androidx.core.widget.NestedScrollView;
 
 import com.google.android.material.appbar.MaterialToolbar;
@@ -28,7 +28,7 @@ import com.recipebookpro.model.Recipe;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AddRecipeActivity extends AppCompatActivity {
+public class AddRecipeActivity extends BaseActivity {
 
     private TextInputLayout tilTitle;
     private TextInputLayout tilCategory;
@@ -52,6 +52,8 @@ public class AddRecipeActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_recipe);
+
+        applyInsetsToView(findViewById(R.id.addRecipeRoot));
 
         db = FirebaseFirestore.getInstance();
         mAuth = FirebaseAuth.getInstance();

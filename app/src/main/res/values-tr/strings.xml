@@ -78,6 +78,31 @@
     <string name="toc_bullet">•</string>
     <string name="toc_dots"> ........ </string>
 
+    <!-- Bottom Navigation -->
+    <string name="nav_home">Ana Sayfa</string>
+    <string name="nav_discover">Keşfet</string>
+    <string name="nav_my_kitchen">Mutfağım</string>
+    <string name="nav_planner">Planlayıcı</string>
+    <string name="nav_profile">Profil</string>
+
+    <!-- Discover Fragment -->
+    <string name="discover_search_hint">Herkese açık tarifleri ara…</string>
+    <string name="discover_coming_soon">Herkese açık tarifler yakında</string>
+
+    <!-- My Kitchen Fragment -->
+    <string name="my_kitchen_title">Tarif Defterlerim ve Koleksiyonlarım</string>
+    <string name="my_kitchen_empty">Henüz koleksiyon oluşturmadınız.</string>
+
+    <!-- Planner Fragment -->
+    <string name="planner_title">Haftalık Yemek Planlayıcı</string>
+    <string name="planner_shopping_list">Alışveriş Listesi</string>
+    <string name="planner_empty">Haftanın yemeklerini burada planlayın.</string>
+
+    <!-- Profile Fragment -->
+    <string name="profile_settings">Ayarlar</string>
+    <string name="profile_admin">Yönetici Paneli</string>
+    <string name="profile_email_label">E-posta</string>
+
     <string-array name="recipe_categories">
         <item>Tatli</item>
         <item>Ana Yemek</item>

@@ -78,6 +78,31 @@
     <string name="toc_bullet">•</string>
     <string name="toc_dots"> ........ </string>
 
+    <!-- Bottom Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_discover">Discover</string>
+    <string name="nav_my_kitchen">My Kitchen</string>
+    <string name="nav_planner">Planner</string>
+    <string name="nav_profile">Profile</string>
+
+    <!-- Discover Fragment -->
+    <string name="discover_search_hint">Search public recipes…</string>
+    <string name="discover_coming_soon">Public recipes coming soon</string>
+
+    <!-- My Kitchen Fragment -->
+    <string name="my_kitchen_title">My Recipe Books &amp; Collections</string>
+    <string name="my_kitchen_empty">You haven\'t created any collections yet.</string>
+
+    <!-- Planner Fragment -->
+    <string name="planner_title">Weekly Meal Planner</string>
+    <string name="planner_shopping_list">Shopping List</string>
+    <string name="planner_empty">Plan your meals for the week here.</string>
+
+    <!-- Profile Fragment -->
+    <string name="profile_settings">Settings</string>
+    <string name="profile_admin">Admin Panel</string>
+    <string name="profile_email_label">Email</string>
+
     <string-array name="recipe_categories">
         <item>Tatli</item>
         <item>Ana Yemek</item>
