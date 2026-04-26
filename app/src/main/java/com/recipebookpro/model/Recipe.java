@@ -27,6 +27,7 @@ public class Recipe implements Serializable {
     private int likes;                      // like counter
     private List<String> allergens;         // allergen tags
     private List<String> ingredientNames;   // flat name list for search
+    private String sourceRecipeId;           // original recipe ID if copied
 
     public Recipe() {
         ingredients = new ArrayList<>();
@@ -80,6 +81,7 @@ public class Recipe implements Serializable {
         }
 
         Object publicVal = document.get("isPublic");
+        if (publicVal == null) publicVal = document.get("public");
         if (publicVal instanceof Boolean) {
             recipe.setPublic((Boolean) publicVal);
         }
@@ -91,6 +93,9 @@ public class Recipe implements Serializable {
 
         // Parse allergens
         recipe.setAllergens(parseStringList(document.get("allergens")));
+
+        // Parse sourceRecipeId
+        recipe.setSourceRecipeId(asString(document.get("sourceRecipeId")));
 
         // Parse ingredientNames
         recipe.setIngredientNames(parseStringList(document.get("ingredientNames")));
@@ -340,10 +345,12 @@ public class Recipe implements Serializable {
         this.servings = servings;
     }
 
+    @com.google.firebase.firestore.PropertyName("isPublic")
     public boolean isPublic() {
         return isPublic;
     }
 
+    @com.google.firebase.firestore.PropertyName("isPublic")
     public void setPublic(boolean isPublic) {
         this.isPublic = isPublic;
     }
@@ -370,6 +377,14 @@ public class Recipe implements Serializable {
 
     public void setIngredientNames(List<String> ingredientNames) {
         this.ingredientNames = ingredientNames != null ? ingredientNames : new ArrayList<>();
+    }
+
+    public String getSourceRecipeId() {
+        return sourceRecipeId == null ? "" : sourceRecipeId;
+    }
+
+    public void setSourceRecipeId(String sourceRecipeId) {
+        this.sourceRecipeId = sourceRecipeId;
     }
 
     // ========================== Ingredient Inner Class ==========================
