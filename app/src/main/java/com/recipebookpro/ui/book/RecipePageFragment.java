@@ -23,6 +23,8 @@ import coil.Coil;
 import coil.request.ImageRequest;
 import java.util.ArrayList;
 import java.util.List;
+import android.widget.PopupMenu;
+import com.google.android.material.button.MaterialButton;
 
 public class RecipePageFragment extends Fragment {
 
@@ -35,11 +37,14 @@ public class RecipePageFragment extends Fragment {
     private FrameLayout stickerCanvas;
     private boolean isEditing = false;
 
-    public static RecipePageFragment newInstance(Recipe recipe, String cookbookId, int pageNo, int totalPages) {
+    private ArrayList<String> allBookIds;
+
+    public static RecipePageFragment newInstance(Recipe recipe, String cookbookId, ArrayList<String> allBookIds, int pageNo, int totalPages) {
         RecipePageFragment fragment = new RecipePageFragment();
         Bundle args = new Bundle();
         args.putSerializable("recipe", recipe);
         args.putString("cookbookId", cookbookId);
+        args.putStringArrayList("allBookIds", allBookIds);
         args.putInt(ARG_PAGE_NO, pageNo);
         args.putInt(ARG_TOTAL, totalPages);
         fragment.setArguments(args);
@@ -94,26 +99,73 @@ public class RecipePageFragment extends Fragment {
                 : formatSteps(recipe.getSteps()));
         tvPageNum.setText(getString(R.string.page_number, getArguments().getInt(ARG_PAGE_NO), getArguments().getInt(ARG_TOTAL)));
 
-        stickerCanvas = view.findViewById(R.id.stickerCanvas);
+        if (getArguments() != null) {
+            recipe = (Recipe) getArguments().getSerializable("recipe");
+            cookbookId = getArguments().getString("cookbookId");
+            allBookIds = getArguments().getStringArrayList("allBookIds");
+        }
 
-        loadStickersFromCookbook();
+        stickerCanvas = view.findViewById(R.id.stickerCanvas);
+        MaterialButton btnSelectDesign = view.findViewById(R.id.btnSelectDesign);
+
+        // Show design selector only if in "All Recipes" mode and multiple books exist
+        if (allBookIds != null && allBookIds.size() > 1) {
+            btnSelectDesign.setVisibility(View.VISIBLE);
+            btnSelectDesign.setOnClickListener(v -> showDesignSelector(v));
+        } else {
+            btnSelectDesign.setVisibility(View.GONE);
+        }
+
+        loadStickersFromCookbook(cookbookId);
     }
 
-    private void loadStickersFromCookbook() {
-        if (cookbookId == null) return;
+    private void showDesignSelector(View anchor) {
+        if (allBookIds == null || allBookIds.isEmpty()) return;
+
+        PopupMenu popup = new PopupMenu(getContext(), anchor);
         
-        FirebaseFirestore.getInstance().collection("cookbooks").document(cookbookId)
-            .get().addOnSuccessListener(doc -> {
-                if (doc.exists()) {
+        // Fetch cookbook names (Ideally we'd have them already, but let's fetch)
+        for (int i = 0; i < allBookIds.size(); i++) {
+            String bid = allBookIds.get(i);
+            int index = i;
+            FirebaseFirestore.getInstance().collection("cookbooks").document(bid).get()
+                .addOnSuccessListener(doc -> {
+                    String name = doc.getString("name");
+                    if (name == null) name = "Defter " + (index + 1);
+                    popup.getMenu().add(0, index, 0, name);
+                    
+                    if (index == allBookIds.size() - 1) {
+                        popup.show();
+                    }
+                });
+        }
+
+        popup.setOnMenuItemClickListener(item -> {
+            String selectedId = allBookIds.get(item.getItemId());
+            this.cookbookId = selectedId;
+            loadStickersFromCookbook(selectedId);
+            return true;
+        });
+    }
+
+    private void loadStickersFromCookbook(String cid) {
+        if (cid == null || recipe == null) return;
+        
+        stickerCanvas.removeAllViews(); // Clear current
+        
+        FirebaseFirestore.getInstance().collection("cookbooks").document(cid)
+                .get()
+                .addOnSuccessListener(doc -> {
                     Cookbook book = Cookbook.fromDocument(doc);
-                    List<StickerModel> stickers = book.getRecipeStickers().get(recipe.getId());
-                    if (stickers != null) {
-                        for (StickerModel s : stickers) {
-                            addStickerToCanvas(s, false);
+                    if (book != null && book.getRecipeStickers() != null) {
+                        List<StickerModel> stickers = book.getRecipeStickers().get(recipe.getId());
+                        if (stickers != null) {
+                            for (StickerModel sm : stickers) {
+                                addStickerToCanvas(sm, false);
+                            }
                         }
                     }
-                }
-            });
+                });
     }
 
     public void addSticker(String imageUrl) {

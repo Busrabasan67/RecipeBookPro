@@ -35,15 +35,37 @@
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent">
 
-                    <com.google.android.material.textview.MaterialTextView
-                        android:id="@+id/tvPageTitle"
+                    <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/great_vibes"
-                        android:gravity="center"
-                        android:textColor="#111111"
-                        android:textSize="48sp"
-                        android:textStyle="bold" />
+                        android:layout_height="wrap_content">
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/tvPageTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/great_vibes"
+                            android:gravity="center"
+                            android:textColor="#111111"
+                            android:textSize="48sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnSelectDesign"
+                            style="@style/Widget.MaterialComponents.Button.TextButton"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:layout_gravity="end|top"
+                            android:layout_marginTop="8dp"
+                            android:insetLeft="0dp"
+                            android:insetTop="0dp"
+                            android:insetRight="0dp"
+                            android:insetBottom="0dp"
+                            android:visibility="gone"
+                            app:icon="@drawable/ic_book"
+                            app:iconGravity="textStart"
+                            app:iconPadding="0dp"
+                            app:iconTint="#D1A15A" />
+                    </FrameLayout>
 
                     <com.google.android.material.textview.MaterialTextView
                         android:id="@+id/tvPageCategory"
