@@ -8,6 +8,7 @@
     android:background="?attr/colorSurface">
 
     <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appBarDiscover"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@android:color/transparent"
@@ -22,6 +23,7 @@
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/nsvDiscover"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
@@ -161,6 +163,12 @@
                 android:paddingHorizontal="16dp"
                 android:paddingTop="8dp"
                 android:visibility="gone" />
+
+            <!-- Dynamic spacer for keyboard -->
+            <View
+                android:id="@+id/keyboardSpacer"
+                android:layout_width="match_parent"
+                android:layout_height="0dp" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

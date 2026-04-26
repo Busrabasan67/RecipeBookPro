@@ -11,6 +11,8 @@ import android.view.inputmethod.EditorInfo;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.core.widget.NestedScrollView;
+import android.graphics.Rect;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
@@ -85,6 +87,44 @@ public class ProfileFragment extends Fragment {
         btnAdmin.setOnClickListener(v -> { });
 
         loadUserAllergens();
+
+        NestedScrollView nsvProfile = view.findViewById(R.id.nsvProfile);
+
+        // Robust keyboard detection using spacer
+        final View keyboardSpacer = view.findViewById(R.id.keyboardSpacer);
+        view.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            if (!isAdded()) return;
+            Rect r = new Rect();
+            view.getWindowVisibleDisplayFrame(r);
+            int screenHeight = view.getRootView().getHeight();
+            int keypadHeight = screenHeight - r.bottom;
+
+            if (keyboardSpacer != null) {
+                android.view.ViewGroup.LayoutParams params = keyboardSpacer.getLayoutParams();
+                if (keypadHeight > screenHeight * 0.15) {
+                    params.height = keypadHeight;
+                } else {
+                    params.height = 0;
+                }
+                keyboardSpacer.setLayoutParams(params);
+            }
+        });
+
+        // Focus listener to scroll to focused field
+        nsvProfile.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
+            if (newFocus != null && (newFocus instanceof android.widget.EditText || newFocus instanceof android.widget.AutoCompleteTextView)) {
+                nsvProfile.postDelayed(() -> {
+                    if (!isAdded()) return;
+                    int[] viewPos = new int[2];
+                    newFocus.getLocationOnScreen(viewPos);
+                    int[] scrollPos = new int[2];
+                    nsvProfile.getLocationOnScreen(scrollPos);
+                    // Position the view about 300px below the top (more centered)
+                    int relativeTop = viewPos[1] - scrollPos[1];
+                    nsvProfile.smoothScrollBy(0, relativeTop - 50);
+                }, 200);
+            }
+        });
     }
 
     private void loadUserAllergens() {

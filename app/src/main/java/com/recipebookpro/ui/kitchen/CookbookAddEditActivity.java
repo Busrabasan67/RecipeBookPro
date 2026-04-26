@@ -23,6 +23,11 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.widget.NestedScrollView;
+import android.graphics.Rect;
+import android.view.View;
 import com.recipebookpro.R;
 import com.recipebookpro.model.Cookbook;
 import com.recipebookpro.ui.BaseActivity;
@@ -44,6 +49,7 @@ public class CookbookAddEditActivity extends BaseActivity {
     private ChipGroup chipGroupTags;
     private MaterialButton btnSave;
     private MaterialToolbar toolbar;
+    private NestedScrollView nsvCookbook;
 
     private FirebaseFirestore db;
     private FirebaseUser currentUser;
@@ -58,13 +64,28 @@ public class CookbookAddEditActivity extends BaseActivity {
             new ActivityResultContracts.GetContent(),
             uri -> {
                 if (uri != null) {
-                    selectedImageUri = uri;
-                    ivCover.setPadding(0, 0, 0, 0);
-                    ImageRequest request = new ImageRequest.Builder(this)
-                            .data(uri)
-                            .target(ivCover)
-                            .build();
-                    Coil.imageLoader(this).enqueue(request);
+                    try {
+                        java.io.InputStream is = getContentResolver().openInputStream(uri);
+                        java.io.File file = new java.io.File(getFilesDir(), "cb_img_" + System.currentTimeMillis() + ".jpg");
+                        java.io.FileOutputStream fos = new java.io.FileOutputStream(file);
+                        byte[] buffer = new byte[1024];
+                        int len;
+                        while ((len = is.read(buffer)) > 0) {
+                            fos.write(buffer, 0, len);
+                        }
+                        fos.close();
+                        if (is != null) is.close();
+
+                        selectedImageUri = Uri.fromFile(file);
+                        ivCover.setPadding(0, 0, 0, 0);
+                        ImageRequest request = new ImageRequest.Builder(this)
+                                .data(selectedImageUri)
+                                .target(ivCover)
+                                .build();
+                        Coil.imageLoader(this).enqueue(request);
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Fotoğraf alınamadı", Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
 
@@ -73,7 +94,7 @@ public class CookbookAddEditActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_cookbook_add_edit);
 
-        applyInsetsToView(findViewById(R.id.cookbookAddEditRoot));
+        applyTopInsetToView(findViewById(R.id.appBarCookbookAddEdit));
 
         db = FirebaseFirestore.getInstance();
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -122,6 +143,47 @@ public class CookbookAddEditActivity extends BaseActivity {
         });
 
         btnSave.setOnClickListener(v -> saveCookbook());
+
+        nsvCookbook = findViewById(R.id.nsvCookbookAddEdit);
+
+        // Toolbar save button
+        toolbar.inflateMenu(R.menu.menu_recipe_add_edit);
+        toolbar.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == R.id.action_save) {
+                saveCookbook();
+                return true;
+            }
+            return false;
+        });
+
+        // Robust keyboard detection and padding adjustment
+        View rootView = findViewById(android.R.id.content);
+        rootView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            Rect r = new Rect();
+            rootView.getWindowVisibleDisplayFrame(r);
+            int screenHeight = rootView.getRootView().getHeight();
+            int keypadHeight = screenHeight - r.bottom;
+
+            if (keypadHeight > screenHeight * 0.15) {
+                nsvCookbook.setPadding(nsvCookbook.getPaddingLeft(), nsvCookbook.getPaddingTop(), nsvCookbook.getPaddingRight(), keypadHeight + 100);
+            } else {
+                nsvCookbook.setPadding(nsvCookbook.getPaddingLeft(), nsvCookbook.getPaddingTop(), nsvCookbook.getPaddingRight(), 100);
+            }
+        });
+
+        // Focus listener to scroll to focused field
+        nsvCookbook.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
+            if (newFocus != null && (newFocus instanceof android.widget.EditText || newFocus instanceof android.widget.AutoCompleteTextView)) {
+                nsvCookbook.postDelayed(() -> {
+                    int[] viewPos = new int[2];
+                    newFocus.getLocationOnScreen(viewPos);
+                    int[] scrollPos = new int[2];
+                    nsvCookbook.getLocationOnScreen(scrollPos);
+                    int relativeTop = viewPos[1] - scrollPos[1];
+                    nsvCookbook.smoothScrollBy(0, relativeTop - 100);
+                }, 200);
+            }
+        });
     }
 
     private void loadExistingCookbook() {
@@ -190,7 +252,7 @@ public class CookbookAddEditActivity extends BaseActivity {
         btnSave.setEnabled(false);
 
         if (selectedImageUri != null) {
-            uploadImageAndSave(title, desc);
+            saveToFirestore(title, desc, selectedImageUri.toString());
         } else {
             String existingImage = (isEditMode && existingCookbook != null)
                     ? existingCookbook.getCoverImageUrl() : "";
@@ -198,28 +260,9 @@ public class CookbookAddEditActivity extends BaseActivity {
         }
     }
 
+    // Bu metod artık kullanılmıyor
     private void uploadImageAndSave(String title, String desc) {
-        String filename = "cookbooks/" + UUID.randomUUID().toString() + ".jpg";
-        StorageReference ref = FirebaseStorage.getInstance().getReference().child(filename);
-
-        ref.putFile(selectedImageUri)
-           .continueWithTask(task -> {
-               if (!task.isSuccessful()) {
-                   Exception ex = task.getException();
-                   if (ex != null) throw ex;
-                   throw new Exception("Upload failed");
-               }
-               return ref.getDownloadUrl();
-           })
-           .addOnSuccessListener(uri -> saveToFirestore(title, desc, uri.toString()))
-           .addOnFailureListener(e -> {
-               String existingImage = (isEditMode && existingCookbook != null)
-                       ? existingCookbook.getCoverImageUrl() : "";
-               Toast.makeText(this,
-                       "Resim yüklenemedi, kayıt resimsiz devam ediyor",
-                       Toast.LENGTH_LONG).show();
-               saveToFirestore(title, desc, existingImage);
-           });
+        saveToFirestore(title, desc, selectedImageUri.toString());
     }
 
     private void saveToFirestore(String title, String desc, String imageUrl) {

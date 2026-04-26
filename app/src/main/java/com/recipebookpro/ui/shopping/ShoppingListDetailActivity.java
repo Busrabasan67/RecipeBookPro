@@ -20,6 +20,9 @@ import com.recipebookpro.model.ShoppingList;
 import com.recipebookpro.model.ShoppingList.ShoppingItem;
 import com.recipebookpro.ui.BaseActivity;
 import com.recipebookpro.ui.shopping.adapter.ShoppingItemAdapter;
+import android.graphics.Rect;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,7 +49,7 @@ public class ShoppingListDetailActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_shopping_list_detail);
         
-        applyInsetsToView(findViewById(android.R.id.content));
+        applyTopInsetToView(findViewById(R.id.appBarShoppingListDetail));
 
         listId = getIntent().getStringExtra(EXTRA_LIST_ID);
         if (TextUtils.isEmpty(listId)) {
@@ -58,6 +61,30 @@ public class ShoppingListDetailActivity extends BaseActivity {
 
         initViews();
         loadList();
+
+        View rootView = findViewById(android.R.id.content);
+        rootView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            Rect r = new Rect();
+            rootView.getWindowVisibleDisplayFrame(r);
+            int screenHeight = rootView.getRootView().getHeight();
+            int keypadHeight = screenHeight - r.bottom;
+
+            if (keypadHeight > screenHeight * 0.15) {
+                rootView.setPadding(0, 0, 0, keypadHeight);
+            } else {
+                rootView.setPadding(0, 0, 0, 0);
+            }
+        });
+
+        etNewItem.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                rvItems.postDelayed(() -> {
+                    if (items.size() > 0) {
+                        rvItems.smoothScrollToPosition(items.size() - 1);
+                    }
+                }, 300);
+            }
+        });
     }
 
     private void initViews() {
