@@ -102,12 +102,36 @@ public class BookReaderActivity extends BaseActivity {
             FirebaseFirestore.getInstance().collection("cookbooks").document(filterCookbookId)
                 .get().addOnSuccessListener(doc -> {
                     Cookbook book = Cookbook.fromDocument(doc);
-                    List<String> ids = book.getRecipeIds();
-                    if (ids == null || ids.isEmpty()) {
-                        onLoaded();
-                        return;
-                    }
-                    fetchAllRecipesAndFilter(user.getUid(), ids);
+                    
+                    // Defter sahibinin adını getir
+                    FirebaseFirestore.getInstance().collection("users").document(book.getUserId())
+                        .get().addOnSuccessListener(userDoc -> {
+                            if (userDoc.exists()) {
+                                String ownerName = userDoc.getString("displayName");
+                                if (ownerName == null || ownerName.trim().isEmpty()) {
+                                    ownerName = userDoc.getString("email");
+                                }
+                                if (ownerName != null) {
+                                    userIdentity = ownerName;
+                                }
+                            }
+                            
+                            List<String> ids = book.getRecipeIds();
+                            if (ids == null || ids.isEmpty()) {
+                                onLoaded();
+                                return;
+                            }
+                            fetchAllRecipesAndFilter(user.getUid(), ids);
+                        }).addOnFailureListener(e -> {
+                            // Kullanıcı çekilemezse mevcut isimle devam et
+                            List<String> ids = book.getRecipeIds();
+                            if (ids == null || ids.isEmpty()) {
+                                onLoaded();
+                                return;
+                            }
+                            fetchAllRecipesAndFilter(user.getUid(), ids);
+                        });
+
                 }).addOnFailureListener(e -> {
                     hideLoading();
                     showEmpty();
@@ -118,52 +142,59 @@ public class BookReaderActivity extends BaseActivity {
     }
 
     private void fetchAllRecipesAndFilter(String uid, List<String> allowedIds) {
-        FirebaseFirestore.getInstance()
-                .collection("recipes")
-                .whereEqualTo("userId", uid)
-                .orderBy("createdAt", Query.Direction.ASCENDING)
-                .get()
-                .addOnSuccessListener(snap -> {
-                    recipeList.clear();
-                    for (QueryDocumentSnapshot doc : snap) {
-                        if (allowedIds == null || allowedIds.contains(doc.getId())) {
+        if (allowedIds == null || allowedIds.isEmpty()) {
+            // Eğer belirli bir liste yoksa, kullanıcının kendi tüm tariflerini getir (Eski mantık)
+            FirebaseFirestore.getInstance()
+                    .collection("recipes")
+                    .whereEqualTo("userId", uid)
+                    .orderBy("createdAt", Query.Direction.ASCENDING)
+                    .get()
+                    .addOnSuccessListener(snap -> {
+                        recipeList.clear();
+                        for (QueryDocumentSnapshot doc : snap) {
                             recipeList.add(Recipe.fromDocument(doc));
                         }
-                    }
-                    onLoaded();
-                })
-                .addOnFailureListener(e -> {
-                    String message = e.getMessage() != null ? e.getMessage() : "";
-                    if (message.contains("FAILED_PRECONDITION") || message.contains("index")) {
-                        loadFallback(uid, allowedIds);
-                    } else {
+                        onLoaded();
+                    })
+                    .addOnFailureListener(e -> {
                         hideLoading();
                         showEmpty();
-                        Snackbar.make(rootView, R.string.recipes_load_failed, Snackbar.LENGTH_LONG).show();
-                    }
-                });
+                    });
+            return;
+        }
+
+        // Eğer belirli tarif ID'leri varsa (Defter görünümü), sadece o ID'leri getir (userId'ye bakma!)
+        recipeList.clear();
+        List<com.google.android.gms.tasks.Task<com.google.firebase.firestore.QuerySnapshot>> tasks = new ArrayList<>();
+        
+        // Firestore whereIn limiti 10'dur, bu yüzden listeyi 10'arlı parçalara bölüyoruz
+        for (int i = 0; i < allowedIds.size(); i += 10) {
+            List<String> chunk = allowedIds.subList(i, Math.min(allowedIds.size(), i + 10));
+            tasks.add(FirebaseFirestore.getInstance().collection("recipes")
+                    .whereIn(com.google.firebase.firestore.FieldPath.documentId(), chunk)
+                    .get());
+        }
+
+        com.google.android.gms.tasks.Tasks.whenAllSuccess(tasks).addOnSuccessListener(results -> {
+            for (Object result : results) {
+                com.google.firebase.firestore.QuerySnapshot snap = (com.google.firebase.firestore.QuerySnapshot) result;
+                for (com.google.firebase.firestore.DocumentSnapshot doc : snap.getDocuments()) {
+                    recipeList.add(Recipe.fromDocument(doc));
+                }
+            }
+            // Tariflerin defterdeki sırasını korumak için gerekirse sıralama yapılabilir. 
+            // Şimdilik eklenme sırasına göre sıralayalım:
+            Collections.sort(recipeList, (r1, r2) -> Long.compare(r1.getCreatedAt(), r2.getCreatedAt()));
+            onLoaded();
+        }).addOnFailureListener(e -> {
+            hideLoading();
+            showEmpty();
+        });
     }
 
+    // Artık gerek kalmadığı için loadFallback'i siliyorum veya içini boşaltıyorum
     private void loadFallback(String uid, List<String> allowedIds) {
-        FirebaseFirestore.getInstance()
-                .collection("recipes")
-                .whereEqualTo("userId", uid)
-                .get()
-                .addOnSuccessListener(snap -> {
-                    recipeList.clear();
-                    for (QueryDocumentSnapshot doc : snap) {
-                        if (allowedIds == null || allowedIds.contains(doc.getId())) {
-                            recipeList.add(Recipe.fromDocument(doc));
-                        }
-                    }
-                    Collections.sort(recipeList, Comparator.comparingLong(Recipe::getCreatedAt));
-                    onLoaded();
-                })
-                .addOnFailureListener(e -> {
-                    hideLoading();
-                    showEmpty();
-                    Snackbar.make(rootView, R.string.recipes_load_failed, Snackbar.LENGTH_LONG).show();
-                });
+        fetchAllRecipesAndFilter(uid, allowedIds);
     }
 
     private void onLoaded() {

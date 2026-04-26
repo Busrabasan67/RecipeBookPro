@@ -39,6 +39,11 @@ import java.util.UUID;
 import coil.Coil;
 import coil.request.ImageRequest;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+
 public class CookbookAddEditActivity extends BaseActivity {
 
     public static final String EXTRA_COOKBOOK_ID = "cookbook_id";
@@ -54,13 +59,39 @@ public class CookbookAddEditActivity extends BaseActivity {
     private FirebaseFirestore db;
     private FirebaseUser currentUser;
     private Uri selectedImageUri;
+    private Uri cameraImageUri;
     private List<String> tags = new ArrayList<>();
 
     private String editCookbookId;
     private Cookbook existingCookbook;
     private boolean isEditMode = false;
 
-    private final ActivityResultLauncher<String> getContent = registerForActivityResult(
+    private final ActivityResultLauncher<String[]> permissionLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestMultiplePermissions(),
+            result -> {
+                Boolean cameraGranted = result.getOrDefault(Manifest.permission.CAMERA, false);
+                if (cameraGranted != null && cameraGranted) {
+                    takePhoto();
+                } else {
+                    Toast.makeText(this, "Kamera izni reddedildi", Toast.LENGTH_SHORT).show();
+                }
+            }
+    );
+
+    private final ActivityResultLauncher<Uri> cameraLauncher = registerForActivityResult(
+            new ActivityResultContracts.TakePicture(),
+            success -> {
+                if (success && cameraImageUri != null) {
+                    selectedImageUri = cameraImageUri;
+                    ivCover.setPadding(0, 0, 0, 0);
+                    ivCover.setBackground(null);
+                    ivCover.setImageTintList(null);
+                    ivCover.setImageURI(selectedImageUri);
+                }
+            }
+    );
+
+    private final ActivityResultLauncher<String> galleryLauncher = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
             uri -> {
                 if (uri != null) {
@@ -129,7 +160,9 @@ public class CookbookAddEditActivity extends BaseActivity {
             btnSave.setText("Güncelle");
         }
 
-        cardCover.setOnClickListener(v -> getContent.launch("image/*"));
+        cardCover.setOnClickListener(v -> galleryLauncher.launch("image/*"));
+        findViewById(R.id.btnCookbookCamera).setOnClickListener(v -> checkCameraPermissionAndTake());
+        findViewById(R.id.btnCookbookGallery).setOnClickListener(v -> galleryLauncher.launch("image/*"));
 
         etTagInput.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE ||
@@ -344,6 +377,24 @@ public class CookbookAddEditActivity extends BaseActivity {
                         Toast.makeText(this, "Kayıt hatası", Toast.LENGTH_SHORT).show();
                         btnSave.setEnabled(true);
                     });
+        }
+    }
+
+    private void checkCameraPermissionAndTake() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            takePhoto();
+        } else {
+            permissionLauncher.launch(new String[]{Manifest.permission.CAMERA});
+        }
+    }
+
+    private void takePhoto() {
+        try {
+            java.io.File photoFile = java.io.File.createTempFile("cb_", ".jpg", getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES));
+            cameraImageUri = FileProvider.getUriForFile(this, getPackageName() + ".provider", photoFile);
+            cameraLauncher.launch(cameraImageUri);
+        } catch (Exception e) {
+            Toast.makeText(this, "Kamera açılamadı", Toast.LENGTH_SHORT).show();
         }
     }
 }
