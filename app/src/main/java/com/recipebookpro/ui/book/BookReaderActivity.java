@@ -76,7 +76,10 @@ public class BookReaderActivity extends BaseActivity {
         btnEdit.setVisibility(View.GONE); // Default hidden until authorized
         btnEdit.setOnClickListener(v -> toggleEditMode(true));
         
-        findViewById(R.id.btnEditCancel).setOnClickListener(v -> toggleEditMode(false));
+        findViewById(R.id.btnEditCancel).setOnClickListener(v -> {
+            toggleEditMode(false);
+            android.widget.Toast.makeText(this, "Düzenleme iptal edildi", android.widget.Toast.LENGTH_SHORT).show();
+        });
         findViewById(R.id.btnEditAdd).setOnClickListener(v -> showStickerSelector());
         findViewById(R.id.btnEditSave).setOnClickListener(v -> saveEdits());
 
@@ -295,9 +298,13 @@ public class BookReaderActivity extends BaseActivity {
     private void saveEdits() {
         androidx.fragment.app.Fragment currentFrag = getSupportFragmentManager().findFragmentByTag("f" + viewPager.getCurrentItem());
         if (currentFrag instanceof RecipePageFragment) {
-            ((RecipePageFragment) currentFrag).performSave();
+            ((RecipePageFragment) currentFrag).performSave(() -> {
+                toggleEditMode(false);
+                android.widget.Toast.makeText(this, "Değişiklikler kaydedildi", android.widget.Toast.LENGTH_SHORT).show();
+            });
+        } else {
+            toggleEditMode(false);
         }
-        toggleEditMode(false);
     }
 
     private void showStickerSelector() {

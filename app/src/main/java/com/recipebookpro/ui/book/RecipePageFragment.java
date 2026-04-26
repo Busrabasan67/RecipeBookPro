@@ -173,17 +173,8 @@ public class RecipePageFragment extends Fragment {
         addStickerToCanvas(model, true);
     }
 
-    public void setEditMode(boolean enabled) {
-        this.isEditing = enabled;
-        if (enabled) {
-            stickerCanvas.setBackgroundColor(0x11000000);
-        } else {
-            stickerCanvas.setBackgroundColor(0);
-        }
-    }
-
-    public void performSave() {
-        saveStickersToFirestore();
+    public void performSave(Runnable onComplete) {
+        saveStickersToFirestore(onComplete);
     }
 
     private void addStickerToCanvas(StickerModel model, boolean isNew) {
@@ -297,6 +288,17 @@ public class RecipePageFragment extends Fragment {
         });
     }
 
+    public void setEditMode(boolean editing) {
+        this.isEditing = editing;
+        if (editing) {
+            stickerCanvas.setBackgroundColor(0x15000000); // Subtle dark overlay for edit mode
+        } else {
+            stickerCanvas.setBackgroundColor(0);
+            stickerCanvas.removeAllViews(); // Clear immediately for visual feedback
+            loadStickersFromCookbook(cookbookId);
+        }
+    }
+
     private void showUnifiedMenu(View v, StickerModel model) {
         String[] options = {"En Öne Getir", "En Arkaya Gönder", "Sil"};
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
@@ -317,8 +319,12 @@ public class RecipePageFragment extends Fragment {
                 .show();
     }
 
-    private void saveStickersToFirestore() {
-        if (cookbookId == null) return;
+    private void saveStickersToFirestore(Runnable onComplete) {
+        if (cookbookId == null) {
+            android.widget.Toast.makeText(getContext(), "Bu tarifi önce bir deftere eklemelisiniz", android.widget.Toast.LENGTH_LONG).show();
+            if (onComplete != null) onComplete.run();
+            return;
+        }
 
         List<StickerModel> currentStickers = new java.util.ArrayList<>();
         for (int i = 0; i < stickerCanvas.getChildCount(); i++) {
@@ -341,8 +347,16 @@ public class RecipePageFragment extends Fragment {
                         book.getRecipeStickers().put(recipe.getId(), currentStickers);
                         
                         FirebaseFirestore.getInstance().collection("cookbooks").document(cookbookId)
-                                .update("recipeStickers", book.getRecipeStickers());
+                                .update("recipeStickers", book.getRecipeStickers())
+                                .addOnCompleteListener(task -> {
+                                    if (onComplete != null) onComplete.run();
+                                });
+                    } else {
+                        if (onComplete != null) onComplete.run();
                     }
+                })
+                .addOnFailureListener(e -> {
+                    if (onComplete != null) onComplete.run();
                 });
     }
 

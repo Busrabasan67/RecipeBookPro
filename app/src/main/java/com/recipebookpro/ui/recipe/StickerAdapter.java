@@ -40,15 +40,31 @@ public class StickerAdapter extends RecyclerView.Adapter<StickerAdapter.ViewHold
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         String url = urls.get(position);
         
+        // Restore layout params for recycled views
+        ViewGroup.LayoutParams lp = holder.itemView.getLayoutParams();
+        lp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+        lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        holder.itemView.setLayoutParams(lp);
+        
         // Clear previous image to avoid flickering during recycle
         holder.ivSticker.setImageDrawable(null);
+        holder.ivSticker.setVisibility(View.VISIBLE);
 
         ImageRequest request = new ImageRequest.Builder(holder.itemView.getContext())
                 .data(url)
                 .target(holder.ivSticker)
-                .crossfade(true)
+                .listener(new ImageRequest.Listener() {
+                    @Override
+                    public void onError(@NonNull ImageRequest request, @NonNull coil.request.ErrorResult result) {
+                        holder.ivSticker.setVisibility(View.GONE);
+                        ViewGroup.LayoutParams lp = holder.itemView.getLayoutParams();
+                        lp.width = 0;
+                        lp.height = 0;
+                        holder.itemView.setLayoutParams(lp);
+                    }
+                })
                 .crossfade(200)
-                .placeholder(R.drawable.ic_cook) // Use an existing small icon as placeholder
+                .placeholder(R.drawable.ic_cook)
                 .diskCacheKey(url)
                 .memoryCacheKey(url)
                 .build();
