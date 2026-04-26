@@ -160,6 +160,9 @@ public class CookbookDetailActivity extends BaseActivity {
         }
 
         if (!TextUtils.isEmpty(cookbook.getCoverImageUrl())) {
+            ivCover.setPadding(0, 0, 0, 0);
+            ivCover.setBackground(null);
+            ivCover.setImageTintList(null);
             ImageRequest request = new ImageRequest.Builder(this)
                 .data(cookbook.getCoverImageUrl())
                 .target(ivCover)

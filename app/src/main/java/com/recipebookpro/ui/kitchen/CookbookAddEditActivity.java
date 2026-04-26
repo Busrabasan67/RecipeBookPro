@@ -78,6 +78,8 @@ public class CookbookAddEditActivity extends BaseActivity {
 
                         selectedImageUri = Uri.fromFile(file);
                         ivCover.setPadding(0, 0, 0, 0);
+                        ivCover.setBackground(null);
+                        ivCover.setImageTintList(null);
                         ImageRequest request = new ImageRequest.Builder(this)
                                 .data(selectedImageUri)
                                 .target(ivCover)
@@ -214,6 +216,8 @@ public class CookbookAddEditActivity extends BaseActivity {
 
         if (!TextUtils.isEmpty(existingCookbook.getCoverImageUrl())) {
             ivCover.setPadding(0, 0, 0, 0);
+            ivCover.setBackground(null);
+            ivCover.setImageTintList(null);
             ImageRequest request = new ImageRequest.Builder(this)
                     .data(existingCookbook.getCoverImageUrl())
                     .target(ivCover)
@@ -251,8 +255,8 @@ public class CookbookAddEditActivity extends BaseActivity {
 
         btnSave.setEnabled(false);
 
-        if (selectedImageUri != null) {
-            saveToFirestore(title, desc, selectedImageUri.toString());
+        if (selectedImageUri != null && !selectedImageUri.toString().startsWith("http")) {
+            uploadImageAndSave(title, desc);
         } else {
             String existingImage = (isEditMode && existingCookbook != null)
                     ? existingCookbook.getCoverImageUrl() : "";
@@ -260,9 +264,51 @@ public class CookbookAddEditActivity extends BaseActivity {
         }
     }
 
-    // Bu metod artık kullanılmıyor
     private void uploadImageAndSave(String title, String desc) {
-        saveToFirestore(title, desc, selectedImageUri.toString());
+        String docId = isEditMode ? editCookbookId : db.collection("cookbooks").document().getId();
+        String path = "cookbooks/" + docId + "/cover.jpg";
+        StorageReference ref = FirebaseStorage.getInstance().getReference().child(path);
+
+        ref.putFile(selectedImageUri)
+           .continueWithTask(task -> {
+               if (!task.isSuccessful()) {
+                   if (task.getException() != null) throw task.getException();
+               }
+               return ref.getDownloadUrl();
+           })
+           .addOnSuccessListener(uri -> {
+               if (!isEditMode) {
+                   saveToFirestoreWithId(docId, title, desc, uri.toString());
+               } else {
+                   saveToFirestore(title, desc, uri.toString());
+               }
+           })
+           .addOnFailureListener(e -> {
+               Toast.makeText(this, "Resim yüklenemedi: " + e.getMessage(), Toast.LENGTH_LONG).show();
+               String existingImage = (isEditMode && existingCookbook != null)
+                       ? existingCookbook.getCoverImageUrl() : "";
+               saveToFirestore(title, desc, existingImage);
+           });
+    }
+
+    // Yeni defterler için ID'yi önceden belirlediğimiz için bu yardımcı metodu ekliyorum
+    private void saveToFirestoreWithId(String docId, String title, String desc, String imageUrl) {
+        Cookbook book = new Cookbook(currentUser.getUid(), title);
+        book.setId(docId);
+        book.setDescription(desc);
+        book.setCoverImageUrl(imageUrl);
+        book.setPublic(switchPublic.isChecked());
+        book.setTags(tags);
+
+        db.collection("cookbooks").document(docId).set(book)
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "Defter kaydedildi", Toast.LENGTH_SHORT).show();
+                    finish();
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Kayıt hatası", Toast.LENGTH_SHORT).show();
+                    btnSave.setEnabled(true);
+                });
     }
 
     private void saveToFirestore(String title, String desc, String imageUrl) {

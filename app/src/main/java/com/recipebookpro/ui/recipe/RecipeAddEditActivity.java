@@ -475,14 +475,33 @@ public class RecipeAddEditActivity extends BaseActivity {
         currentRecipe.setId(docId);
 
         if (selectedImageUri != null && !selectedImageUri.toString().startsWith("http")) {
-            currentRecipe.setImageUrl(selectedImageUri.toString());
+            uploadImageAndSave(docId);
+        } else {
+            saveToFirestore(docId);
         }
-        saveToFirestore(docId);
     }
 
-    // Bu metod artık kullanılmıyor ama hata vermemesi için boş bırakıyorum
     private void uploadImageAndSave(String docId) {
-        saveToFirestore(docId);
+        // İstediğin dosya yapısı: recipes/{recipe_id}/main.jpg
+        String path = "recipes/" + docId + "/main.jpg";
+        StorageReference ref = FirebaseStorage.getInstance().getReference().child(path);
+
+        ref.putFile(selectedImageUri)
+            .continueWithTask(task -> {
+                if (!task.isSuccessful()) {
+                    if (task.getException() != null) throw task.getException();
+                }
+                return ref.getDownloadUrl();
+            })
+            .addOnSuccessListener(uri -> {
+                currentRecipe.setImageUrl(uri.toString());
+                saveToFirestore(docId);
+            })
+            .addOnFailureListener(e -> {
+                Toast.makeText(this, "Resim yüklenemedi: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                // Yükleme başarısız olsa da tarif kaydedilsin (resimsiz olarak)
+                saveToFirestore(docId);
+            });
     }
 
     private void saveToFirestore(String docId) {
