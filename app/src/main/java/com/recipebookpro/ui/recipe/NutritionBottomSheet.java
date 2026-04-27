@@ -60,7 +60,7 @@ public class NutritionBottomSheet extends BottomSheetDialogFragment {
 
     private void fetchNutritionData() {
         if (ingredientsText == null || ingredientsText.trim().isEmpty()) {
-            Toast.makeText(getContext(), "Analiz edilecek malzeme yok.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), R.string.no_ingredients_to_analyze, Toast.LENGTH_SHORT).show();
             dismiss();
             return;
         }
@@ -82,7 +82,7 @@ public class NutritionBottomSheet extends BottomSheetDialogFragment {
             public void onError(String error) {
                 new Handler(Looper.getMainLooper()).post(() -> {
                     progressNutrition.setVisibility(View.GONE);
-                    Toast.makeText(getContext(), "Hata: " + error, Toast.LENGTH_LONG).show();
+                    Toast.makeText(getContext(), getString(R.string.error_with_reason, error), Toast.LENGTH_LONG).show();
                     dismiss();
                 });
             }

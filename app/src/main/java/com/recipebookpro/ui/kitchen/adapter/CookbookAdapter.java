@@ -43,7 +43,8 @@ public class CookbookAdapter extends RecyclerView.Adapter<CookbookAdapter.ViewHo
         Cookbook book = cookbooks.get(position);
         holder.tvCookbookName.setText(book.getName());
         int count = book.getRecipeIds() != null ? book.getRecipeIds().size() : 0;
-        holder.tvRecipeCount.setText(count + " Tarif");
+        holder.tvRecipeCount.setText(holder.itemView.getContext().getString(R.string.recipe_count, count));
+        holder.tvCookbookLikes.setText(holder.itemView.getContext().getString(R.string.likes_count, book.getFollowerCount()));
         
         if (book.getCoverImageUrl() != null && !book.getCoverImageUrl().isEmpty()) {
             holder.ivCookbookCover.setPadding(0, 0, 0, 0);
@@ -76,13 +77,14 @@ public class CookbookAdapter extends RecyclerView.Adapter<CookbookAdapter.ViewHo
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvCookbookName, tvRecipeCount;
+        TextView tvCookbookName, tvRecipeCount, tvCookbookLikes;
         ImageView ivCookbookCover;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvCookbookName = itemView.findViewById(R.id.tvCookbookName);
             tvRecipeCount = itemView.findViewById(R.id.tvRecipeCount);
+            tvCookbookLikes = itemView.findViewById(R.id.tvCookbookLikes);
             ivCookbookCover = itemView.findViewById(R.id.ivCookbookCover);
         }
     }

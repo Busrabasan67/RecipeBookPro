@@ -69,7 +69,7 @@
             android:layout_height="wrap_content"
             android:text="@string/voice_command_hint"
             android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
-            android:textColor="@android:color/darker_gray" />
+            android:textColor="?attr/colorOnSurfaceVariant" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -84,7 +84,7 @@
                 android:layout_height="56dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_volume_up"
-                app:tint="@android:color/white" />
+                app:tint="?attr/colorOnSurface" />
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/fabMic"
@@ -101,7 +101,7 @@
                 android:layout_height="56dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_remove"
-                app:tint="@android:color/white" />
+                app:tint="?attr/colorOnSurface" />
 
         </LinearLayout>
 

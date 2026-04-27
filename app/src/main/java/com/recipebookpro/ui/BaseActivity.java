@@ -1,9 +1,13 @@
 package com.recipebookpro.ui;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -17,9 +21,20 @@ import androidx.core.view.WindowInsetsCompat;
  * {@link #applyInsetsToView(View)} on their root view.
  */
 public abstract class BaseActivity extends AppCompatActivity {
+    private static final String PREFS_NAME = "settings";
+    private static final String KEY_THEME = "theme";
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(LocaleHelper.onAttach(newBase));
+    }
+
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        int selectedTheme = prefs.getInt(KEY_THEME, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+        AppCompatDelegate.setDefaultNightMode(selectedTheme);
+
         // Enable edge-to-edge before calling super
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         super.onCreate(savedInstanceState);

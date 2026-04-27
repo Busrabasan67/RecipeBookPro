@@ -36,7 +36,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Tarif ekleyin"
+            android:text="@string/planner_add_recipe_prompt"
             android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
             android:alpha="0.4"
             android:gravity="center" />
@@ -51,7 +51,7 @@
             android:padding="4dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             app:tint="?attr/colorPrimary"
-            android:contentDescription="Tarif ekle" />
+            android:contentDescription="@string/planner_add_recipe_content_desc" />
 
     </LinearLayout>
 

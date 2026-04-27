@@ -23,6 +23,7 @@ import com.google.android.material.floatingactionbutton.ExtendedFloatingActionBu
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.recipebookpro.R;
@@ -43,6 +44,7 @@ public class ShoppingListFragment extends Fragment {
     
     private FirebaseFirestore db;
     private FirebaseUser currentUser;
+    private ListenerRegistration shoppingListsListener;
 
     @Nullable
     @Override
@@ -76,19 +78,25 @@ public class ShoppingListFragment extends Fragment {
         if (currentUser == null) return;
         progressShoppingLists.setVisibility(View.VISIBLE);
 
-        db.collection("shopping_lists")
+        if (shoppingListsListener != null) {
+            shoppingListsListener.remove();
+        }
+        shoppingListsListener = db.collection("shopping_lists")
           .whereEqualTo("userId", currentUser.getUid())
           .orderBy("createdAt", Query.Direction.DESCENDING)
           .addSnapshotListener((value, error) -> {
               progressShoppingLists.setVisibility(View.GONE);
               if (error != null) {
-                  Toast.makeText(getContext(), "Listeler yüklenemedi", Toast.LENGTH_SHORT).show();
+                  Toast.makeText(getContext(), R.string.shopping_lists_load_failed, Toast.LENGTH_SHORT).show();
                   return;
               }
               listCollection.clear();
               if (value != null) {
                   for (QueryDocumentSnapshot doc : value) {
-                      listCollection.add(ShoppingList.fromDocument(doc));
+                      ShoppingList sl = ShoppingList.fromDocument(doc);
+                      if (sl.getItems() != null && !sl.getItems().isEmpty()) {
+                          listCollection.add(sl);
+                      }
                   }
               }
               adapter.notifyDataSetChanged();
@@ -96,14 +104,29 @@ public class ShoppingListFragment extends Fragment {
           });
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        loadShoppingLists();
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (shoppingListsListener != null) {
+            shoppingListsListener.remove();
+            shoppingListsListener = null;
+        }
+        super.onDestroyView();
+    }
+
     private void showCreateListDialog() {
         if (currentUser == null) return;
 
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-        builder.setTitle("Yeni Alışveriş Listesi");
+        builder.setTitle(R.string.shopping_new_list_title);
 
         final EditText input = new EditText(requireContext());
-        input.setHint("Örn: Hafta Sonu Alışverişi");
+        input.setHint(R.string.shopping_new_list_hint);
         input.setInputType(InputType.TYPE_CLASS_TEXT);
 
         FrameLayout container = new FrameLayout(requireContext());
@@ -115,16 +138,16 @@ public class ShoppingListFragment extends Fragment {
 
         builder.setView(container);
 
-        builder.setPositiveButton("Oluştur", (dialog, which) -> {
+        builder.setPositiveButton(R.string.shopping_create, (dialog, which) -> {
             String name = input.getText().toString().trim();
             if (!name.isEmpty()) {
                 ShoppingList newList = new ShoppingList(currentUser.getUid(), name);
                 db.collection("shopping_lists").add(newList)
-                  .addOnSuccessListener(documentReference -> Toast.makeText(getContext(), "Liste oluşturuldu", Toast.LENGTH_SHORT).show())
-                  .addOnFailureListener(e -> Toast.makeText(getContext(), "Hata oluştu", Toast.LENGTH_SHORT).show());
+                  .addOnSuccessListener(documentReference -> Toast.makeText(getContext(), R.string.shopping_list_created, Toast.LENGTH_SHORT).show())
+                  .addOnFailureListener(e -> Toast.makeText(getContext(), R.string.error_generic, Toast.LENGTH_SHORT).show());
             }
         });
-        builder.setNegativeButton("İptal", (dialog, which) -> dialog.cancel());
+        builder.setNegativeButton(R.string.cancel, (dialog, which) -> dialog.cancel());
         builder.show();
     }
 }

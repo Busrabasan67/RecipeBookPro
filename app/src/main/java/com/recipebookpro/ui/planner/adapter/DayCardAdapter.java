@@ -67,7 +67,8 @@ public class DayCardAdapter extends RecyclerView.Adapter<DayCardAdapter.DayViewH
     @Override
     public void onBindViewHolder(@NonNull DayViewHolder holder, int position) {
         String dayKey = WeeklyMenu.DAY_KEYS[position];
-        String dayLabel = WeeklyMenu.DAY_LABELS_TR[position];
+        String[] dayLabels = holder.itemView.getResources().getStringArray(R.array.week_day_labels);
+        String dayLabel = position < dayLabels.length ? dayLabels[position] : dayKey;
         List<Recipe> recipes = dayRecipesMap.get(dayKey);
         if (recipes == null) recipes = new ArrayList<>();
 

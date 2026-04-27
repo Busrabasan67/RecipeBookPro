@@ -79,31 +79,79 @@
     <string name="toc_dots"> ........ </string>
 
     <!-- Bottom Navigation -->
-    <string name="nav_home">Home</string>
-    <string name="nav_discover">Discover</string>
-    <string name="nav_my_kitchen">My Kitchen</string>
-    <string name="nav_planner">Planner</string>
-    <string name="nav_profile">Profile</string>
+    <string name="nav_home">Ana Sayfa</string>
+    <string name="nav_discover">Keşfet</string>
+    <string name="nav_add">Ekle</string>
+    <string name="nav_my_kitchen">Defterlerim</string>
+    <string name="nav_shopping">Alışveriş</string>
+    <string name="nav_planner">Planlayıcı</string>
+    <string name="nav_profile">Profil</string>
 
     <!-- Discover Fragment -->
-    <string name="discover_search_hint">Search public recipes…</string>
-    <string name="discover_coming_soon">Public recipes coming soon</string>
+    <string name="discover_search_hint">Herkese açık tarifleri ara…</string>
+    <string name="discover_coming_soon">Herkese açık tarifler yakında</string>
+
+    <!-- Home -->
+    <string name="home_welcome">Hoş geldin, hadi pişirelim!</string>
+    <string name="home_search_hint">Tarifler, malzemeler ara...</string>
+    <string name="home_categories">Kategoriler</string>
+    <string name="home_recent">Son Eklenenler</string>
+    <string name="home_popular">Şu An Popüler</string>
 
     <!-- My Kitchen Fragment -->
     <string name="my_kitchen_title">My Recipe Books &amp; Collections</string>
     <string name="my_kitchen_empty">You haven\'t created any collections yet.</string>
+    <string name="kitchen_pending_invitations">Pending Invitations</string>
+    <string name="kitchen_collaborative_books">Collaborative Books</string>
+    <string name="kitchen_my_books">My Books</string>
+    <string name="kitchen_empty_my_books">You have not created any books yet.</string>
+    <string name="kitchen_followed_books">Followed Books</string>
+    <string name="kitchen_empty_followed_books">You are not following any books.</string>
+    <string name="kitchen_liked_recipes">Liked Recipes</string>
+    <string name="kitchen_empty_liked_recipes">You have not liked any recipes yet.</string>
+    <string name="kitchen_new_book">New Book</string>
 
     <!-- Planner Fragment -->
     <string name="planner_title">Weekly Meal Planner</string>
     <string name="planner_shopping_list">Shopping List</string>
     <string name="planner_empty">Plan your meals for the week here.</string>
+    <string name="planner_create_list">Create List</string>
+    <string name="planner_no_shopping_list">No shopping list yet</string>
+    <string name="planner_no_recipe_in_menu">There is no recipe in the menu</string>
+    <string name="planner_generating_shopping_list">Preparing shopping list...</string>
+    <string name="planner_remove_recipe_confirm">Remove this recipe from %1$s?</string>
 
     <!-- Profile Fragment -->
     <string name="profile_settings">Settings</string>
     <string name="profile_admin">Admin Panel</string>
     <string name="profile_email_label">Email</string>
+    <string name="profile_allergen_description">Select allergens you are sensitive to</string>
+    <string name="profile_custom_allergen_hint">Add custom allergen and press Enter</string>
+    <string name="profile_photo_select_source">Select profile photo source</string>
+
+    <string-array name="recipe_category_values">
+        <item>Tatli</item>
+        <item>Ana Yemek</item>
+        <item>Corba</item>
+        <item>Kahvaltilik</item>
+        <item>Atistirmalik</item>
+        <item>Icecek</item>
+        <item>Salata</item>
+        <item>Hamur Isi</item>
+    </string-array>
 
     <string-array name="recipe_categories">
+        <item>Tatli</item>
+        <item>Ana Yemek</item>
+        <item>Corba</item>
+        <item>Kahvaltilik</item>
+        <item>Atistirmalik</item>
+        <item>Icecek</item>
+        <item>Salata</item>
+        <item>Hamur Isi</item>
+    </string-array>
+
+    <string-array name="recipe_category_labels">
         <item>Tatli</item>
         <item>Ana Yemek</item>
         <item>Corba</item>
@@ -142,6 +190,48 @@
         <item>Celery</item>
     </string-array>
 
+    <string-array name="week_day_labels">
+        <item>Monday</item>
+        <item>Tuesday</item>
+        <item>Wednesday</item>
+        <item>Thursday</item>
+        <item>Friday</item>
+        <item>Saturday</item>
+        <item>Sunday</item>
+    </string-array>
+
+    <string-array name="discover_default_ingredients">
+        <item>chicken</item>
+        <item>onion</item>
+        <item>tomato</item>
+        <item>pepper</item>
+        <item>potato</item>
+        <item>carrot</item>
+        <item>garlic</item>
+        <item>rice</item>
+        <item>pasta</item>
+        <item>flour</item>
+        <item>egg</item>
+        <item>milk</item>
+        <item>butter</item>
+        <item>olive oil</item>
+        <item>cheese</item>
+        <item>lemon</item>
+        <item>salt</item>
+        <item>sugar</item>
+        <item>tomato paste</item>
+        <item>lentil</item>
+        <item>chickpea</item>
+        <item>bulgur</item>
+        <item>zucchini</item>
+        <item>eggplant</item>
+        <item>spinach</item>
+        <item>bean</item>
+        <item>meat</item>
+        <item>ground beef</item>
+        <item>fish</item>
+    </string-array>
+
     <!-- Cooking Mode -->
     <string name="cooking_mode_title">Cooking Mode</string>
     <string name="cooking_mode_start">Start Cooking Mode</string>
@@ -178,6 +268,7 @@
     <string name="share_recipe">Share Recipe</string>
     <string name="like">Like</string>
     <string name="liked">Liked</string>
+    <string name="like_removed">Like removed</string>
 
     <!-- Cookbook / Collections -->
     <string name="add_to_cookbook">Add to Cookbook</string>
@@ -186,6 +277,9 @@
 
     <!-- Ingredient Filter -->
     <string name="ingredient_filter_title">Search by Ingredients</string>
+    <string name="planner_add_recipe_prompt">Add a recipe</string>
+    <string name="planner_add_recipe_content_desc">Add recipe</string>
+    <string name="planner_weekly_menu_list_name">Weekly Menu Shopping</string>
     <string name="ingredient_search_hint">Search ingredients…</string>
     <string name="match_percent">%1$d%% match</string>
     <string name="add_to_shopping">Add to Shopping List</string>
@@ -244,9 +338,142 @@
 
     <string name="permission_denied_camera">Camera permission denied. Permission is required to take photos.</string>
 
-    <string name="permission_denied_gallery">Gallery permission denied.</string>
+    <string name="permission_denied_gallery">Gallery permission denied. Permission is required to choose photos.</string>
 
     <string name="camera_error">Camera could not be opened</string>
 
     <string name="no_cookbooks_found">You do not have a cookbook yet</string>
+    <string name="shopping_lists_title">My Shopping Lists</string>
+    <string name="shopping_lists_empty">You have not created any shopping lists yet.</string>
+    <string name="shopping_new_list">New List</string>
+    <string name="shopping_new_list_title">New Shopping List</string>
+    <string name="shopping_new_list_hint">e.g. Weekend Shopping</string>
+    <string name="shopping_create">Create</string>
+    <string name="shopping_list_created">Shopping list created</string>
+    <string name="shopping_lists_load_failed">Could not load shopping lists</string>
+    <string name="shopping_list_not_found">Shopping list not found</string>
+    <string name="profile_image_updated">Profile picture updated</string>
+    <string name="upload_failed">Upload failed</string>
+    <string name="reset_password_email_sent">Password reset email sent.</string>
+    <string name="error_with_reason">Error: %1$s</string>
+    <string name="recipe_not_found">Recipe not found</string>
+    <string name="connection_error">Connection error</string>
+    <string name="shopping_list_for_recipe">%1$s Shopping</string>
+    <string name="shopping_ingredients_preparing">Ingredients are being prepared as a shopping list</string>
+    <string name="cookbook_not_found">Cookbook not found</string>
+    <string name="follow">Follow</string>
+    <string name="unfollow">Unfollow</string>
+    <string name="follow_action_failed">Follow action failed</string>
+    <string name="leave_collaboration">Leave collaboration</string>
+    <string name="leave">Leave</string>
+    <string name="cookbook_leave_confirm">Do you want to leave this cookbook?</string>
+    <string name="left_cookbook">You left the cookbook</string>
+    <string name="remove_recipe_title">Remove Recipe</string>
+    <string name="remove_recipe_from_cookbook_confirm">Are you sure you want to remove %1$s from this cookbook?</string>
+    <string name="recipe_removed_from_cookbook">Recipe removed</string>
+    <string name="share_cookbook_text">Check out %1$s cookbook!\n%2$s</string>
+    <string name="share_cookbook">Share Cookbook</string>
+    <string name="cookbook_empty">There are no recipes in this cookbook yet.</string>
+    <string name="settings_title">Settings</string>
+    <string name="change_password">Change Password</string>
+    <string name="theme">Theme</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_system">System Default</string>
+    <string name="language">Language</string>
+    <string name="language_turkish">Turkish</string>
+    <string name="read">Read</string>
+    <string name="edit">Edit</string>
+    <string name="collaborators">Collaborators</string>
+    <string name="share">Share</string>
+    <string name="followers_count">%1$d followers</string>
+    <string name="following_count">%1$d following</string>
+    <string name="collection_not_found">Collection not found</string>
+    <string name="photo_pick_failed">Photo could not be selected</string>
+    <string name="cookbook_edit">Edit Cookbook</string>
+    <string name="update">Update</string>
+    <string name="load_failed">Load failed</string>
+    <string name="image_upload_failed_with_reason">Image upload failed: %1$s</string>
+    <string name="cookbook_saved">Cookbook saved</string>
+    <string name="cookbook_updated">Cookbook updated</string>
+    <string name="save_failed">Save failed</string>
+    <string name="update_failed">Update failed</string>
+    <string name="search_recipes">Search Recipes</string>
+    <string name="public_cookbooks">Public Cookbooks</string>
+    <string name="public_recipes">Public Recipes</string>
+    <string name="no_public_cookbooks">No public cookbooks yet</string>
+    <string name="no_public_recipes">No public recipes yet</string>
+    <string name="no_followed_cookbooks">No followed public cookbooks yet</string>
+    <string name="results">Results</string>
+    <string name="results_count">Results (%1$d)</string>
+    <string name="discover_select_ingredient_prompt">Select ingredients and search</string>
+    <string name="missing_ingredients_list_name">%1$s - Missing Ingredients</string>
+    <string name="missing_added_to_shopping">Missing items added to shopping list</string>
+    <string name="no_results_found">No results found</string>
+    <string name="invitation_already_sent">Invitation already sent</string>
+    <string name="invitation_sent_to_user">Invitation sent to %1$s</string>
+    <string name="no_collaborators_yet">No collaborators yet</string>
+    <string name="remove_collaborator_confirm">Do you want to remove this collaborator?</string>
+    <string name="enter_recipe_title">Please enter recipe title</string>
+    <string name="enter_amount_for_ingredient">Please enter amount for %1$s</string>
+    <string name="select_unit_for_ingredient">Please select unit for %1$s</string>
+    <string name="followers_count_default">0 followers</string>
+    <string name="following_count_default">0 following</string>
+    <string name="followed_cookbooks">Followed Cookbooks</string>
+    <string name="new_cookbook">New Cookbook</string>
+    <string name="tap_to_add_cover_photo">Tap to add cover photo</string>
+    <string name="cookbook_name">Cookbook Name</string>
+    <string name="public_cookbook">Public Cookbook</string>
+    <string name="tags">Tags</string>
+    <string name="add_tag_and_press_enter">Add a tag and press Enter</string>
+    <string name="collection_empty">There are no recipes in this collection yet.</string>
+    <string name="add_to_collection">Add to Collection</string>
+    <string name="new_collection_button">+ Create New Collection</string>
+    <string name="select_recipe">Select Recipe</string>
+    <string name="search_recipe_hint">Search recipe...</string>
+    <string name="search_user_by_email">Search user by email</string>
+    <string name="current_collaborators">Current Collaborators</string>
+    <string name="invitation_accepted">Invitation accepted</string>
+    <string name="invitation_declined">Invitation declined</string>
+    <string name="collection_name">Collection Name</string>
+    <string name="emoji_hint">Emoji (e.g. 🎂)</string>
+    <string name="new_collection_title">New Collection</string>
+    <string name="added_to_collection">Added to collection</string>
+    <string name="no_collections_yet">You have no collections yet.</string>
+    <string name="recipe_count">%1$d recipes</string>
+    <string name="no_ingredients_to_analyze">No ingredients to analyze.</string>
+    <string name="voice_command_not_understood">Command not understood: %1$s</string>
+    <string name="edit_cancelled">Editing cancelled</string>
+    <string name="changes_saved">Changes saved</string>
+    <string name="sticker_bring_to_front">Bring to Front</string>
+    <string name="sticker_send_to_back">Send to Back</string>
+    <string name="sticker_options">Sticker Options</string>
+    <string name="add_recipe_to_cookbook_first">You must add this recipe to a cookbook first</string>
+    <string name="shopping_new_item_hint">Add new item</string>
+    <string name="conversion_result_placeholder">Result: -</string>
+    <string name="sticker_select">Select Sticker</string>
+    <string name="all">All</string>
+    <string name="sticker_category_dessert">Dessert</string>
+    <string name="sticker_category_drink">Drink</string>
+    <string name="sticker_category_food">Food</string>
+    <string name="sticker_category_ornamental">Ornamental</string>
+    <string name="sticker_category_tools">Tools</string>
+    <string name="sticker_category_vegetable">Vegetable</string>
+    <string name="sticker">Sticker</string>
+    <string name="current_password">Current Password</string>
+    <string name="new_password">New Password</string>
+    <string name="confirm_new_password">Confirm New Password</string>
+    <string name="password_updated">Password updated successfully.</string>
+    <string name="current_password_incorrect">Current password is incorrect.</string>
+    <string name="forgot_password">Forgot Password</string>
+    <string name="reset_password_not_available_for_provider">Password reset is not available for this account type. Please sign in with your provider and set a password first.</string>
+    <string name="create_password_title">Create Password</string>
+    <string name="create_password_message">This account uses a social sign-in provider. You can create a password now and use email/password login afterwards.</string>
+    <string name="create_password_action">Create Password</string>
+    <string name="password_created_for_provider">Password created successfully. You can now also sign in with email and password.</string>
+    <string name="likes_count">%1$d likes</string>
+    <string name="match_percent_display">%1$d%% match</string>
+    <string name="recipe_owner_label">By %1$s</string>
+    <string name="recipe_owner_unknown">Unknown user</string>
+    <string name="missing_added_action">Add Missing to List</string>
 </resources>

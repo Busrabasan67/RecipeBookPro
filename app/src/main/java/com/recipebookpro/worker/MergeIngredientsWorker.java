@@ -27,6 +27,7 @@ public class MergeIngredientsWorker extends Worker {
     public static final String KEY_USER_ID = "user_id";
     public static final String KEY_RECIPE_IDS = "recipe_ids"; // Array of strings
     public static final String KEY_LIST_NAME = "list_name";
+    public static final String KEY_OVERWRITE_EXISTING = "overwrite_existing";
 
     public MergeIngredientsWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
@@ -39,8 +40,9 @@ public class MergeIngredientsWorker extends Worker {
         String userId = inputData.getString(KEY_USER_ID);
         String[] recipeIds = inputData.getStringArray(KEY_RECIPE_IDS);
         String listName = inputData.getString(KEY_LIST_NAME);
+        boolean overwriteExisting = inputData.getBoolean(KEY_OVERWRITE_EXISTING, false);
 
-        if (userId == null || recipeIds == null || recipeIds.length == 0 || listName == null) {
+        if (userId == null || recipeIds == null || listName == null) {
             return Result.failure();
         }
 
@@ -56,8 +58,6 @@ public class MergeIngredientsWorker extends Worker {
                         for (Recipe.Ingredient ing : recipe.getIngredients()) {
                             String key = ing.getName().toLowerCase().trim();
                             if (mergedItems.containsKey(key)) {
-                                // Basic appending logic, since parsing amounts and units across 
-                                // different strings accurately is complex without NLP
                                 ShoppingItem existing = mergedItems.get(key);
                                 existing.setAmount(existing.getAmount() + " + " + ing.getAmount());
                             } else {
@@ -77,22 +77,32 @@ public class MergeIngredientsWorker extends Worker {
 
             if (!existing.isEmpty()) {
                 DocumentSnapshot existingDoc = existing.getDocuments().get(0);
-                ShoppingList existingList = ShoppingList.fromDocument(existingDoc);
-                for (ShoppingItem item : existingList.getItems()) {
-                    String key = item.getName().toLowerCase().trim();
-                    if (!mergedItems.containsKey(key)) {
-                        mergedItems.put(key, item);
+                
+                if (mergedItems.isEmpty()) {
+                    // Delete empty list
+                    Tasks.await(db.collection("shopping_lists").document(existingDoc.getId()).delete());
+                } else {
+                    ShoppingList existingList = ShoppingList.fromDocument(existingDoc);
+                    if (!overwriteExisting) {
+                        for (ShoppingItem item : existingList.getItems()) {
+                            String key = item.getName().toLowerCase().trim();
+                            if (!mergedItems.containsKey(key)) {
+                                mergedItems.put(key, item);
+                            }
+                        }
                     }
+                    existingList.setItems(new ArrayList<>(mergedItems.values()));
+                    Tasks.await(db.collection("shopping_lists")
+                            .document(existingDoc.getId()).set(existingList));
                 }
-                existingList.setItems(new ArrayList<>(mergedItems.values()));
-                Tasks.await(db.collection("shopping_lists")
-                        .document(existingDoc.getId()).set(existingList));
             } else {
-                ShoppingList newList = new ShoppingList(userId, listName);
-                newList.setItems(new ArrayList<>(mergedItems.values()));
-                DocumentReference newListRef = db.collection("shopping_lists").document();
-                newList.setId(newListRef.getId());
-                Tasks.await(newListRef.set(newList));
+                if (!mergedItems.isEmpty()) {
+                    ShoppingList newList = new ShoppingList(userId, listName);
+                    newList.setItems(new ArrayList<>(mergedItems.values()));
+                    DocumentReference newListRef = db.collection("shopping_lists").document();
+                    newList.setId(newListRef.getId());
+                    Tasks.await(newListRef.set(newList));
+                }
             }
 
             return Result.success();

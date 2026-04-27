@@ -31,6 +31,7 @@ import com.recipebookpro.R;
 import com.recipebookpro.model.Cookbook;
 import com.recipebookpro.model.Recipe;
 import com.recipebookpro.model.ShoppingList;
+import com.recipebookpro.model.User;
 import com.recipebookpro.ui.discover.adapter.DiscoverRecipeAdapter;
 import com.recipebookpro.ui.discover.adapter.DiscoverRecipeAdapter.ScoredRecipe;
 import com.recipebookpro.ui.kitchen.CookbookDetailActivity;
@@ -39,21 +40,15 @@ import com.recipebookpro.ui.recipe.RecipeDetailActivity;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class DiscoverFragment extends Fragment
         implements DiscoverRecipeAdapter.OnDiscoverInteractionListener {
-
-    private static final String[] DEFAULT_INGREDIENTS = {
-            "tavuk", "soğan", "domates", "biber", "patates", "havuç",
-            "sarımsak", "pirinç", "makarna", "un", "yumurta", "süt",
-            "tereyağı", "zeytinyağı", "peynir", "limon", "tuz", "şeker",
-            "salça", "mercimek", "nohut", "bulgur", "kabak", "patlıcan",
-            "ispanak", "fasulye", "et", "kıyma", "balık"
-    };
 
     private FirebaseFirestore db;
     private FirebaseUser currentUser;
@@ -69,6 +64,7 @@ public class DiscoverFragment extends Fragment
     private CookbookAdapter publicCookbookAdapter;
     private final List<ScoredRecipe> results = new ArrayList<>();
     private final List<Cookbook> publicCookbooks = new ArrayList<>();
+    private final Map<String, User> ownersById = new HashMap<>();
 
     @Nullable
     @Override
@@ -201,14 +197,14 @@ public class DiscoverFragment extends Fragment
                     }
                     if (names == null || names.isEmpty()) {
                         names = new ArrayList<>();
-                        Collections.addAll(names, DEFAULT_INGREDIENTS);
+                        Collections.addAll(names, getResources().getStringArray(R.array.discover_default_ingredients));
                     }
                     populateIngredientChips(names);
                 })
                 .addOnFailureListener(e -> {
                     if (!isAdded()) return;
                     List<String> fallback = new ArrayList<>();
-                    Collections.addAll(fallback, DEFAULT_INGREDIENTS);
+                    Collections.addAll(fallback, getResources().getStringArray(R.array.discover_default_ingredients));
                     populateIngredientChips(fallback);
                 });
     }
@@ -243,6 +239,7 @@ public class DiscoverFragment extends Fragment
         tvEmpty.setVisibility(View.GONE);
         rvResults.setVisibility(View.GONE);
         tvResultsTitle.setVisibility(View.GONE);
+        setPublicCookbooksVisibility(false);
 
         loadAllPublicRecipes(selected, textQuery);
     }
@@ -408,20 +405,64 @@ public class DiscoverFragment extends Fragment
         }
 
         results.sort((a, b) -> Integer.compare(b.matchPercent, a.matchPercent));
+        loadOwnersForCurrentResultsAndDisplay();
+    }
 
+    private void loadOwnersForCurrentResultsAndDisplay() {
+        Set<String> ownerIds = new HashSet<>();
+        for (ScoredRecipe scored : results) {
+            if (scored.recipe.getUserId() != null && !scored.recipe.getUserId().isEmpty()) {
+                ownerIds.add(scored.recipe.getUserId());
+            }
+        }
+
+        if (ownerIds.isEmpty()) {
+            ownersById.clear();
+            adapter.setOwnerMap(ownersById);
+            updateResultVisibility();
+            return;
+        }
+
+        List<com.google.android.gms.tasks.Task<DocumentSnapshot>> tasks = new ArrayList<>();
+        for (String ownerId : ownerIds) {
+            tasks.add(db.collection("users").document(ownerId).get());
+        }
+
+        com.google.android.gms.tasks.Tasks.whenAllSuccess(tasks)
+                .addOnSuccessListener(snaps -> {
+                    ownersById.clear();
+                    for (Object obj : snaps) {
+                        DocumentSnapshot snap = (DocumentSnapshot) obj;
+                        if (!snap.exists()) continue;
+                        User user = snap.toObject(User.class);
+                        if (user == null) continue;
+                        user.setUid(snap.getId());
+                        ownersById.put(snap.getId(), user);
+                    }
+                    adapter.setOwnerMap(ownersById);
+                    updateResultVisibility();
+                })
+                .addOnFailureListener(e -> {
+                    ownersById.clear();
+                    adapter.setOwnerMap(ownersById);
+                    updateResultVisibility();
+                });
+    }
+
+    private void updateResultVisibility() {
         progress.setVisibility(View.GONE);
         if (results.isEmpty()) {
-            tvEmpty.setText("Sonuç bulunamadı");
+            tvEmpty.setText(R.string.no_results_found);
             tvEmpty.setVisibility(View.VISIBLE);
             rvResults.setVisibility(View.GONE);
             tvResultsTitle.setVisibility(View.GONE);
         } else {
             tvEmpty.setVisibility(View.GONE);
             tvResultsTitle.setVisibility(View.VISIBLE);
-            tvResultsTitle.setText("Sonuçlar (" + results.size() + ")");
+            tvResultsTitle.setText(getString(R.string.results_count, results.size()));
             rvResults.setVisibility(View.VISIBLE);
+            rvResults.post(() -> rvResults.smoothScrollToPosition(0));
         }
-        adapter.notifyDataSetChanged();
     }
 
     @Override
@@ -436,7 +477,7 @@ public class DiscoverFragment extends Fragment
         if (currentUser == null || missing == null || missing.isEmpty()) return;
 
         ShoppingList list = new ShoppingList(currentUser.getUid(),
-                recipe.getTitle() + " - Eksik Malzemeler");
+                getString(R.string.missing_ingredients_list_name, recipe.getTitle()));
         List<ShoppingList.ShoppingItem> items = new ArrayList<>();
         for (String name : missing) {
             items.add(new ShoppingList.ShoppingItem(name, "", ""));
@@ -445,9 +486,86 @@ public class DiscoverFragment extends Fragment
 
         db.collection("shopping_lists").add(list)
                 .addOnSuccessListener(ref ->
-                        Toast.makeText(getContext(), "Eksikler alışveriş listesine eklendi", Toast.LENGTH_SHORT).show())
+                        Toast.makeText(getContext(), R.string.missing_added_to_shopping, Toast.LENGTH_SHORT).show())
                 .addOnFailureListener(e ->
-                        Toast.makeText(getContext(), "Hata oluştu", Toast.LENGTH_SHORT).show());
+                        Toast.makeText(getContext(), R.string.error_generic, Toast.LENGTH_SHORT).show());
+    }
+
+    @Override
+    public void onAuthorClick(String userId) {
+        if (userId == null || userId.isEmpty()) return;
+        Intent intent = new Intent(getContext(), com.recipebookpro.ui.kitchen.PublicProfileActivity.class);
+        intent.putExtra(com.recipebookpro.ui.kitchen.PublicProfileActivity.EXTRA_USER_ID, userId);
+        startActivity(intent);
+    }
+
+    @Override
+    public void onToggleFollowAuthor(String userId, boolean currentlyFollowing) {
+        if (currentUser == null || userId == null || userId.isEmpty()) return;
+        String currentUid = currentUser.getUid();
+        if (currentUid.equals(userId)) return;
+
+        db.runTransaction(transaction -> {
+            DocumentSnapshot targetUserDoc = transaction.get(db.collection("users").document(userId));
+            DocumentSnapshot currentUserDoc = transaction.get(db.collection("users").document(currentUid));
+
+            List<String> targetFollowerIds = (List<String>) targetUserDoc.get("followerIds");
+            if (targetFollowerIds == null) targetFollowerIds = new ArrayList<>();
+            long targetFollowerCount = targetUserDoc.getLong("followerCount") != null ? targetUserDoc.getLong("followerCount") : 0;
+
+            List<String> currentFollowingIds = (List<String>) currentUserDoc.get("followingIds");
+            if (currentFollowingIds == null) currentFollowingIds = new ArrayList<>();
+            long currentFollowingCount = currentUserDoc.getLong("followingCount") != null ? currentUserDoc.getLong("followingCount") : 0;
+
+            if (currentlyFollowing) {
+                targetFollowerIds.remove(currentUid);
+                targetFollowerCount = Math.max(0, targetFollowerCount - 1);
+                currentFollowingIds.remove(userId);
+                currentFollowingCount = Math.max(0, currentFollowingCount - 1);
+            } else {
+                if (!targetFollowerIds.contains(currentUid)) targetFollowerIds.add(currentUid);
+                targetFollowerCount++;
+                if (!currentFollowingIds.contains(userId)) currentFollowingIds.add(userId);
+                currentFollowingCount++;
+            }
+
+            transaction.update(db.collection("users").document(userId),
+                    "followerIds", targetFollowerIds,
+                    "followerCount", targetFollowerCount);
+            transaction.update(db.collection("users").document(currentUid),
+                    "followingIds", currentFollowingIds,
+                    "followingCount", currentFollowingCount);
+            return null;
+        }).addOnSuccessListener(unused -> {
+            User owner = ownersById.get(userId);
+            if (owner != null) {
+                List<String> followers = owner.getFollowerIds();
+                if (currentlyFollowing) {
+                    followers.remove(currentUid);
+                    owner.setFollowerCount(Math.max(0, owner.getFollowerCount() - 1));
+                } else {
+                    if (!followers.contains(currentUid)) followers.add(currentUid);
+                    owner.setFollowerCount(owner.getFollowerCount() + 1);
+                }
+                owner.setFollowerIds(followers);
+                adapter.setOwnerMap(ownersById);
+            }
+        }).addOnFailureListener(e -> {
+            if (isAdded()) {
+                Toast.makeText(getContext(), R.string.follow_action_failed, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void setPublicCookbooksVisibility(boolean visible) {
+        int v = visible ? View.VISIBLE : View.GONE;
+        tvPublicCookbooksLabel.setVisibility(v);
+        rvPublicCookbooks.setVisibility(v);
+        if (visible) {
+            tvEmptyPublicCookbooks.setVisibility(publicCookbooks.isEmpty() ? View.VISIBLE : View.GONE);
+        } else {
+            tvEmptyPublicCookbooks.setVisibility(View.GONE);
+        }
     }
 
     private <T> List<List<T>> partition(List<T> list, int size) {

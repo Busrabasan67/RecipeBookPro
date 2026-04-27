@@ -141,7 +141,7 @@ public class CookbookDetailActivity extends BaseActivity {
         db.collection("cookbooks").document(cookbookId).addSnapshotListener((doc, e) -> {
             if (e != null || doc == null || !doc.exists()) {
                 progress.setVisibility(View.GONE);
-                Toast.makeText(this, "Defter bulunamadı", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.cookbook_not_found, Toast.LENGTH_SHORT).show();
                 finish();
                 return;
             }
@@ -178,19 +178,22 @@ public class CookbookDetailActivity extends BaseActivity {
             toolbar.getMenu().findItem(R.id.action_collaborators).setVisible(true);
             toolbar.getMenu().findItem(R.id.action_edit_cookbook).setVisible(true);
             toolbar.getMenu().findItem(R.id.action_leave_cookbook).setVisible(false);
+            adapter.setOnRecipeRemoveListener(this::removeRecipeFromCookbook);
         } else if (isCollaborator) {
             btnFollow.setVisibility(View.GONE);
             toolbar.getMenu().findItem(R.id.action_collaborators).setVisible(true);
             toolbar.getMenu().findItem(R.id.action_edit_cookbook).setVisible(false);
             toolbar.getMenu().findItem(R.id.action_leave_cookbook).setVisible(true);
+            adapter.setOnRecipeRemoveListener(this::removeRecipeFromCookbook);
         } else {
             toolbar.getMenu().findItem(R.id.action_collaborators).setVisible(false);
             toolbar.getMenu().findItem(R.id.action_edit_cookbook).setVisible(false);
             toolbar.getMenu().findItem(R.id.action_leave_cookbook).setVisible(false);
+            adapter.setOnRecipeRemoveListener(null);
             if (cookbook.isPublic()) {
                 btnFollow.setVisibility(View.VISIBLE);
                 boolean isFollowing = currentUser != null && cookbook.getFollowerIds().contains(currentUser.getUid());
-                btnFollow.setText(isFollowing ? "Takipten Çık" : "Takip Et");
+                btnFollow.setText(isFollowing ? R.string.unfollow : R.string.follow);
             }
         }
 
@@ -232,31 +235,67 @@ public class CookbookDetailActivity extends BaseActivity {
 
     private void toggleFollow() {
         if (currentUser == null) return;
-        boolean isFollowing = cookbook.getFollowerIds().contains(currentUser.getUid());
-        
-        if (isFollowing) {
-            db.collection("cookbooks").document(cookbookId)
-              .update("followerIds", FieldValue.arrayRemove(currentUser.getUid()));
-        } else {
-            db.collection("cookbooks").document(cookbookId)
-              .update("followerIds", FieldValue.arrayUnion(currentUser.getUid()));
-        }
+
+        btnFollow.setEnabled(false);
+        String uid = currentUser.getUid();
+
+        db.runTransaction(transaction -> {
+            DocumentSnapshot snapshot = transaction.get(db.collection("cookbooks").document(cookbookId));
+            List<String> followerIds = (List<String>) snapshot.get("followerIds");
+            if (followerIds == null) followerIds = new ArrayList<>();
+            long followerCount = snapshot.getLong("followerCount") != null ? snapshot.getLong("followerCount") : 0;
+
+            if (followerIds.contains(uid)) {
+                followerIds.remove(uid);
+                followerCount = Math.max(0, followerCount - 1);
+            } else {
+                followerIds.add(uid);
+                followerCount++;
+            }
+
+            transaction.update(db.collection("cookbooks").document(cookbookId),
+                    "followerIds", followerIds,
+                    "followerCount", followerCount);
+            return null;
+        }).addOnSuccessListener(aVoid -> btnFollow.setEnabled(true))
+        .addOnFailureListener(e -> {
+            btnFollow.setEnabled(true);
+            Toast.makeText(this, R.string.follow_action_failed, Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void leaveCookbook() {
         if (currentUser == null) return;
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                .setTitle("Ortaklıktan Ayrıl")
-                .setMessage("Bu defterden ayrılmak istiyor musunuz?")
-                .setPositiveButton("Ayrıl", (d, w) -> {
+                .setTitle(R.string.leave_collaboration)
+                .setMessage(R.string.cookbook_leave_confirm)
+                .setPositiveButton(R.string.leave, (d, w) -> {
                     db.collection("cookbooks").document(cookbookId)
                             .update("collaboratorIds", FieldValue.arrayRemove(currentUser.getUid()))
                             .addOnSuccessListener(aVoid -> {
-                                Toast.makeText(this, "Defterden ayrıldınız", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(this, R.string.left_cookbook, Toast.LENGTH_SHORT).show();
                                 finish();
                             });
                 })
-                .setNegativeButton("İptal", null)
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void removeRecipeFromCookbook(Recipe recipe) {
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.remove_recipe_title)
+                .setMessage(getString(R.string.remove_recipe_from_cookbook_confirm, recipe.getTitle()))
+                .setPositiveButton(R.string.delete, (dialog, which) -> {
+                    db.collection("cookbooks").document(cookbookId)
+                            .update("recipeIds", FieldValue.arrayRemove(recipe.getId()))
+                            .addOnSuccessListener(aVoid -> {
+                                Toast.makeText(this, R.string.recipe_removed_from_cookbook, Toast.LENGTH_SHORT).show();
+                            })
+                            .addOnFailureListener(e -> {
+                                Toast.makeText(this, R.string.error_generic, Toast.LENGTH_SHORT).show();
+                            });
+                })
+                .setNegativeButton(R.string.cancel, null)
                 .show();
     }
 
@@ -304,10 +343,10 @@ public class CookbookDetailActivity extends BaseActivity {
 
     private void shareCookbook() {
         String deepLink = "recipebook://cookbook/" + cookbook.getId();
-        String shareText = cookbook.getName() + " defterine göz at!\n" + deepLink;
+        String shareText = getString(R.string.share_cookbook_text, cookbook.getName(), deepLink);
         Intent intent = new Intent(Intent.ACTION_SEND);
         intent.setType("text/plain");
         intent.putExtra(Intent.EXTRA_TEXT, shareText);
-        startActivity(Intent.createChooser(intent, "Defteri Paylaş"));
+        startActivity(Intent.createChooser(intent, getString(R.string.share_cookbook)));
     }
 }

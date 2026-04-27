@@ -4,23 +4,23 @@
     <item
         android:id="@+id/action_read"
         android:icon="@drawable/ic_book_open"
-        android:title="Oku"
+        android:title="@string/read"
         app:showAsAction="always" />
     <item
         android:id="@+id/action_edit_cookbook"
-        android:title="Düzenle"
+        android:title="@string/edit"
         app:showAsAction="never" />
     <item
         android:id="@+id/action_collaborators"
-        android:title="Ortak Çalışanlar"
+        android:title="@string/collaborators"
         app:showAsAction="never" />
     <item
         android:id="@+id/action_leave_cookbook"
-        android:title="Ortaklıktan Ayrıl"
+        android:title="@string/leave_collaboration"
         app:showAsAction="never" />
     <item
         android:id="@+id/action_share"
         android:icon="@drawable/ic_share"
-        android:title="Paylaş"
+        android:title="@string/share"
         app:showAsAction="ifRoom" />
 </menu>

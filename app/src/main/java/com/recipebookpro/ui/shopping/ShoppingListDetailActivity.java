@@ -15,6 +15,7 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.recipebookpro.R;
 import com.recipebookpro.model.ShoppingList;
 import com.recipebookpro.model.ShoppingList.ShoppingItem;
@@ -42,7 +43,8 @@ public class ShoppingListDetailActivity extends BaseActivity {
 
     private ShoppingItemAdapter adapter;
     private List<ShoppingItem> items = new ArrayList<>();
-    private boolean skipNextSnapshot = false;
+    private ListenerRegistration listListener;
+    private boolean deletingBecauseEmpty = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -135,15 +137,16 @@ public class ShoppingListDetailActivity extends BaseActivity {
 
     private void loadList() {
         progress.setVisibility(View.VISIBLE);
-        db.collection("shopping_lists").document(listId).addSnapshotListener((doc, e) -> {
+        if (listListener != null) {
+            listListener.remove();
+        }
+        listListener = db.collection("shopping_lists").document(listId).addSnapshotListener((doc, e) -> {
             progress.setVisibility(View.GONE);
             if (e != null || doc == null || !doc.exists()) {
-                Toast.makeText(this, "Liste bulunamadı", Toast.LENGTH_SHORT).show();
+                if (!deletingBecauseEmpty) {
+                    Toast.makeText(this, R.string.shopping_list_not_found, Toast.LENGTH_SHORT).show();
+                }
                 finish();
-                return;
-            }
-            if (skipNextSnapshot) {
-                skipNextSnapshot = false;
                 return;
             }
             shoppingList = ShoppingList.fromDocument(doc);
@@ -172,8 +175,23 @@ public class ShoppingListDetailActivity extends BaseActivity {
 
     private void saveListChanges() {
         if (shoppingList != null) {
-            skipNextSnapshot = true;
-            db.collection("shopping_lists").document(listId).set(shoppingList);
+            if (items.isEmpty()) {
+                deletingBecauseEmpty = true;
+                db.collection("shopping_lists").document(listId).delete()
+                        .addOnFailureListener(e -> Toast.makeText(this, R.string.error_generic, Toast.LENGTH_SHORT).show());
+                return;
+            }
+            db.collection("shopping_lists").document(listId).set(shoppingList)
+                    .addOnFailureListener(e -> Toast.makeText(this, R.string.error_generic, Toast.LENGTH_SHORT).show());
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (listListener != null) {
+            listListener.remove();
+            listListener = null;
+        }
+        super.onDestroy();
     }
 }

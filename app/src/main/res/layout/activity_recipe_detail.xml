@@ -40,11 +40,10 @@
                 android:id="@+id/toolbarDetail"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
-                android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
                 app:layout_collapseMode="pin"
                 app:navigationIcon="@drawable/ic_arrow_back"
-                app:navigationIconTint="@android:color/white"
-                app:titleTextColor="@android:color/white"
+                app:navigationIconTint="?attr/colorOnPrimary"
+                app:titleTextColor="?attr/colorOnPrimary"
                 app:menu="@menu/menu_recipe_detail"/>
 
         </com.google.android.material.appbar.CollapsingToolbarLayout>

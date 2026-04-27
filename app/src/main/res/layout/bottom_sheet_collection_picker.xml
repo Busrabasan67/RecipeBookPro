@@ -9,7 +9,7 @@
     <com.google.android.material.textview.MaterialTextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Koleksiyona Ekle"
+        android:text="@string/add_to_collection"
         android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
         android:layout_marginBottom="12dp" />
 
@@ -32,7 +32,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="+ Yeni Koleksiyon Oluştur"
+        android:text="@string/new_collection_button"
         app:icon="@drawable/ic_add" />
 
 </LinearLayout>

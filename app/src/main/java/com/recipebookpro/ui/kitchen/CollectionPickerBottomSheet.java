@@ -74,12 +74,12 @@ public class CollectionPickerBottomSheet extends BottomSheetDialogFragment {
         if (currentUserId == null) return;
 
         TextInputLayout tilName = new TextInputLayout(requireContext());
-        tilName.setHint("Koleksiyon Adı");
+        tilName.setHint(R.string.collection_name);
         TextInputEditText etName = new TextInputEditText(tilName.getContext());
         tilName.addView(etName);
 
         TextInputLayout tilEmoji = new TextInputLayout(requireContext());
-        tilEmoji.setHint("Emoji (örn: \uD83C\uDF70)");
+        tilEmoji.setHint(R.string.emoji_hint);
         TextInputEditText etEmoji = new TextInputEditText(tilEmoji.getContext());
         tilEmoji.addView(etEmoji);
 
@@ -90,9 +90,9 @@ public class CollectionPickerBottomSheet extends BottomSheetDialogFragment {
         layout.addView(tilEmoji);
 
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Yeni Koleksiyon")
+                .setTitle(R.string.new_collection_title)
                 .setView(layout)
-                .setPositiveButton("Oluştur", (dialog, which) -> {
+                .setPositiveButton(R.string.shopping_create, (dialog, which) -> {
                     String name = etName.getText() != null ? etName.getText().toString().trim() : "";
                     String emoji = etEmoji.getText() != null ? etEmoji.getText().toString().trim() : "";
                     if (!name.isEmpty()) {
@@ -103,13 +103,13 @@ public class CollectionPickerBottomSheet extends BottomSheetDialogFragment {
                               if (recipeId != null && !recipeId.isEmpty()) {
                                   docRef.update("recipeIds", FieldValue.arrayUnion(recipeId))
                                         .addOnSuccessListener(a ->
-                                            Toast.makeText(getContext(), "Koleksiyona eklendi", Toast.LENGTH_SHORT).show());
+                                            Toast.makeText(getContext(), R.string.added_to_collection, Toast.LENGTH_SHORT).show());
                               }
                               dismiss();
                           });
                     }
                 })
-                .setNegativeButton("İptal", null)
+                .setNegativeButton(R.string.cancel, null)
                 .show();
     }
 
@@ -126,7 +126,7 @@ public class CollectionPickerBottomSheet extends BottomSheetDialogFragment {
 
               if (queryDocumentSnapshots.isEmpty()) {
                   TextView tvEmpty = new TextView(getContext());
-                  tvEmpty.setText("Hiç koleksiyonunuz yok.");
+                  tvEmpty.setText(R.string.no_collections_yet);
                   tvEmpty.setPadding(0, 16, 0, 16);
                   containerCollections.addView(tvEmpty);
                   return;
@@ -139,7 +139,7 @@ public class CollectionPickerBottomSheet extends BottomSheetDialogFragment {
           })
           .addOnFailureListener(e -> {
               progressPicker.setVisibility(View.GONE);
-              Toast.makeText(getContext(), "Hata oluştu", Toast.LENGTH_SHORT).show();
+              Toast.makeText(getContext(), R.string.error_generic, Toast.LENGTH_SHORT).show();
           });
     }
 
@@ -153,7 +153,7 @@ public class CollectionPickerBottomSheet extends BottomSheetDialogFragment {
         tvEmoji.setText(collection.getEmoji());
         tvName.setText(collection.getName());
         int count = collection.getRecipeIds() != null ? collection.getRecipeIds().size() : 0;
-        tvCount.setText(count + " tarif");
+        tvCount.setText(getString(R.string.recipe_count, count));
 
         view.setOnClickListener(v -> addRecipeToCollection(collection.getId()));
 
@@ -164,7 +164,7 @@ public class CollectionPickerBottomSheet extends BottomSheetDialogFragment {
         db.collection("collections").document(collectionId)
           .update("recipeIds", FieldValue.arrayUnion(recipeId))
           .addOnSuccessListener(aVoid -> {
-              Toast.makeText(getContext(), "Koleksiyona eklendi", Toast.LENGTH_SHORT).show();
+              Toast.makeText(getContext(), R.string.added_to_collection, Toast.LENGTH_SHORT).show();
               dismiss();
           });
     }

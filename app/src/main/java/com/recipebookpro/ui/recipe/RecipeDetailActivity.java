@@ -20,12 +20,13 @@ import com.google.android.material.tabs.TabLayoutMediator;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.recipebookpro.R;
 import com.recipebookpro.model.Recipe;
 import com.recipebookpro.model.User;
 import com.recipebookpro.ui.BaseActivity;
-import com.recipebookpro.ui.kitchen.CollectionPickerBottomSheet;
 import com.recipebookpro.ui.recipe.adapter.RecipeDetailPagerAdapter;
 import androidx.work.Data;
 import androidx.work.OneTimeWorkRequest;
@@ -49,6 +50,8 @@ public class RecipeDetailActivity extends BaseActivity {
     
     private ArrayList<String> userAllergens = new ArrayList<>();
     private boolean isLiked = false;
+    private MenuItem likeMenuItem;
+    private ListenerRegistration likeStateListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,11 +95,11 @@ public class RecipeDetailActivity extends BaseActivity {
                 loadUserAllergensAndSetupPager();
                 setupFAB();
             } else {
-                Toast.makeText(this, "Tarif bulunamadı", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.recipe_not_found, Toast.LENGTH_SHORT).show();
                 finish();
             }
         }).addOnFailureListener(e -> {
-            Toast.makeText(this, "Bağlantı hatası", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.connection_error, Toast.LENGTH_SHORT).show();
             finish();
         });
     }
@@ -127,12 +130,11 @@ public class RecipeDetailActivity extends BaseActivity {
             } else if (itemId == R.id.action_add_shopping) {
                 addToShoppingList();
                 return true;
-            } else if (itemId == R.id.action_add_collection) {
-                addToCollection();
-                return true;
             }
             return false;
         });
+
+        likeMenuItem = toolbar.getMenu().findItem(R.id.action_like);
 
         // Hide edit and delete option if user doesn't own it
         String recipeUserId = recipe.getUserId();
@@ -245,12 +247,26 @@ public class RecipeDetailActivity extends BaseActivity {
 
     private void toggleLike(MenuItem item) {
         if (currentUser == null) return;
-        isLiked = !isLiked;
-        item.setIcon(isLiked ? R.drawable.ic_heart_filled : R.drawable.ic_heart_outline);
-        // In a real app, you would add the user's UID to a 'likes' subcollection
-        // and increment the recipe's like count atomically.
-        String message = isLiked ? getString(R.string.liked) : "Beğeni geri alındı";
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        boolean shouldLike = !isLiked;
+        String uid = currentUser.getUid();
+        String recipeId = recipe.getId();
+        if (TextUtils.isEmpty(recipeId)) return;
+
+        item.setEnabled(false);
+        db.collection("users").document(uid)
+                .update("likedRecipeIds", shouldLike
+                        ? FieldValue.arrayUnion(recipeId)
+                        : FieldValue.arrayRemove(recipeId))
+                .addOnSuccessListener(unused -> {
+                    db.collection("recipes").document(recipeId)
+                            .update("likes", FieldValue.increment(shouldLike ? 1 : -1))
+                            .addOnCompleteListener(task -> item.setEnabled(true));
+                    Toast.makeText(this, shouldLike ? getString(R.string.liked) : getString(R.string.like_removed), Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e -> {
+                    item.setEnabled(true);
+                    Toast.makeText(this, R.string.error_generic, Toast.LENGTH_SHORT).show();
+                });
     }
 
     private void showDeleteDialog() {
@@ -274,16 +290,10 @@ public class RecipeDetailActivity extends BaseActivity {
                 );
     }
 
-    private void addToCollection() {
-        if (recipe == null) return;
-        CollectionPickerBottomSheet sheet = CollectionPickerBottomSheet.newInstance(recipe.getId());
-        sheet.show(getSupportFragmentManager(), "CollectionPicker");
-    }
-
     private void addToShoppingList() {
         if (currentUser == null) return;
         
-        String listName = recipe.getTitle() + " Alışverişi";
+        String listName = getString(R.string.shopping_list_for_recipe, recipe.getTitle());
         
         Data inputData = new Data.Builder()
             .putString(MergeIngredientsWorker.KEY_USER_ID, currentUser.getUid())
@@ -296,6 +306,38 @@ public class RecipeDetailActivity extends BaseActivity {
             .build();
             
         WorkManager.getInstance(this).enqueue(workRequest);
-        Toast.makeText(this, "Malzemeler alışveriş listesi olarak hazırlanıyor", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, R.string.shopping_ingredients_preparing, Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        subscribeLikeState();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (likeStateListener != null) {
+            likeStateListener.remove();
+            likeStateListener = null;
+        }
+    }
+
+    private void subscribeLikeState() {
+        if (currentUser == null || recipe == null || TextUtils.isEmpty(recipe.getId())) return;
+        if (likeStateListener != null) {
+            likeStateListener.remove();
+        }
+        likeStateListener = db.collection("users").document(currentUser.getUid())
+                .addSnapshotListener((doc, e) -> {
+                    if (e != null || doc == null || !doc.exists()) return;
+                    List<String> likedIds = (List<String>) doc.get("likedRecipeIds");
+                    boolean newState = likedIds != null && likedIds.contains(recipe.getId());
+                    isLiked = newState;
+                    if (likeMenuItem != null) {
+                        likeMenuItem.setIcon(isLiked ? R.drawable.ic_heart_filled : R.drawable.ic_heart_outline);
+                    }
+                });
     }
 }

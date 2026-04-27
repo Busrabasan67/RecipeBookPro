@@ -18,21 +18,23 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
-import com.google.android.material.textfield.TextInputEditText;
-import com.google.android.material.textfield.TextInputLayout;
 import com.google.android.material.textview.MaterialTextView;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FieldPath;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.recipebookpro.R;
+import com.recipebookpro.adapter.RecipeAdapter;
 import com.recipebookpro.model.Cookbook;
-import com.recipebookpro.model.RecipeCollection;
-import com.recipebookpro.ui.kitchen.adapter.CollectionAdapter;
+import com.recipebookpro.model.Recipe;
+import com.recipebookpro.ui.recipe.RecipeDetailActivity;
 import com.recipebookpro.ui.kitchen.adapter.CookbookAdapter;
 
 import java.util.ArrayList;
@@ -44,10 +46,10 @@ public class MyKitchenFragment extends Fragment {
     private RecyclerView rvCookbooks;
     private RecyclerView rvFollowedCookbooks;
     private RecyclerView rvCollabCookbooks;
-    private RecyclerView rvCollections;
+    private RecyclerView rvLikedRecipes;
     private TextView tvEmptyCookbooks;
     private TextView tvEmptyFollowed;
-    private TextView tvEmptyCollections;
+    private TextView tvEmptyLikedRecipes;
     private MaterialTextView tvInvitationsLabel;
     private MaterialTextView tvCollabLabel;
     private LinearLayout containerInvitations;
@@ -56,12 +58,12 @@ public class MyKitchenFragment extends Fragment {
     private CookbookAdapter cookbookAdapter;
     private CookbookAdapter followedAdapter;
     private CookbookAdapter collabAdapter;
-    private CollectionAdapter collectionAdapter;
+    private RecipeAdapter likedRecipeAdapter;
 
     private List<Cookbook> myCookbooks = new ArrayList<>();
     private List<Cookbook> followedCookbooks = new ArrayList<>();
     private List<Cookbook> collabCookbooks = new ArrayList<>();
-    private List<RecipeCollection> myCollections = new ArrayList<>();
+    private List<Recipe> likedRecipes = new ArrayList<>();
 
     private FirebaseFirestore db;
     private FirebaseUser currentUser;
@@ -79,9 +81,9 @@ public class MyKitchenFragment extends Fragment {
 
         rvFollowedCookbooks = view.findViewById(R.id.rvFollowedCookbooks);
         rvCollabCookbooks = view.findViewById(R.id.rvCollabCookbooks);
-        rvCollections = view.findViewById(R.id.rvCollections);
+        rvLikedRecipes = view.findViewById(R.id.rvLikedRecipes);
         tvEmptyFollowed = view.findViewById(R.id.tvEmptyFollowed);
-        tvEmptyCollections = view.findViewById(R.id.tvEmptyCollections);
+        tvEmptyLikedRecipes = view.findViewById(R.id.tvEmptyLikedRecipes);
         tvInvitationsLabel = view.findViewById(R.id.tvInvitationsLabel);
         tvCollabLabel = view.findViewById(R.id.tvCollabLabel);
         containerInvitations = view.findViewById(R.id.containerInvitations);
@@ -94,11 +96,6 @@ public class MyKitchenFragment extends Fragment {
         fabAddCookbook.setOnClickListener(v -> {
             startActivity(new Intent(getContext(), CookbookAddEditActivity.class));
         });
-
-        View btnAddCollection = view.findViewById(R.id.btnAddCollection);
-        if (btnAddCollection != null) {
-            btnAddCollection.setOnClickListener(v -> showCreateCollectionDialog());
-        }
 
         loadData();
         loadInvitations();
@@ -125,11 +122,14 @@ public class MyKitchenFragment extends Fragment {
             rvCollabCookbooks.setAdapter(collabAdapter);
         }
 
-        if (rvCollections != null) {
-            rvCollections.setLayoutManager(new LinearLayoutManager(getContext()));
-            collectionAdapter = new CollectionAdapter(myCollections, collection -> {
+        if (rvLikedRecipes != null) {
+            rvLikedRecipes.setLayoutManager(new LinearLayoutManager(getContext()));
+            likedRecipeAdapter = new RecipeAdapter(recipe -> {
+                Intent intent = new Intent(getContext(), RecipeDetailActivity.class);
+                intent.putExtra(RecipeDetailActivity.EXTRA_RECIPE, recipe);
+                startActivity(intent);
             });
-            rvCollections.setAdapter(collectionAdapter);
+            rvLikedRecipes.setAdapter(likedRecipeAdapter);
         }
     }
 
@@ -187,21 +187,19 @@ public class MyKitchenFragment extends Fragment {
               checkProgress();
           });
 
-        db.collection("collections")
-          .whereEqualTo("userId", currentUser.getUid())
-          .addSnapshotListener((value, error) -> {
-              if (error != null || !isAdded()) return;
-              myCollections.clear();
-              if (value != null) {
-                  for (QueryDocumentSnapshot doc : value) {
-                      myCollections.add(RecipeCollection.fromDocument(doc));
-                  }
-                  Collections.sort(myCollections, (c1, c2) -> Long.compare(c2.getCreatedAt(), c1.getCreatedAt()));
-              }
-              if (collectionAdapter != null) collectionAdapter.notifyDataSetChanged();
-              updateEmptyState(tvEmptyCollections, myCollections);
-              checkProgress();
-          });
+        db.collection("users").document(currentUser.getUid())
+                .addSnapshotListener((value, error) -> {
+                    if (error != null || !isAdded()) return;
+                    if (value == null || !value.exists()) {
+                        likedRecipes.clear();
+                        if (likedRecipeAdapter != null) likedRecipeAdapter.setRecipeList(likedRecipes);
+                        updateEmptyState(tvEmptyLikedRecipes, likedRecipes);
+                        checkProgress();
+                        return;
+                    }
+                    List<String> likedRecipeIds = (List<String>) value.get("likedRecipeIds");
+                    loadLikedRecipes(likedRecipeIds);
+                });
     }
 
     private void loadInvitations() {
@@ -255,12 +253,12 @@ public class MyKitchenFragment extends Fragment {
                     db.collection("cookbooks").document(cookbookId)
                             .update("collaboratorIds", FieldValue.arrayUnion(currentUser.getUid()));
                     if (isAdded() && getContext() != null) {
-                        Toast.makeText(getContext(), "Davet kabul edildi", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), R.string.invitation_accepted, Toast.LENGTH_SHORT).show();
                     }
                 })
                 .addOnFailureListener(e -> {
                     if (isAdded() && getContext() != null) {
-                        Toast.makeText(getContext(), "Bir hata oluştu", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), R.string.error_generic, Toast.LENGTH_SHORT).show();
                     }
                 });
     }
@@ -270,7 +268,7 @@ public class MyKitchenFragment extends Fragment {
                 .update("status", "declined")
                 .addOnSuccessListener(aVoid -> {
                     if (isAdded() && getContext() != null) {
-                        Toast.makeText(getContext(), "Davet reddedildi", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), R.string.invitation_declined, Toast.LENGTH_SHORT).show();
                     }
                 });
     }
@@ -285,45 +283,55 @@ public class MyKitchenFragment extends Fragment {
         }
     }
 
-    private void showCreateCollectionDialog() {
-        if (currentUser == null) return;
-
-        TextInputLayout tilName = new TextInputLayout(requireContext());
-        tilName.setHint("Koleksiyon Adı");
-        TextInputEditText etName = new TextInputEditText(tilName.getContext());
-        tilName.addView(etName);
-        
-        TextInputLayout tilEmoji = new TextInputLayout(requireContext());
-        tilEmoji.setHint("Emoji (örn: \uD83C\uDF70)");
-        TextInputEditText etEmoji = new TextInputEditText(tilEmoji.getContext());
-        tilEmoji.addView(etEmoji);
-
-        android.widget.LinearLayout layout = new android.widget.LinearLayout(requireContext());
-        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
-        layout.setPadding(48, 24, 48, 24);
-        layout.addView(tilName);
-        layout.addView(tilEmoji);
-
-        new MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Yeni Koleksiyon")
-            .setView(layout)
-            .setPositiveButton("Oluştur", (dialog, which) -> {
-                String name = etName.getText().toString().trim();
-                String emoji = etEmoji.getText().toString().trim();
-                if (!name.isEmpty()) {
-                    if (emoji.isEmpty()) emoji = "\uD83D\uDCC1";
-                    RecipeCollection collection = new RecipeCollection(currentUser.getUid(), name, emoji);
-                    db.collection("collections").add(collection)
-                      .addOnSuccessListener(docRef -> Toast.makeText(getContext(), "Koleksiyon oluşturuldu", Toast.LENGTH_SHORT).show());
-                }
-            })
-            .setNegativeButton("İptal", null)
-            .show();
-    }
-
     private void openCookbook(Cookbook book) {
         Intent intent = new Intent(getContext(), CookbookDetailActivity.class);
         intent.putExtra(CookbookDetailActivity.EXTRA_COOKBOOK_ID, book.getId());
         startActivity(intent);
+    }
+
+    private void loadLikedRecipes(List<String> likedRecipeIds) {
+        if (likedRecipeIds == null || likedRecipeIds.isEmpty()) {
+            likedRecipes.clear();
+            if (likedRecipeAdapter != null) likedRecipeAdapter.setRecipeList(likedRecipes);
+            updateEmptyState(tvEmptyLikedRecipes, likedRecipes);
+            checkProgress();
+            return;
+        }
+
+        List<List<String>> chunks = partition(likedRecipeIds, 10);
+        List<Task<QuerySnapshot>> tasks = new ArrayList<>();
+        for (List<String> chunk : chunks) {
+            tasks.add(db.collection("recipes")
+                    .whereIn(FieldPath.documentId(), chunk)
+                    .get());
+        }
+
+        Tasks.whenAllSuccess(tasks)
+                .addOnSuccessListener(results -> {
+                    likedRecipes.clear();
+                    for (Object result : results) {
+                        QuerySnapshot snapshot = (QuerySnapshot) result;
+                        for (DocumentSnapshot doc : snapshot.getDocuments()) {
+                            likedRecipes.add(Recipe.fromDocument(doc));
+                        }
+                    }
+                    if (likedRecipeAdapter != null) likedRecipeAdapter.setRecipeList(likedRecipes);
+                    updateEmptyState(tvEmptyLikedRecipes, likedRecipes);
+                    checkProgress();
+                })
+                .addOnFailureListener(e -> {
+                    if (isAdded() && getContext() != null) {
+                        Toast.makeText(getContext(), R.string.error_generic, Toast.LENGTH_SHORT).show();
+                    }
+                    checkProgress();
+                });
+    }
+
+    private <T> List<List<T>> partition(List<T> list, int size) {
+        List<List<T>> parts = new ArrayList<>();
+        for (int i = 0; i < list.size(); i += size) {
+            parts.add(new ArrayList<>(list.subList(i, Math.min(list.size(), i + size))));
+        }
+        return parts;
     }
 }

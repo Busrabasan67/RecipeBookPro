@@ -1,7 +1,11 @@
 package com.recipebookpro.ui.profile;
 
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.Manifest;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -10,6 +14,8 @@ import android.view.inputmethod.EditorInfo;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.core.widget.NestedScrollView;
 import android.graphics.Rect;
@@ -21,10 +27,24 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textview.MaterialTextView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 import com.recipebookpro.R;
 import com.recipebookpro.model.User;
 import com.recipebookpro.ui.auth.LoginActivity;
+
+import coil.Coil;
+import coil.request.ImageRequest;
+import coil.transform.CircleCropTransformation;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import android.net.Uri;
+import android.widget.ImageView;
+import android.widget.Toast;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,8 +55,50 @@ public class ProfileFragment extends Fragment {
     private FirebaseUser currentUser;
     private ChipGroup chipGroupAllergens;
     private TextInputEditText etCustomAllergen;
+    private ImageView ivProfileAvatar;
     private List<String> userAllergens = new ArrayList<>();
     private boolean isLoading = true;
+    private Uri cameraImageUri;
+
+    private final ActivityResultLauncher<String[]> permissionLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestMultiplePermissions(),
+            result -> {
+                boolean cameraGranted = Boolean.TRUE.equals(result.get(Manifest.permission.CAMERA));
+                String galleryPermission = getGalleryPermission();
+                boolean galleryGranted = galleryPermission == null
+                        || Boolean.TRUE.equals(result.get(galleryPermission));
+
+                if (cameraGranted && galleryGranted) {
+                    showImageSourceChooser();
+                    return;
+                }
+
+                if (!cameraGranted) {
+                    Toast.makeText(requireContext(), R.string.permission_denied_camera, Toast.LENGTH_SHORT).show();
+                }
+                if (!galleryGranted) {
+                    Toast.makeText(requireContext(), R.string.permission_denied_gallery, Toast.LENGTH_SHORT).show();
+                }
+            }
+    );
+
+    private final ActivityResultLauncher<String> imagePickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.GetContent(),
+            uri -> {
+                if (uri != null) {
+                    uploadProfileImage(uri);
+                }
+            }
+    );
+
+    private final ActivityResultLauncher<Uri> cameraLauncher = registerForActivityResult(
+            new ActivityResultContracts.TakePicture(),
+            success -> {
+                if (success && cameraImageUri != null) {
+                    uploadProfileImage(cameraImageUri);
+                }
+            }
+    );
 
     @Nullable
     @Override
@@ -58,6 +120,7 @@ public class ProfileFragment extends Fragment {
         MaterialButton btnAdmin = view.findViewById(R.id.btnAdminPanel);
         chipGroupAllergens = view.findViewById(R.id.chipGroupAllergens);
         etCustomAllergen = view.findViewById(R.id.etCustomAllergen);
+        ivProfileAvatar = view.findViewById(R.id.ivProfileAvatar);
 
         etCustomAllergen.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE ||
@@ -75,7 +138,10 @@ public class ProfileFragment extends Fragment {
 
         if (currentUser != null) {
             tvEmail.setText(currentUser.getEmail());
+            loadProfileImage(currentUser.getPhotoUrl());
         }
+
+        ivProfileAvatar.setOnClickListener(v -> ensureImagePermissionsAndSelectSource());
 
         btnLogout.setOnClickListener(v -> {
             FirebaseAuth.getInstance().signOut();
@@ -83,7 +149,10 @@ public class ProfileFragment extends Fragment {
             requireActivity().finishAffinity();
         });
 
-        btnSettings.setOnClickListener(v -> { });
+        btnSettings.setOnClickListener(v -> {
+            SettingsBottomSheet bottomSheet = new SettingsBottomSheet();
+            bottomSheet.show(getChildFragmentManager(), "SettingsBottomSheet");
+        });
         btnAdmin.setOnClickListener(v -> { });
 
         loadUserAllergens();
@@ -239,5 +308,108 @@ public class ProfileFragment extends Fragment {
         userAllergens = selected;
         db.collection("users").document(currentUser.getUid())
                 .update("allergens", selected);
+    }
+
+    private void uploadProfileImage(Uri imageUri) {
+        if (currentUser == null) return;
+        Toast.makeText(requireContext(), R.string.loading, Toast.LENGTH_SHORT).show();
+
+        StorageReference storageRef = FirebaseStorage.getInstance().getReference()
+                .child("profile_images/" + currentUser.getUid() + ".jpg");
+
+        storageRef.putFile(imageUri).addOnSuccessListener(taskSnapshot -> {
+            storageRef.getDownloadUrl().addOnSuccessListener(uri -> {
+                String downloadUrl = uri.toString();
+                // Update Firebase Auth profile
+                UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+                        .setPhotoUri(uri)
+                        .build();
+                currentUser.updateProfile(profileUpdates);
+
+                // Update Firestore user document
+                db.collection("users").document(currentUser.getUid())
+                        .update("profileImageUrl", downloadUrl)
+                        .addOnSuccessListener(aVoid -> {
+                            loadProfileImage(uri);
+                            Toast.makeText(requireContext(), R.string.profile_image_updated, Toast.LENGTH_SHORT).show();
+                        });
+            });
+        }).addOnFailureListener(e -> {
+            Toast.makeText(requireContext(), R.string.upload_failed, Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void loadProfileImage(Uri photoUrl) {
+        if (photoUrl != null && ivProfileAvatar != null) {
+            ImageRequest request = new ImageRequest.Builder(requireContext())
+                    .data(photoUrl.toString())
+                    .target(ivProfileAvatar)
+                    .crossfade(true)
+                    .transformations(new CircleCropTransformation())
+                    .placeholder(R.drawable.ic_nav_profile)
+                    .build();
+            Coil.imageLoader(requireContext()).enqueue(request);
+        }
+    }
+
+    private void ensureImagePermissionsAndSelectSource() {
+        String galleryPermission = getGalleryPermission();
+        boolean cameraGranted = ContextCompat.checkSelfPermission(
+                requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+        boolean galleryGranted = galleryPermission == null || ContextCompat.checkSelfPermission(
+                requireContext(), galleryPermission) == PackageManager.PERMISSION_GRANTED;
+
+        if (cameraGranted && galleryGranted) {
+            showImageSourceChooser();
+            return;
+        }
+
+        List<String> permissionsToRequest = new ArrayList<>();
+        if (!cameraGranted) permissionsToRequest.add(Manifest.permission.CAMERA);
+        if (!galleryGranted && galleryPermission != null) permissionsToRequest.add(galleryPermission);
+        permissionLauncher.launch(permissionsToRequest.toArray(new String[0]));
+    }
+
+    private String getGalleryPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return Manifest.permission.READ_MEDIA_IMAGES;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return Manifest.permission.READ_EXTERNAL_STORAGE;
+        }
+        return null;
+    }
+
+    private void showImageSourceChooser() {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.profile_photo_select_source)
+                .setItems(new String[]{
+                        getString(R.string.take_photo),
+                        getString(R.string.choose_from_gallery)
+                }, (dialog, which) -> {
+                    if (which == 0) {
+                        openCamera();
+                    } else {
+                        imagePickerLauncher.launch("image/*");
+                    }
+                })
+                .show();
+    }
+
+    private void openCamera() {
+        try {
+            java.io.File photoFile = java.io.File.createTempFile(
+                    "profile_",
+                    ".jpg",
+                    requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+            );
+            cameraImageUri = FileProvider.getUriForFile(
+                    requireContext(),
+                    requireContext().getPackageName() + ".provider",
+                    photoFile
+            );
+            cameraLauncher.launch(cameraImageUri);
+        } catch (Exception e) {
+            Toast.makeText(requireContext(), R.string.camera_error, Toast.LENGTH_SHORT).show();
+        }
     }
 }

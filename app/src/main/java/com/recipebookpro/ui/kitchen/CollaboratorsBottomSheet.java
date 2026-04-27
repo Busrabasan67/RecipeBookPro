@@ -135,7 +135,7 @@ public class CollaboratorsBottomSheet extends BottomSheetDialogFragment {
                     containerSearchResults.removeAllViews();
                     if (results.isEmpty()) {
                         TextView tvEmpty = new TextView(getContext());
-                        tvEmpty.setText("Sonuç bulunamadı");
+                        tvEmpty.setText(R.string.no_results_found);
                         tvEmpty.setPadding(0, 16, 0, 16);
                         containerSearchResults.addView(tvEmpty);
                         return;
@@ -176,7 +176,7 @@ public class CollaboratorsBottomSheet extends BottomSheetDialogFragment {
                 .get()
                 .addOnSuccessListener(existing -> {
                     if (!existing.isEmpty()) {
-                        Toast.makeText(getContext(), "Zaten davet gönderilmiş", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), R.string.invitation_already_sent, Toast.LENGTH_SHORT).show();
                         return;
                     }
                     java.util.Map<String, Object> invitation = new java.util.HashMap<>();
@@ -190,7 +190,7 @@ public class CollaboratorsBottomSheet extends BottomSheetDialogFragment {
 
                     db.collection("cookbook_invitations").add(invitation)
                             .addOnSuccessListener(ref -> {
-                                Toast.makeText(getContext(), displayName + " kullanıcısına davet gönderildi", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(getContext(), getString(R.string.invitation_sent_to_user, displayName), Toast.LENGTH_SHORT).show();
                                 etSearch.setText("");
                                 containerSearchResults.removeAllViews();
                             });
@@ -206,7 +206,7 @@ public class CollaboratorsBottomSheet extends BottomSheetDialogFragment {
         List<String> collabIds = cookbook.getCollaboratorIds();
         if (collabIds == null || collabIds.isEmpty()) {
             TextView tvEmpty = new TextView(getContext());
-            tvEmpty.setText("Henüz ortak çalışan yok");
+            tvEmpty.setText(R.string.no_collaborators_yet);
             tvEmpty.setPadding(0, 24, 0, 24);
             tvEmpty.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
             containerCollaborators.addView(tvEmpty);
@@ -249,16 +249,16 @@ public class CollaboratorsBottomSheet extends BottomSheetDialogFragment {
                     if (isOwner) {
                         new MaterialAlertDialogBuilder(requireContext())
                                 .setTitle(collabName)
-                                .setMessage("Bu ortağı kaldırmak istiyor musunuz?")
-                                .setPositiveButton("Kaldır", (d, w) -> removeCollaborator(collabUid))
-                                .setNegativeButton("İptal", null)
+                                .setMessage(R.string.remove_collaborator_confirm)
+                                .setPositiveButton(R.string.delete, (d, w) -> removeCollaborator(collabUid))
+                                .setNegativeButton(R.string.cancel, null)
                                 .show();
                     } else if (isSelf) {
                         new MaterialAlertDialogBuilder(requireContext())
-                                .setTitle("Ortaklıktan Ayrıl")
-                                .setMessage("Bu defterden ayrılmak istiyor musunuz?")
-                                .setPositiveButton("Ayrıl", (d, w) -> removeCollaborator(collabUid))
-                                .setNegativeButton("İptal", null)
+                                .setTitle(R.string.leave_collaboration)
+                                .setMessage(R.string.cookbook_leave_confirm)
+                                .setPositiveButton(R.string.leave, (d, w) -> removeCollaborator(collabUid))
+                                .setNegativeButton(R.string.cancel, null)
                                 .show();
                     }
                     return true;
@@ -267,14 +267,14 @@ public class CollaboratorsBottomSheet extends BottomSheetDialogFragment {
                 if (isSelf && !isOwner) {
                     MaterialButton btnLeave = new MaterialButton(requireContext(), null,
                             com.google.android.material.R.attr.materialButtonOutlinedStyle);
-                    btnLeave.setText("Ayrıl");
+                    btnLeave.setText(R.string.leave);
                     btnLeave.setTextColor(requireContext().getColor(com.google.android.material.R.color.m3_ref_palette_error40));
                     btnLeave.setOnClickListener(v ->
                             new MaterialAlertDialogBuilder(requireContext())
-                                    .setTitle("Ortaklıktan Ayrıl")
-                                    .setMessage("Bu defterden ayrılmak istiyor musunuz?")
-                                    .setPositiveButton("Ayrıl", (d, w) -> removeCollaborator(collabUid))
-                                    .setNegativeButton("İptal", null)
+                                    .setTitle(R.string.leave_collaboration)
+                                    .setMessage(R.string.cookbook_leave_confirm)
+                                    .setPositiveButton(R.string.leave, (d, w) -> removeCollaborator(collabUid))
+                                    .setNegativeButton(R.string.cancel, null)
                                     .show());
 
                     containerCollaborators.addView(btnLeave);

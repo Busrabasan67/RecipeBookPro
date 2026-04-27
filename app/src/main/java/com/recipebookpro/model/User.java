@@ -13,10 +13,18 @@ public class User {
     private List<String> allergens;       // user allergens for warnings
     private String profileImageUrl;
     private String role;                  // "user" | "admin"
+    
+    // Follow System
+    private List<String> followerIds;
+    private List<String> followingIds;
+    private int followerCount;
+    private int followingCount;
 
     public User() {
         // Firestore requires an empty constructor
         allergens = new ArrayList<>();
+        followerIds = new ArrayList<>();
+        followingIds = new ArrayList<>();
     }
 
     public User(String uid, String email, String displayName, long createdAt) {
@@ -25,7 +33,11 @@ public class User {
         this.displayName = displayName;
         this.createdAt = createdAt;
         this.allergens = new ArrayList<>();
+        this.followerIds = new ArrayList<>();
+        this.followingIds = new ArrayList<>();
         this.role = "user";
+        this.followerCount = 0;
+        this.followingCount = 0;
     }
 
     public String getUid() { return uid; }
@@ -63,5 +75,37 @@ public class User {
 
     public boolean isAdmin() {
         return "admin".equalsIgnoreCase(role);
+    }
+
+    public List<String> getFollowerIds() {
+        return followerIds == null ? new ArrayList<>() : followerIds;
+    }
+
+    public void setFollowerIds(List<String> followerIds) {
+        this.followerIds = followerIds != null ? followerIds : new ArrayList<>();
+    }
+
+    public List<String> getFollowingIds() {
+        return followingIds == null ? new ArrayList<>() : followingIds;
+    }
+
+    public void setFollowingIds(List<String> followingIds) {
+        this.followingIds = followingIds != null ? followingIds : new ArrayList<>();
+    }
+
+    public int getFollowerCount() {
+        return followerCount;
+    }
+
+    public void setFollowerCount(int followerCount) {
+        this.followerCount = followerCount;
+    }
+
+    public int getFollowingCount() {
+        return followingCount;
+    }
+
+    public void setFollowingCount(int followingCount) {
+        this.followingCount = followingCount;
     }
 }

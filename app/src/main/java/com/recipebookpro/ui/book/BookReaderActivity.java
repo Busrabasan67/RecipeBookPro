@@ -78,7 +78,7 @@ public class BookReaderActivity extends BaseActivity {
         
         findViewById(R.id.btnEditCancel).setOnClickListener(v -> {
             toggleEditMode(false);
-            android.widget.Toast.makeText(this, "Düzenleme iptal edildi", android.widget.Toast.LENGTH_SHORT).show();
+            android.widget.Toast.makeText(this, R.string.edit_cancelled, android.widget.Toast.LENGTH_SHORT).show();
         });
         findViewById(R.id.btnEditAdd).setOnClickListener(v -> showStickerSelector());
         findViewById(R.id.btnEditSave).setOnClickListener(v -> saveEdits());
@@ -300,7 +300,7 @@ public class BookReaderActivity extends BaseActivity {
         if (currentFrag instanceof RecipePageFragment) {
             ((RecipePageFragment) currentFrag).performSave(() -> {
                 toggleEditMode(false);
-                android.widget.Toast.makeText(this, "Değişiklikler kaydedildi", android.widget.Toast.LENGTH_SHORT).show();
+                android.widget.Toast.makeText(this, R.string.changes_saved, android.widget.Toast.LENGTH_SHORT).show();
             });
         } else {
             toggleEditMode(false);

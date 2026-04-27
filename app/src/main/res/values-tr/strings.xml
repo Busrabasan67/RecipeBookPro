@@ -1,107 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">RecipeBook Pro</string>
-    <string name="login">Giris Yap</string>
-    <string name="register">Kayit Ol</string>
-    <string name="welcome">RecipeBook Pro uygulamasina hos geldiniz</string>
-    <string name="loading">Yukleniyor...</string>
-    <string name="email">E-posta</string>
-    <string name="password">Sifre</string>
-    <string name="confirm_password">Sifreyi Onayla</string>
-    <string name="display_name">Ad Soyad</string>
-    <string name="logout">Cikis Yap</string>
-    <string name="invalid_email">Gecersiz e-posta formati</string>
-    <string name="empty_fields">Lutfen tum alanlari doldurun.</string>
-    <string name="password_too_short">Sifre en az 6 karakter olmali.</string>
-    <string name="passwords_not_match">Sifreler eslesmiyor.</string>
-    <string name="login_failed">Giris basarisiz. Bilgilerinizi kontrol edin.</string>
-    <string name="register_failed">Kayit basarisiz. Lutfen tekrar deneyin.</string>
-    <string name="no_account">Hesabiniz yok mu? Kayit Olun</string>
-    <string name="already_have_account">Zaten hesabiniz var mi? Giris Yapin</string>
-    <string name="sign_up">Kayit Ol</string>
-    <string name="sign_in">Giris Yap</string>
-    <string name="sign_in_with_google">Google ile Giris Yap</string>
-    <string name="google_sign_in_failed">Google girisi basarisiz. Lutfen tekrar deneyin.</string>
-
-    <string name="add_recipe">Tarif Ekle</string>
-    <string name="recipe_title">Tarif Adi</string>
-    <string name="recipe_description">Aciklama</string>
-    <string name="ingredients">Malzemeler</string>
-    <string name="steps">Hazirlama Adimlari</string>
-    <string name="save">Kaydet</string>
-    <string name="save_recipe">Tarifi Kaydet</string>
-    <string name="delete">Sil</string>
-    <string name="delete_recipe">Tarifi Sil</string>
-    <string name="cancel">Iptal</string>
-    <string name="no_recipes">Henuz tarif yok. Ilk tarifinizi eklemek icin + butonuna dokunun.</string>
-    <string name="no_recipes_for_category">%1$s kategorisinde tarif bulunamadi.</string>
-    <string name="recipe_saved">Tarif basariyla kaydedildi.</string>
-    <string name="recipe_deleted">Tarif silindi.</string>
-    <string name="recipe_save_failed">Tarif kaydedilemedi. Lutfen tekrar deneyin.</string>
-    <string name="recipe_delete_failed">Tarif silinemedi. Lutfen tekrar deneyin.</string>
-    <string name="my_recipes">Tariflerim</string>
-    <string name="view_details">Tarif Detayi</string>
-    <string name="confirm_delete">Bu tarifi silmek istediginize emin misiniz?</string>
-    <string name="description">Aciklama</string>
-    <string name="recipes_load_failed">Tarifler yuklenemedi. Baglantinizi kontrol edin.</string>
-
-    <string name="category">Kategori</string>
-    <string name="category_all">Tumu</string>
-    <string name="category_unknown">Kategorisiz</string>
-    <string name="required_field">Zorunlu alan</string>
-    <string name="add_ingredient">Malzeme Ekle</string>
-    <string name="remove_ingredient">Malzemeyi Kaldir</string>
-    <string name="ingredient_name">Malzeme adi</string>
-    <string name="amount">Miktar</string>
-    <string name="unit">Birim</string>
-    <string name="unit_pack">paket</string>
-    <string name="ingredient_required_message">En az bir eksiksiz malzeme satiri ekleyin.</string>
-    <string name="at_least_one_ingredient">En az bir malzeme gerekli.</string>
-    <string name="no_description">Aciklama eklenmemis.</string>
-    <string name="no_ingredients">Malzeme eklenmemis.</string>
-    <string name="no_steps">Adim eklenmemis.</string>
-
-    <string name="my_recipe_book">Tarif Defterim</string>
-    <string name="table_of_contents">Icindekiler</string>
-    <string name="page_number">Sayfa %1$d / %2$d</string>
-    <string name="no_recipes_in_book">Gosterilecek tarif yok. Once tarif ekleyin.</string>
-    <string name="cover">Kapak</string>
-    <string name="swipe_to_open">Baslamak icin sayfayi cevirin</string>
-    <string name="open_recipe_journal">Tarif Defterini Ac</string>
-    <string name="toc_short">IC</string>
-    <string name="cover_page_label">Kapak sayfasi</string>
-    <string name="recipe_page_label">Tarif sayfasi %1$d</string>
-    <string name="recipe_count_label">%1$d tarif</string>
-    <string name="cover_caption">Mutfak Notlari</string>
-    <string name="cover_decorative_line">Cirpici • Kasik • Firin • Kalp</string>
-    <string name="toc_chapter_label">Bolum I</string>
-    <string name="recipe_note_label">Kisa not</string>
-    <string name="toc_bullet">•</string>
-    <string name="toc_dots"> ........ </string>
-
-    <!-- Bottom Navigation -->
     <string name="nav_home">Ana Sayfa</string>
     <string name="nav_discover">Keşfet</string>
+    <string name="nav_add">Ekle</string>
     <string name="nav_my_kitchen">Mutfağım</string>
+    <string name="nav_shopping">Alışveriş</string>
     <string name="nav_planner">Planlayıcı</string>
     <string name="nav_profile">Profil</string>
 
-    <!-- Discover Fragment -->
-    <string name="discover_search_hint">Herkese açık tarifleri ara…</string>
-    <string name="discover_coming_soon">Herkese açık tarifler yakında</string>
+    <string name="home_welcome">Hoş geldin, hadi pişirelim!</string>
+    <string name="home_search_hint">Tarifler, malzemeler ara...</string>
+    <string name="home_categories">Kategoriler</string>
+    <string name="home_recent">Son Eklenenler</string>
+    <string name="home_popular">Şu An Popüler</string>
+    <string name="my_recipe_book">Tarif Defterim</string>
+    <string name="table_of_contents">İçindekiler</string>
+    <string name="page_number">Sayfa %1$d / %2$d</string>
+    <string name="no_recipes_in_book">Gösterecek tarif yok. Önce tarif ekleyin.</string>
+    <string name="cover">Kapak</string>
+    <string name="swipe_to_open">Başlamak için sayfayı çevirin</string>
+    <string name="toc_short">İçindekiler</string>
+    <string name="cover_page_label">Kapak sayfası</string>
+    <string name="recipe_page_label">Tarif sayfası %1$d</string>
+    <string name="recipe_count_label">%1$d tarif</string>
+    <string name="cover_caption">Mutfak Notları</string>
+    <string name="cover_decorative_line">Çırpıcı • Kaşık • Fırın • Kalp</string>
+    <string name="toc_chapter_label">Bölüm I</string>
+    <string name="recipe_note_label">Küçük not</string>
+    <string name="toc_dots"> ........ </string>
+    <string name="add_recipe">Tarif Ekle</string>
+    <string name="recipe_title">Tarif Başlığı</string>
+    <string name="recipe_description">Açıklama</string>
+    <string name="category">Kategori</string>
+    <string name="ingredients">Malzemeler</string>
+    <string name="steps">Hazırlanış Adımları</string>
+    <string name="save">Kaydet</string>
+    <string name="save_recipe">Tarifi Kaydet</string>
+    <string name="add_ingredient">Malzeme Ekle</string>
+    <string name="select_cookbook">Defter Seç</string>
+    <string name="servings">Porsiyon</string>
+    <string name="add_step">Adım Ekle</string>
+    <string name="add_photo">Fotoğraf Ekle</string>
 
-    <!-- My Kitchen Fragment -->
-    <string name="my_kitchen_title">Tarif Defterlerim ve Koleksiyonlarım</string>
-    <string name="my_kitchen_empty">Henüz koleksiyon oluşturmadınız.</string>
+    <string name="my_kitchen_title">Tarif Defterlerim</string>
+    <string name="kitchen_pending_invitations">Bekleyen Davetler</string>
+    <string name="kitchen_collaborative_books">Ortak Defterler</string>
+    <string name="kitchen_my_books">Benim Defterlerim</string>
+    <string name="kitchen_empty_my_books">Henüz defter oluşturmadınız.</string>
+    <string name="kitchen_followed_books">Takip Edilen Defterler</string>
+    <string name="kitchen_empty_followed_books">Takip ettiğiniz bir defter yok.</string>
+    <string name="kitchen_liked_recipes">Beğenilen Tarifler</string>
+    <string name="kitchen_empty_liked_recipes">Henüz tarif beğenmediniz.</string>
+    <string name="kitchen_new_book">Yeni Defter</string>
 
-    <!-- Planner Fragment -->
-    <string name="planner_title">Haftalık Yemek Planlayıcı</string>
-    <string name="planner_shopping_list">Alışveriş Listesi</string>
-    <string name="planner_empty">Haftanın yemeklerini burada planlayın.</string>
-
-    <!-- Profile Fragment -->
     <string name="profile_settings">Ayarlar</string>
     <string name="profile_admin">Yönetici Paneli</string>
     <string name="profile_email_label">E-posta</string>
+    <string name="allergens_label">Alerjenler</string>
+    <string name="profile_allergen_description">Hassas olduğunuz alerjenleri seçin</string>
+    <string name="profile_custom_allergen_hint">Özel alerjen ekleyin ve Enter\'a basın</string>
+    <string name="profile_photo_select_source">Profil fotoğrafı kaynağını seçin</string>
+    <string name="profile_image_updated">Profil resmi güncellendi</string>
+    <string name="upload_failed">Yükleme başarısız oldu</string>
+
+    <string-array name="recipe_category_values">
+        <item>Tatli</item>
+        <item>Ana Yemek</item>
+        <item>Corba</item>
+        <item>Kahvaltilik</item>
+        <item>Atistirmalik</item>
+        <item>Icecek</item>
+        <item>Salata</item>
+        <item>Hamur Isi</item>
+    </string-array>
 
     <string-array name="recipe_categories">
         <item>Tatli</item>
@@ -114,133 +86,226 @@
         <item>Hamur Isi</item>
     </string-array>
 
-    <string-array name="ingredient_units">
-        <item>adet</item>
-        <item>gram</item>
-        <item>kilogram</item>
-        <item>litre</item>
-        <item>mililitre</item>
-        <item>su bardagi</item>
-        <item>cay bardagi</item>
-        <item>yemek kasigi</item>
-        <item>tatli kasigi</item>
-        <item>cay kasigi</item>
-        <item>tutam</item>
-        <item>dilim</item>
-        <item>@string/unit_pack</item>
+    <string-array name="recipe_category_labels">
+        <item>Tatlı</item>
+        <item>Ana Yemek</item>
+        <item>Çorba</item>
+        <item>Kahvaltılık</item>
+        <item>Atıştırmalık</item>
+        <item>İçecek</item>
+        <item>Salata</item>
+        <item>Hamur İşi</item>
     </string-array>
 
-    <!-- Allergen tags -->
+    <string name="planner_title">Haftalık Yemek Planı</string>
+    <string name="planner_shopping_list">Alışveriş Listesi</string>
+    <string name="planner_empty">Bu hafta için yemek planı oluşturun.</string>
+    <string name="planner_create_list">Liste Oluştur</string>
+    <string name="planner_no_shopping_list">Henüz alışveriş listesi yok</string>
+    <string name="planner_no_recipe_in_menu">Menüde tarif yok</string>
+    <string name="planner_generating_shopping_list">Alışveriş listesi hazırlanıyor...</string>
+    <string name="planner_remove_recipe_confirm">Bu tarif %1$s gününden kaldırılsın mı?</string>
+
+    <string name="shopping_lists_title">Alışveriş Listelerim</string>
+    <string name="shopping_lists_empty">Henüz alışveriş listesi oluşturmadınız.</string>
+    <string name="shopping_new_list">Yeni Liste</string>
+    <string name="shopping_new_list_title">Yeni Alışveriş Listesi</string>
+    <string name="shopping_new_list_hint">Örn: Hafta Sonu Alışverişi</string>
+    <string name="shopping_create">Oluştur</string>
+    <string name="shopping_list_created">Liste oluşturuldu</string>
+    <string name="shopping_lists_load_failed">Listeler yüklenemedi</string>
+    <string name="shopping_list_not_found">Liste bulunamadı</string>
+    <string name="shopping_list_for_recipe">%1$s Alışverişi</string>
+    <string name="shopping_ingredients_preparing">Malzemeler alışveriş listesi olarak hazırlanıyor</string>
+
+    <string name="cookbook_not_found">Defter bulunamadı</string>
+    <string name="cookbook_empty">Bu defterde henüz tarif yok.</string>
+    <string name="follow">Takip Et</string>
+    <string name="unfollow">Takipten Çık</string>
+    <string name="follow_action_failed">Takip işlemi başarısız</string>
+    <string name="leave_collaboration">Ortaklıktan Ayrıl</string>
+    <string name="leave">Ayrıl</string>
+    <string name="cookbook_leave_confirm">Bu defterden ayrılmak istiyor musunuz?</string>
+    <string name="left_cookbook">Defterden ayrıldınız</string>
+    <string name="remove_recipe_title">Tarifi Kaldır</string>
+    <string name="remove_recipe_from_cookbook_confirm">%1$s tarifini bu defterden çıkarmak istediğinize emin misiniz?</string>
+    <string name="recipe_removed_from_cookbook">Tarif çıkarıldı</string>
+    <string name="share_cookbook_text">%1$s defterine göz at!\n%2$s</string>
+    <string name="share_cookbook">Defteri Paylaş</string>
+
+    <string name="settings_title">Ayarlar</string>
+    <string name="change_password">Şifre Değiştir</string>
+    <string name="theme">Tema</string>
+    <string name="theme_light">Açık</string>
+    <string name="theme_dark">Koyu</string>
+    <string name="theme_system">Sistem Varsayılanı</string>
+    <string name="language">Dil</string>
+    <string name="language_turkish">Türkçe</string>
+
+    <string name="read">Oku</string>
+    <string name="edit">Düzenle</string>
+    <string name="collaborators">Ortak Çalışanlar</string>
+    <string name="share">Paylaş</string>
+    <string name="like">Beğen</string>
+    <string name="liked">Beğenildi</string>
+    <string name="like_removed">Beğeni geri alındı</string>
+    <string name="add_to_shopping">Alışveriş Listesine Ekle</string>
+    <string name="reset_password_email_sent">Şifre sıfırlama e-postası gönderildi.</string>
+    <string name="error_with_reason">Hata: %1$s</string>
+    <string name="recipe_not_found">Tarif bulunamadi</string>
+    <string name="connection_error">Bağlantı hatası</string>
+    <string name="loading">Yükleniyor...</string>
+    <string name="cancel">İptal</string>
+    <string name="delete">Kaldır</string>
+    <string name="logout">Çıkış Yap</string>
+    <string name="followers_count">%1$d takipçi</string>
+    <string name="following_count">%1$d takip</string>
+    <string name="collection_not_found">Koleksiyon bulunamadı</string>
+    <string name="photo_pick_failed">Fotoğraf seçilemedi</string>
+    <string name="cookbook_edit">Defteri Düzenle</string>
+    <string name="update">Güncelle</string>
+    <string name="load_failed">Yükleme hatası</string>
+    <string name="image_upload_failed_with_reason">Resim yüklenemedi: %1$s</string>
+    <string name="cookbook_saved">Defter kaydedildi</string>
+    <string name="cookbook_updated">Defter güncellendi</string>
+    <string name="save_failed">Kayıt hatası</string>
+    <string name="update_failed">Güncelleme hatası</string>
+    <string name="search_recipes">Tarifleri Ara</string>
+    <string name="public_cookbooks">Herkese Açık Defterler</string>
+    <string name="public_recipes">Herkese Açık Tarifler</string>
+    <string name="no_public_cookbooks">Henüz herkese açık defter yok</string>
+    <string name="no_public_recipes">Henüz herkese açık tarif yok</string>
+    <string name="no_followed_cookbooks">Henüz takip edilen herkese açık defter yok</string>
+    <string name="results">Sonuçlar</string>
+    <string name="results_count">Sonuçlar (%1$d)</string>
+    <string name="discover_select_ingredient_prompt">Malzeme seçip arama yapın</string>
+    <string name="missing_ingredients_list_name">%1$s - Eksik Malzemeler</string>
+    <string name="missing_added_to_shopping">Eksikler alışveriş listesine eklendi</string>
+    <string name="no_results_found">Sonuç bulunamadı</string>
+    <string name="invitation_already_sent">Zaten davet gönderilmiş</string>
+    <string name="invitation_sent_to_user">%1$s kullanıcısına davet gönderildi</string>
+    <string name="no_collaborators_yet">Henüz ortak çalışan yok</string>
+    <string name="remove_collaborator_confirm">Bu ortağı kaldırmak istiyor musunuz?</string>
+    <string name="enter_recipe_title">Lütfen tarif adını girin</string>
+    <string name="enter_amount_for_ingredient">Lütfen %1$s için miktar girin</string>
+    <string name="select_unit_for_ingredient">Lütfen %1$s için birim seçin</string>
+    <string name="followers_count_default">0 takipçi</string>
+    <string name="following_count_default">0 takip</string>
+    <string name="followed_cookbooks">Takip Ettiği Defterler</string>
+    <string name="new_cookbook">Yeni Tarif Defteri</string>
+    <string name="tap_to_add_cover_photo">Kapak fotografi eklemek icin dokunun</string>
+    <string name="cookbook_name">Defter Adı</string>
+    <string name="public_cookbook">Herkese Açık Defter</string>
+    <string name="tags">Etiketler</string>
+    <string name="add_tag_and_press_enter">Etiket ekleyin ve Enter\'a basin</string>
+    <string name="collection_empty">Bu koleksiyonda henüz tarif yok.</string>
+    <string name="add_to_collection">Koleksiyona Ekle</string>
+    <string name="new_collection_button">+ Yeni Koleksiyon Oluştur</string>
+    <string name="select_recipe">Tarif Seç</string>
+    <string name="search_recipe_hint">Tarif ara...</string>
+    <string name="search_user_by_email">E-posta ile kullanıcı ara</string>
+    <string name="current_collaborators">Mevcut Ortak Çalışanlar</string>
+    <string name="invitation_accepted">Davet kabul edildi</string>
+    <string name="invitation_declined">Davet reddedildi</string>
+    <string name="collection_name">Koleksiyon Adı</string>
+    <string name="emoji_hint">Emoji (örn: 🎂)</string>
+    <string name="new_collection_title">Yeni Koleksiyon</string>
+    <string name="added_to_collection">Koleksiyona eklendi</string>
+    <string name="no_collections_yet">Hic koleksiyonunuz yok.</string>
+    <string name="recipe_count">%1$d tarif</string>
+    <string name="no_ingredients_to_analyze">Analiz edilecek malzeme yok.</string>
+    <string name="voice_command_not_understood">Komut anlaşılmadı: %1$s</string>
+    <string name="edit_cancelled">Düzenleme iptal edildi</string>
+    <string name="changes_saved">Değişiklikler kaydedildi</string>
+    <string name="sticker_bring_to_front">En Öne Getir</string>
+    <string name="sticker_send_to_back">En Arkaya Gönder</string>
+    <string name="sticker_options">Sticker Seçenekleri</string>
+    <string name="add_recipe_to_cookbook_first">Bu tarifi önce bir deftere eklemelisiniz</string>
+    <string name="shopping_new_item_hint">Yeni ürün ekle</string>
+    <string name="conversion_result_placeholder">Sonuç: -</string>
+    <string name="sticker_select">Sticker Seç</string>
+    <string name="all">Hepsi</string>
+    <string name="category_all">Hepsi</string>
+    <string name="open_recipe_journal">Tarif Defterini Aç</string>
+    <string name="discover_search_hint">Herkese açık tarifleri ara…</string>
+    <string name="ingredient_filter_title">Malzemeye Göre Ara</string>
+    <string name="planner_add_recipe_prompt">Tarif ekleyin</string>
+    <string name="planner_add_recipe_content_desc">Tarif ekle</string>
+    <string name="planner_weekly_menu_list_name">Haftalık Menü Alışverişi</string>
+
+    <string-array name="week_day_labels">
+        <item>Pazartesi</item>
+        <item>Salı</item>
+        <item>Çarşamba</item>
+        <item>Perşembe</item>
+        <item>Cuma</item>
+        <item>Cumartesi</item>
+        <item>Pazar</item>
+    </string-array>
+
+    <string-array name="discover_default_ingredients">
+        <item>tavuk</item>
+        <item>soğan</item>
+        <item>domates</item>
+        <item>biber</item>
+        <item>patates</item>
+        <item>havuç</item>
+        <item>sarımsak</item>
+        <item>pirinç</item>
+        <item>makarna</item>
+        <item>un</item>
+        <item>yumurta</item>
+        <item>süt</item>
+        <item>tereyağı</item>
+        <item>zeytinyağı</item>
+        <item>peynir</item>
+        <item>limon</item>
+        <item>tuz</item>
+        <item>şeker</item>
+        <item>salça</item>
+        <item>mercimek</item>
+        <item>nohut</item>
+        <item>bulgur</item>
+        <item>kabak</item>
+        <item>patlıcan</item>
+        <item>ıspanak</item>
+        <item>fasulye</item>
+        <item>et</item>
+        <item>kıyma</item>
+        <item>balık</item>
+    </string-array>
+    <string name="sticker_category_dessert">Tatli</string>
+    <string name="sticker_category_drink">Icecek</string>
+    <string name="sticker_category_food">Yemek</string>
+    <string name="sticker_category_ornamental">Süsleme</string>
+    <string name="sticker_category_tools">Arac</string>
+    <string name="sticker_category_vegetable">Sebze</string>
+    <string name="sticker">Sticker</string>
+    <string name="current_password">Mevcut Şifre</string>
+    <string name="new_password">Yeni Şifre</string>
+    <string name="confirm_new_password">Yeni Şifreyi Onayla</string>
+    <string name="password_updated">Şifre başarıyla güncellendi.</string>
+    <string name="current_password_incorrect">Mevcut şifre yanlış.</string>
+    <string name="forgot_password">Şifremi Unuttum</string>
+    <string name="reset_password_not_available_for_provider">Bu hesap türü için şifre sıfırlama kullanılamaz. Önce sağlayıcınızla giriş yapıp şifre belirleyin.</string>
+    <string name="create_password_title">Şifre Oluştur</string>
+    <string name="create_password_message">Bu hesap sosyal giriş sağlayıcısı kullanıyor. Şimdi şifre oluşturup sonrasında e-posta/şifre ile de giriş yapabilirsiniz.</string>
+    <string name="create_password_action">Şifre Oluştur</string>
+    <string name="password_created_for_provider">Şifre başarıyla oluşturuldu. Artık e-posta ve şifre ile de giriş yapabilirsiniz.</string>
+    <string name="likes_count">%1$d beğeni</string>
+
     <string-array name="allergen_tags">
-        <item>Gluten</item>
+        <item>Glüten</item>
         <item>Süt Ürünleri</item>
         <item>Yumurta</item>
-        <item>Fındık/Kuruyemiş</item>
+        <item>Kuruyemiş</item>
         <item>Soya</item>
         <item>Deniz Ürünleri</item>
         <item>Susam</item>
         <item>Kereviz</item>
     </string-array>
-
-    <!-- Cooking Mode -->
-    <string name="cooking_mode_title">Pişirme Modu</string>
-    <string name="cooking_mode_start">Pişirme Modunu Başlat</string>
-    <string name="next_step">Sonraki Adım</string>
-    <string name="previous_step">Önceki Adım</string>
-    <string name="repeat_step">Tekrar</string>
-    <string name="start_timer">Zamanlayıcıyı Başlat</string>
-    <string name="stop">Durdur</string>
-    <string name="timer_finished">Zamanlayıcı tamamlandı!</string>
-    <string name="step_of">Adım %1$d / %2$d</string>
-    <string name="timer_format">%02d:%02d</string>
-    <string name="listening">Dinleniyor…</string>
-    <string name="voice_command_hint">Söyleyin: "sonraki adım", "önceki", "tekrar", "zamanlayıcı başlat", "durdur"</string>
-    <string name="mic_permission_denied">Mikrofon izni reddedildi. Sesli komutlar kullanılamıyor.</string>
-    <string name="tts_init_failed">Metin okuma başlatılamadı.</string>
-
-    <!-- Allergens / Warnings -->
-    <string name="allergy_warning">Alerji Uyarısı</string>
-    <string name="allergy_contains">Bu tarif hassas olduğunuz alerjenleri içeriyor: %1$s</string>
-    <string name="allergens_label">Alerjenler</string>
-
-    <!-- Recipe Detail Tabs -->
-    <string name="tab_ingredients">Malzemeler</string>
-    <string name="tab_steps">Adımlar</string>
-    <string name="tab_notes">Notlar</string>
-    <string name="servings">Porsiyon</string>
-    <string name="scale_servings">Porsiyonu Ayarla</string>
-    <string name="servings_format">%1$d porsiyon</string>
-    <string name="notes_hint">Kişisel notlarınızı buraya ekleyin…</string>
-    <string name="note_saved">Not kaydedildi.</string>
-    <string name="note_save_failed">Not kaydedilemedi.</string>
-
-    <!-- Sharing -->
-    <string name="share_recipe">Tarifi Paylaş</string>
-    <string name="like">Beğen</string>
-    <string name="liked">Beğenildi</string>
-
-    <!-- Cookbook / Collections -->
-    <string name="add_to_cookbook">Deftere Ekle</string>
-    <string name="recipe_copied">Tarif defterinize eklendi.</string>
-    <string name="select_cookbook">Defter Seçin</string>
-
-    <!-- Ingredient Filter -->
-    <string name="ingredient_filter_title">Malzemeye Göre Ara</string>
-    <string name="ingredient_search_hint">Malzeme ara…</string>
-    <string name="match_percent">%%%1$d eşleşme</string>
-    <string name="add_to_shopping">Alışveriş Listesine Ekle</string>
-    <string name="missing_ingredients">Eksik: %1$s</string>
-
-    <!-- Nutrition -->
-    <string name="nutrition_title">Besin Değerleri</string>
-    <string name="nutrition_disclaimer">Tahmini değerler — Gemini AI</string>
-    <string name="nutrition_load_failed">Besin değerleri yüklenemedi.</string>
-    <string name="calories">Kalori</string>
-    <string name="protein">Protein</string>
-    <string name="fat">Yağ</string>
-    <string name="carbs">Karbonhidrat</string>
-    <string name="fiber">Lif</string>
-    <string name="sodium">Sodyum</string>
-    <string name="kcal_unit">kcal</string>
-    <string name="gram_unit">g</string>
-    <string name="mg_unit">mg</string>
-
-    <!-- Unit Converter -->
-    <string name="unit_converter_title">Birim Dönüştürücü</string>
-    <string name="convert">Dönüştür</string>
-    <string name="swap_units">Birimleri Değiştir</string>
-    <string name="source_unit">Kaynak Birim</string>
-    <string name="target_unit">Hedef Birim</string>
-    <string name="enter_amount">Miktar girin</string>
-
-    <!-- Recipe Add/Edit -->
-    <string name="edit_recipe">Tarifi Düzenle</string>
-    <string name="update_recipe">Tarifi Güncelle</string>
-    <string name="add_step">Adım Ekle</string>
-    <string name="step_description">Adım açıklaması</string>
-    <string name="timer_minutes">Zamanlayıcı (dakika)</string>
-    <string name="add_photo">Fotoğraf Ekle</string>
-    <string name="take_photo">Fotoğraf Çek</string>
-    <string name="choose_from_gallery">Galeriden Seç</string>
-    <string name="total_time_minutes">Toplam Süre (dakika)</string>
-    <string name="recipe_image">Tarif Görseli</string>
-    <string name="step_number">Adım %1$d</string>
-    <string name="drag_to_reorder">Sıralamak için sürükleyin</string>
-    <string name="swipe_to_delete">Silmek için kaydırın</string>
-
-    <!-- General -->
-    <string name="error_generic">Bir sorun oluştu. Lütfen tekrar deneyin.</string>
-    <string name="permission_required">İzin gerekli</string>
-    <string name="per_serving">porsiyon başına</string>
-    <string name="nutrition_analysis">Besin Analizi</string>
-    <string name="unit_converter">Birim Dönüştürücü</string>
-    <string name="nutrition_info_desc">Yapay zeka tarafından tahmin edilen 1 porsiyonluk değerler.</string>
-
-    <string name="add_custom">Özel Ekle</string>
-    <string name="add_custom_allergen">Özel Alerjen Ekle</string>
-    <string name="allergen_name">Alerjen Adı</string>
-    <string name="permission_denied_camera">Kamera izni verilmedi. Fotoğraf çekmek için izne ihtiyaç var.</string>
-    <string name="permission_denied_gallery">Galeri izni verilmedi.</string>
-    <string name="camera_error">Kamera açılamadı</string>
-    <string name="no_cookbooks_found">Henüz bir defteriniz yok</string>
+    <string name="match_percent_display">%1$d%% uyum</string>
+    <string name="recipe_owner_label">Paylasan: %1$s</string>
+    <string name="recipe_owner_unknown">Bilinmeyen kullanıcı</string>
+    <string name="missing_added_action">Eksikleri Listeye Ekle</string>
 </resources>

@@ -15,7 +15,7 @@
             android:id="@+id/toolbarKitchen"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:title="Tarif Defterlerim"
+                app:title="@string/my_kitchen_title"
             app:titleCentered="true" />
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -27,17 +27,16 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingBottom="100dp">
+            android:orientation="vertical">
 
             <!-- Pending Invitations Section -->
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/tvInvitationsLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:paddingHorizontal="16dp"
-                android:text="Bekleyen Davetler"
+                android:layout_marginTop="@dimen/margin_small"
+                android:paddingHorizontal="@dimen/padding_medium"
+                android:text="@string/kitchen_pending_invitations"
                 android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
                 android:visibility="gone" />
 
@@ -46,16 +45,16 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingHorizontal="12dp" />
+                android:paddingHorizontal="@dimen/padding_small" />
 
             <!-- Collaborative Cookbooks Section -->
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/tvCollabLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:paddingHorizontal="16dp"
-                android:text="Ortak Defterler"
+                android:layout_marginTop="@dimen/margin_small"
+                android:paddingHorizontal="@dimen/padding_medium"
+                android:text="@string/kitchen_collaborative_books"
                 android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
                 android:visibility="gone" />
 
@@ -64,16 +63,16 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:clipToPadding="false"
-                android:padding="8dp"
+                android:padding="@dimen/padding_small"
                 android:nestedScrollingEnabled="false" />
 
             <!-- My Cookbooks Section -->
             <com.google.android.material.textview.MaterialTextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:paddingHorizontal="16dp"
-                android:text="Benim Defterlerim"
+                android:layout_marginTop="@dimen/margin_small"
+                android:paddingHorizontal="@dimen/padding_medium"
+                android:text="@string/kitchen_my_books"
                 android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
 
             <androidx.recyclerview.widget.RecyclerView
@@ -81,16 +80,16 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:clipToPadding="false"
-                android:padding="8dp"
+                android:padding="@dimen/padding_small"
                 android:nestedScrollingEnabled="false" />
 
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/tvEmptyCookbooks"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="24dp"
+                android:padding="@dimen/padding_large"
                 android:gravity="center"
-                android:text="Henüz defter oluşturmadınız."
+                android:text="@string/kitchen_empty_my_books"
                 android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:visibility="gone" />
@@ -99,9 +98,9 @@
             <com.google.android.material.textview.MaterialTextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:paddingHorizontal="16dp"
-                android:text="Takip Edilen Defterler"
+                android:layout_marginTop="@dimen/margin_medium"
+                android:paddingHorizontal="@dimen/padding_medium"
+                android:text="@string/kitchen_followed_books"
                 android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
 
             <androidx.recyclerview.widget.RecyclerView
@@ -109,60 +108,44 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:clipToPadding="false"
-                android:padding="8dp"
+                android:padding="@dimen/padding_small"
                 android:nestedScrollingEnabled="false" />
 
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/tvEmptyFollowed"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="24dp"
+                android:padding="@dimen/padding_large"
                 android:gravity="center"
-                android:text="Takip ettiğiniz bir defter yok."
+                android:text="@string/kitchen_empty_followed_books"
                 android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:visibility="gone" />
 
-            <!-- Collections Section -->
-            <LinearLayout
+            <!-- Liked Recipes Section -->
+            <com.google.android.material.textview.MaterialTextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="16dp"
-                android:paddingHorizontal="16dp"
-                android:gravity="center_vertical">
-
-                <com.google.android.material.textview.MaterialTextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Koleksiyonlar"
-                    android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnAddCollection"
-                    style="@style/Widget.Material3.Button.TextButton.Icon"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Yeni"
-                    app:icon="@drawable/ic_add" />
-            </LinearLayout>
+                android:layout_marginTop="@dimen/margin_medium"
+                android:paddingHorizontal="@dimen/padding_medium"
+                android:text="@string/kitchen_liked_recipes"
+                android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
 
             <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvCollections"
+                android:id="@+id/rvLikedRecipes"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:clipToPadding="false"
-                android:padding="12dp"
+                android:padding="@dimen/padding_small"
                 android:nestedScrollingEnabled="false" />
 
             <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/tvEmptyCollections"
+                android:id="@+id/tvEmptyLikedRecipes"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="24dp"
+                android:padding="@dimen/padding_large"
                 android:gravity="center"
-                android:text="Hiç koleksiyonunuz yok."
+                android:text="@string/kitchen_empty_liked_recipes"
                 android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:visibility="gone" />
@@ -181,8 +164,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_margin="24dp"
-        android:text="Yeni Defter"
+        android:layout_margin="@dimen/margin_large"
+        android:text="@string/kitchen_new_book"
         app:icon="@drawable/ic_add"
         app:backgroundTint="?attr/colorPrimaryContainer"
         app:iconTint="?attr/colorOnPrimaryContainer"

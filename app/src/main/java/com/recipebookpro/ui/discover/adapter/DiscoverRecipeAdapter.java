@@ -14,10 +14,11 @@ import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.textview.MaterialTextView;
 import com.recipebookpro.R;
 import com.recipebookpro.model.Recipe;
+import com.recipebookpro.model.User;
 
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 import coil.Coil;
 import coil.request.ImageRequest;
@@ -39,14 +40,25 @@ public class DiscoverRecipeAdapter extends RecyclerView.Adapter<DiscoverRecipeAd
     public interface OnDiscoverInteractionListener {
         void onRecipeClick(Recipe recipe);
         void onAddMissingToShopping(Recipe recipe, List<String> missing);
+        void onAuthorClick(String userId);
+        void onToggleFollowAuthor(String userId, boolean currentlyFollowing);
     }
 
     private final List<ScoredRecipe> items;
     private final OnDiscoverInteractionListener listener;
+    private final Map<String, User> ownerMap = new HashMap<>();
 
     public DiscoverRecipeAdapter(List<ScoredRecipe> items, OnDiscoverInteractionListener listener) {
         this.items = items;
         this.listener = listener;
+    }
+
+    public void setOwnerMap(Map<String, User> owners) {
+        ownerMap.clear();
+        if (owners != null) {
+            ownerMap.putAll(owners);
+        }
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -63,10 +75,44 @@ public class DiscoverRecipeAdapter extends RecyclerView.Adapter<DiscoverRecipeAd
         Recipe recipe = scored.recipe;
 
         holder.tvTitle.setText(recipe.getTitle());
-        holder.tvMatch.setText("%" + scored.matchPercent + " Uyumlu");
+        holder.tvMatch.setText(holder.itemView.getContext().getString(R.string.match_percent_display, scored.matchPercent));
 
-        String desc = recipe.getDescription();
-        holder.tvAuthor.setText(desc.isEmpty() ? recipe.getCategory() : desc);
+        User owner = ownerMap.get(recipe.getUserId());
+        String ownerName;
+        if (owner != null) {
+            ownerName = owner.getDisplayName();
+            if (ownerName == null || ownerName.trim().isEmpty()) {
+                ownerName = owner.getEmail();
+            }
+        } else {
+            ownerName = holder.itemView.getContext().getString(R.string.recipe_owner_unknown);
+        }
+        holder.tvAuthor.setText(holder.itemView.getContext().getString(R.string.recipe_owner_label, ownerName));
+        holder.tvLikes.setText(holder.itemView.getContext().getString(R.string.likes_count, recipe.getLikes()));
+        holder.tvAuthor.setOnClickListener(v -> {
+            if (listener != null && recipe.getUserId() != null && !recipe.getUserId().isEmpty()) {
+                listener.onAuthorClick(recipe.getUserId());
+            }
+        });
+
+        boolean canFollow = recipe.getUserId() != null && !recipe.getUserId().isEmpty()
+                && owner != null
+                && !owner.getUid().isEmpty()
+                && holder.currentUserId != null
+                && !holder.currentUserId.equals(recipe.getUserId());
+        if (canFollow) {
+            boolean currentlyFollowing = owner.getFollowerIds().contains(holder.currentUserId);
+            holder.btnFollowAuthor.setVisibility(View.VISIBLE);
+            holder.btnFollowAuthor.setText(currentlyFollowing ? R.string.unfollow : R.string.follow);
+            holder.btnFollowAuthor.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onToggleFollowAuthor(recipe.getUserId(), currentlyFollowing);
+                }
+            });
+        } else {
+            holder.btnFollowAuthor.setVisibility(View.GONE);
+            holder.btnFollowAuthor.setOnClickListener(null);
+        }
 
         if (!recipe.getImageUrl().isEmpty()) {
             holder.ivImage.setPadding(0, 0, 0, 0);
@@ -112,18 +158,24 @@ public class DiscoverRecipeAdapter extends RecyclerView.Adapter<DiscoverRecipeAd
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView ivImage;
-        MaterialTextView tvTitle, tvAuthor, tvMatch;
+        MaterialTextView tvTitle, tvAuthor, tvMatch, tvLikes;
         ChipGroup chipGroupMissing;
-        MaterialButton btnAddToShopping;
+        MaterialButton btnAddToShopping, btnFollowAuthor;
+        String currentUserId;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
             ivImage = itemView.findViewById(R.id.ivDiscoverRecipeImage);
             tvTitle = itemView.findViewById(R.id.tvDiscoverRecipeTitle);
             tvAuthor = itemView.findViewById(R.id.tvDiscoverRecipeAuthor);
+            tvLikes = itemView.findViewById(R.id.tvDiscoverRecipeLikes);
             tvMatch = itemView.findViewById(R.id.tvMatchPercentage);
             chipGroupMissing = itemView.findViewById(R.id.chipGroupMissing);
             btnAddToShopping = itemView.findViewById(R.id.btnAddToShopping);
+            btnFollowAuthor = itemView.findViewById(R.id.btnFollowAuthor);
+            com.google.firebase.auth.FirebaseUser currentUser =
+                    com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+            currentUserId = currentUser != null ? currentUser.getUid() : null;
         }
     }
 }

@@ -48,6 +48,7 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
     private SpeechRecognizer speechRecognizer;
     private Intent recognizerIntent;
     private boolean isListening = false;
+    private boolean isVoiceSessionActive = false;
 
     private CountDownTimer currentTimer;
 
@@ -101,8 +102,8 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
         });
 
         fabMic.setOnClickListener(v -> {
-            if (isListening) {
-                stopListening();
+            if (isVoiceSessionActive) {
+                stopListeningSession();
             } else {
                 checkMicAndListen();
             }
@@ -168,19 +169,28 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
                 @Override
                 public void onError(int error) {
                     isListening = false;
-                    fabMic.setImageResource(R.drawable.ic_mic); // can be mic off icon
-                    tvMicStatus.setText("Dinleme durdu");
+                    if (isVoiceSessionActive) {
+                        tvMicStatus.setText("Dinleme yeniden başlatılıyor...");
+                        restartListeningWithDelay();
+                    } else {
+                        fabMic.setImageResource(R.drawable.ic_mic);
+                        tvMicStatus.setText("Dinleme durdu");
+                    }
                 }
 
                 @Override
                 public void onResults(Bundle results) {
                     isListening = false;
-                    fabMic.setImageResource(R.drawable.ic_mic);
                     tvMicStatus.setText("Bekliyor");
                     
                     ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                     if (matches != null && !matches.isEmpty()) {
                         processVoiceCommand(matches.get(0).toLowerCase());
+                    }
+                    if (isVoiceSessionActive) {
+                        restartListeningWithDelay();
+                    } else {
+                        fabMic.setImageResource(R.drawable.ic_mic);
                     }
                 }
 
@@ -197,17 +207,37 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestMicPermission.launch(Manifest.permission.RECORD_AUDIO);
         } else {
-            startListening();
+            startListeningSession();
         }
     }
 
+    private void startListeningSession() {
+        isVoiceSessionActive = true;
+        startListening();
+    }
+
     private void startListening() {
+        if (!isVoiceSessionActive || isListening) return;
         if (speechRecognizer != null && recognizerIntent != null) {
             if (tts != null) tts.stop(); // Stop talking while listening
             speechRecognizer.startListening(recognizerIntent);
             isListening = true;
             fabMic.setImageResource(R.drawable.ic_volume_up); // Show some active state
+            tvMicStatus.setText(R.string.listening);
         }
+    }
+
+    private void restartListeningWithDelay() {
+        tvMicStatus.postDelayed(() -> {
+            if (!isFinishing() && !isDestroyed() && isVoiceSessionActive) {
+                startListening();
+            }
+        }, 350);
+    }
+
+    private void stopListeningSession() {
+        isVoiceSessionActive = false;
+        stopListening();
     }
 
     private void stopListening() {
@@ -236,7 +266,7 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
         } else if (command.contains("durdur")) {
             stopTimer();
         } else {
-            Toast.makeText(this, "Komut anlaşılamadı: " + command, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.voice_command_not_understood, command), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -277,6 +307,7 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        isVoiceSessionActive = false;
         stopTimer();
         if (tts != null) {
             tts.stop();

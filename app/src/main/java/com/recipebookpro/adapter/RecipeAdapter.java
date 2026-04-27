@@ -6,14 +6,17 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.ColorUtils;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.graphics.Color;
 import android.widget.ImageView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.textview.MaterialTextView;
 import com.recipebookpro.R;
 import com.recipebookpro.model.Recipe;
+import com.recipebookpro.util.CategoryLocalization;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -30,13 +33,22 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.RecipeView
 
     private final List<Recipe> recipeList = new ArrayList<>();
     private final OnRecipeClickListener listener;
+    private OnRecipeRemoveListener removeListener;
 
     public interface OnRecipeClickListener {
         void onRecipeClick(Recipe recipe);
     }
 
+    public interface OnRecipeRemoveListener {
+        void onRecipeRemove(Recipe recipe);
+    }
+
     public RecipeAdapter(OnRecipeClickListener listener) {
         this.listener = listener;
+    }
+
+    public void setOnRecipeRemoveListener(OnRecipeRemoveListener removeListener) {
+        this.removeListener = removeListener;
     }
 
     public void setRecipeList(List<Recipe> list) {
@@ -87,6 +99,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.RecipeView
         private final MaterialTextView tvIngredientsPreview;
         private final Chip chipCategory;
         private final ImageView ivRecipeImage;
+        private final View btnRemoveRecipe;
 
         RecipeViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -96,6 +109,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.RecipeView
             tvIngredientsPreview = itemView.findViewById(R.id.tvIngredientsPreview);
             chipCategory = itemView.findViewById(R.id.chipRecipeCategory);
             ivRecipeImage = itemView.findViewById(R.id.ivRecipeImage);
+            btnRemoveRecipe = itemView.findViewById(R.id.btnRemoveRecipe);
         }
 
         void bind(Recipe recipe) {
@@ -121,7 +135,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.RecipeView
                 chipCategory.setVisibility(View.GONE);
             } else {
                 chipCategory.setVisibility(View.VISIBLE);
-                chipCategory.setText(recipe.getCategory());
+                chipCategory.setText(CategoryLocalization.getDisplayName(itemView.getContext(), recipe.getCategory()));
                 applyCategoryColor(chipCategory, recipe.getCategory());
             }
 
@@ -132,10 +146,25 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.RecipeView
                 tvDate.setText("");
             }
 
+            if (removeListener != null) {
+                btnRemoveRecipe.setVisibility(View.VISIBLE);
+                btnRemoveRecipe.setOnClickListener(v -> removeListener.onRecipeRemove(recipe));
+            } else {
+                btnRemoveRecipe.setVisibility(View.GONE);
+            }
+
             itemView.setOnClickListener(v -> {
                 if (listener != null) {
                     listener.onRecipeClick(recipe);
                 }
+            });
+
+            itemView.setOnLongClickListener(v -> {
+                if (removeListener != null) {
+                    removeListener.onRecipeRemove(recipe);
+                    return true;
+                }
+                return false;
             });
         }
 
@@ -173,7 +202,13 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.RecipeView
 
             chip.setChipBackgroundColorResource(android.R.color.transparent);
             chip.setChipBackgroundColor(android.content.res.ColorStateList.valueOf(baseColor));
-            chip.setTextColor(MaterialColors.getColor(chip, com.google.android.material.R.attr.colorOnSecondaryContainer));
+            chip.setTextColor(getReadableTextColor(baseColor));
+        }
+
+        private int getReadableTextColor(int backgroundColor) {
+            double whiteContrast = ColorUtils.calculateContrast(Color.WHITE, backgroundColor);
+            double blackContrast = ColorUtils.calculateContrast(Color.BLACK, backgroundColor);
+            return whiteContrast >= blackContrast ? Color.WHITE : Color.BLACK;
         }
     }
 }

@@ -48,6 +48,15 @@
                 android:textAppearance="@style/TextAppearance.Material3.BodySmall"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 tools:text="12 Tarif" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/tvCookbookLikes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                tools:text="8 likes" />
         </LinearLayout>
     </LinearLayout>
 

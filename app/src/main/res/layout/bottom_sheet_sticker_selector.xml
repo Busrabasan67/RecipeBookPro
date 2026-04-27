@@ -18,7 +18,7 @@
     <com.google.android.material.textview.MaterialTextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Sticker Seç"
+        android:text="@string/sticker_select"
         android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
         android:textStyle="bold"
         android:layout_marginBottom="12dp" />
@@ -41,7 +41,7 @@
                 style="@style/Widget.Material3.Chip.Filter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Hepsi"
+                android:text="@string/all"
                 android:checked="true" />
                 
             <com.google.android.material.chip.Chip
@@ -49,42 +49,42 @@
                 style="@style/Widget.Material3.Chip.Filter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Tatlı" />
+                android:text="@string/sticker_category_dessert" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipDrink"
                 style="@style/Widget.Material3.Chip.Filter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="İçecek" />
+                android:text="@string/sticker_category_drink" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipFood"
                 style="@style/Widget.Material3.Chip.Filter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Yemek" />
+                android:text="@string/sticker_category_food" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipOrnamental"
                 style="@style/Widget.Material3.Chip.Filter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Süsleme" />
+                android:text="@string/sticker_category_ornamental" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipTools"
                 style="@style/Widget.Material3.Chip.Filter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Araç" />
+                android:text="@string/sticker_category_tools" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipVegetable"
                 style="@style/Widget.Material3.Chip.Filter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Sebze" />
+                android:text="@string/sticker_category_vegetable" />
         </com.google.android.material.chip.ChipGroup>
     </HorizontalScrollView>
 

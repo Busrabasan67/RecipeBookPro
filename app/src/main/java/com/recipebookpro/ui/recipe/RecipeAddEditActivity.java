@@ -132,7 +132,7 @@ public class RecipeAddEditActivity extends BaseActivity {
                         ivPreview.setImageURI(selectedImageUri);
                         llImagePlaceholder.setVisibility(View.GONE);
                     } catch (Exception e) {
-                        Toast.makeText(this, "Fotoğraf alınamadı", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, R.string.photo_pick_failed, Toast.LENGTH_SHORT).show();
                     }
                 }
             }
@@ -396,7 +396,7 @@ public class RecipeAddEditActivity extends BaseActivity {
         String title = etTitle.getText() != null ? etTitle.getText().toString().trim() : "";
         if (TextUtils.isEmpty(title)) {
             etTitle.setError(getString(R.string.required_field));
-            Toast.makeText(this, "Lütfen tarif adını girin", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.enter_recipe_title, Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -422,13 +422,13 @@ public class RecipeAddEditActivity extends BaseActivity {
             
             if (!TextUtils.isEmpty(name)) {
                 if (TextUtils.isEmpty(amount)) {
-                    Toast.makeText(this, "Lütfen " + name + " için miktar girin", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.enter_amount_for_ingredient, name), Toast.LENGTH_SHORT).show();
                     btnSave.setEnabled(true);
                     progressSave.setVisibility(View.GONE);
                     return;
                 }
                 if (TextUtils.isEmpty(unit)) {
-                    Toast.makeText(this, "Lütfen " + name + " için birim seçin", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.select_unit_for_ingredient, name), Toast.LENGTH_SHORT).show();
                     btnSave.setEnabled(true);
                     progressSave.setVisibility(View.GONE);
                     return;
@@ -498,7 +498,7 @@ public class RecipeAddEditActivity extends BaseActivity {
                 saveToFirestore(docId);
             })
             .addOnFailureListener(e -> {
-                Toast.makeText(this, "Resim yüklenemedi: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getString(R.string.image_upload_failed_with_reason, e.getMessage()), Toast.LENGTH_LONG).show();
                 // Yükleme başarısız olsa da tarif kaydedilsin (resimsiz olarak)
                 saveToFirestore(docId);
             });

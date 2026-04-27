@@ -59,6 +59,12 @@ public class DayRecipeAdapter extends RecyclerView.Adapter<DayRecipeAdapter.View
             }
             return false;
         });
+
+        holder.btnRemoveDayRecipe.setOnClickListener(v -> {
+            if (longClickListener != null) {
+                longClickListener.onRecipeLongClick(recipe);
+            }
+        });
     }
 
     @Override
@@ -68,10 +74,12 @@ public class DayRecipeAdapter extends RecyclerView.Adapter<DayRecipeAdapter.View
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         MaterialTextView tvRecipeName;
+        View btnRemoveDayRecipe;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvRecipeName = itemView.findViewById(R.id.tvDayRecipeName);
+            btnRemoveDayRecipe = itemView.findViewById(R.id.btnRemoveDayRecipe);
         }
     }
 }

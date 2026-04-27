@@ -74,8 +74,27 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textStyle="bold"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 tools:text="Chef Eda" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/tvDiscoverRecipeLikes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                tools:text="12 likes" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFollowAuthor"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/follow"
+                android:visibility="gone" />
 
             <!-- Missing Ingredients Chips -->
             <com.google.android.material.chip.ChipGroup
@@ -90,7 +109,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Eksikleri Listeye Ekle"
+                android:text="@string/missing_added_action"
                 app:icon="@drawable/ic_list"
                 android:visibility="gone" />
 

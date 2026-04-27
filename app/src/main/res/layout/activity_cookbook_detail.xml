@@ -41,11 +41,10 @@
                 android:id="@+id/toolbarCookbookDetail"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
-                android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
                 app:layout_collapseMode="pin"
                 app:navigationIcon="@drawable/ic_arrow_back"
-                app:navigationIconTint="@android:color/white"
-                app:titleTextColor="@android:color/white" />
+                app:navigationIconTint="?attr/colorOnPrimary"
+                app:titleTextColor="?attr/colorOnPrimary" />
 
         </com.google.android.material.appbar.CollapsingToolbarLayout>
 
@@ -92,7 +91,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
-            android:text="Takip Et"
+            android:text="@string/follow"
             android:visibility="gone" />
 
         <!-- Recipes list -->
@@ -110,7 +109,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:text="Bu defterde henüz tarif yok."
+            android:text="@string/cookbook_empty"
             android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:visibility="gone" />

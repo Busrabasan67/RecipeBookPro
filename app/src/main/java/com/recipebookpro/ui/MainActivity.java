@@ -32,12 +32,23 @@ public class MainActivity extends BaseActivity {
             return windowInsets; // Pass insets down to siblings
         });
 
-        // Apply bottom inset to BottomNavigationView so it sits above gesture nav
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
+        View navHost = findViewById(R.id.nav_host_fragment);
+
         ViewCompat.setOnApplyWindowInsetsListener(bottomNav, (v, windowInsets) -> {
             Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), insets.bottom);
+            if (navHost != null && v.getHeight() > 0) {
+                navHost.setPadding(0, 0, 0, v.getHeight() + insets.bottom);
+            }
             return WindowInsetsCompat.CONSUMED;
+        });
+
+        bottomNav.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+            if (navHost != null) {
+                // system bottom inset is already added via bottomNav's own paddingBottom
+                navHost.setPadding(0, 0, 0, bottomNav.getHeight());
+            }
         });
 
         MaterialToolbar toolbar = findViewById(R.id.topAppBar);

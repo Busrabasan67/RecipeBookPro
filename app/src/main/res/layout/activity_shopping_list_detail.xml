@@ -16,7 +16,7 @@
             android:id="@+id/toolbarShoppingListDetail"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:title="Alışveriş Listesi"
+            app:title="@string/planner_shopping_list"
             app:navigationIcon="@drawable/ic_arrow_back" />
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -50,7 +50,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:hint="Yeni ürün ekle"
+                android:hint="@string/shopping_new_item_hint"
                 app:boxCornerRadiusTopStart="24dp"
                 app:boxCornerRadiusTopEnd="24dp"
                 app:boxCornerRadiusBottomStart="24dp"

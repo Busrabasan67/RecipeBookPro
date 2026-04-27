@@ -53,6 +53,7 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
     private ListenerRegistration recipeListener;
     private final List<Recipe> allRecipes = new ArrayList<>();
     private String selectedCategory = FILTER_ALL;
+    private String selectedCategoryLabel;
 
     @Nullable
     @Override
@@ -85,6 +86,7 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
         adapter = new RecipeAdapter(this);
         rvRecipes.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvRecipes.setAdapter(adapter);
+        selectedCategoryLabel = getString(R.string.category_all);
 
         setupCategoryFilters();
 
@@ -112,9 +114,11 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
     private void setupCategoryFilters() {
         chipGroupCategories.removeAllViews();
         addCategoryChip(getString(R.string.category_all), FILTER_ALL, true);
-        String[] categories = getResources().getStringArray(R.array.recipe_categories);
-        for (String category : categories) {
-            addCategoryChip(category, category, false);
+        String[] categoryValues = getResources().getStringArray(R.array.recipe_category_values);
+        String[] categoryLabels = getResources().getStringArray(R.array.recipe_category_labels);
+        int count = Math.min(categoryValues.length, categoryLabels.length);
+        for (int i = 0; i < count; i++) {
+            addCategoryChip(categoryLabels[i], categoryValues[i], false);
         }
     }
 
@@ -126,6 +130,7 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
         chip.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
                 selectedCategory = value;
+                selectedCategoryLabel = text;
                 applyFilter();
             }
         });
@@ -193,7 +198,7 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
         rvRecipes.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
         tvEmpty.setText(FILTER_ALL.equals(selectedCategory)
                 ? getString(R.string.no_recipes)
-                : getString(R.string.no_recipes_for_category, selectedCategory));
+                : getString(R.string.no_recipes_for_category, selectedCategoryLabel));
     }
 
     private void showLoading(boolean isLoading) {

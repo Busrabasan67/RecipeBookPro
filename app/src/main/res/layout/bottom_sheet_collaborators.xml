@@ -9,7 +9,7 @@
     <com.google.android.material.textview.MaterialTextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Ortak Çalışanlar"
+        android:text="@string/collaborators"
         android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
         android:layout_marginBottom="12dp" />
 
@@ -18,7 +18,7 @@
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="E-posta ile kullanıcı ara">
+        android:hint="@string/search_user_by_email">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etSearchCollab"
@@ -40,7 +40,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="Mevcut Ortak Çalışanlar"
+        android:text="@string/current_collaborators"
         android:textAppearance="@style/TextAppearance.Material3.TitleSmall"
         android:alpha="0.6" />
 

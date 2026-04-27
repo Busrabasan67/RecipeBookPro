@@ -16,6 +16,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.recipebookpro.model.Cookbook;
 import com.recipebookpro.model.Recipe;
 import com.recipebookpro.model.StickerModel;
+import com.recipebookpro.util.CategoryLocalization;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.view.MotionEvent;
@@ -80,9 +81,7 @@ public class RecipePageFragment extends Fragment {
         MaterialTextView tvPageNum = view.findViewById(R.id.tvPageNum);
 
         tvTitle.setText(recipe.getTitle());
-        tvCategory.setText(recipe.getCategory().isEmpty()
-                ? getString(R.string.category_unknown)
-                : recipe.getCategory());
+        tvCategory.setText(CategoryLocalization.getDisplayName(requireContext(), recipe.getCategory()));
 
         if (TextUtils.isEmpty(recipe.getDescription())) {
             tvDescLabel.setVisibility(View.GONE);
@@ -300,9 +299,13 @@ public class RecipePageFragment extends Fragment {
     }
 
     private void showUnifiedMenu(View v, StickerModel model) {
-        String[] options = {"En Öne Getir", "En Arkaya Gönder", "Sil"};
+        String[] options = {
+                getString(R.string.sticker_bring_to_front),
+                getString(R.string.sticker_send_to_back),
+                getString(R.string.delete)
+        };
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Sticker Seçenekleri")
+                .setTitle(R.string.sticker_options)
                 .setItems(options, (d, which) -> {
                     if (which == 0) {
                         v.bringToFront();
@@ -321,7 +324,7 @@ public class RecipePageFragment extends Fragment {
 
     private void saveStickersToFirestore(Runnable onComplete) {
         if (cookbookId == null) {
-            android.widget.Toast.makeText(getContext(), "Bu tarifi önce bir deftere eklemelisiniz", android.widget.Toast.LENGTH_LONG).show();
+            android.widget.Toast.makeText(getContext(), R.string.add_recipe_to_cookbook_first, android.widget.Toast.LENGTH_LONG).show();
             if (onComplete != null) onComplete.run();
             return;
         }

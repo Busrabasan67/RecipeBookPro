@@ -12,12 +12,8 @@
         android:title="@string/like"
         app:showAsAction="ifRoom" />
     <item
-        android:id="@+id/action_add_collection"
-        android:title="Koleksiyona Ekle"
-        app:showAsAction="never" />
-    <item
         android:id="@+id/action_add_shopping"
-        android:title="Alışveriş Listesine Ekle"
+        android:title="@string/add_to_shopping"
         app:showAsAction="never" />
     <item
         android:id="@+id/action_edit"

@@ -17,7 +17,7 @@
             android:id="@+id/toolbarCookbookAddEdit"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:title="Yeni Tarif Defteri"
+            app:title="@string/new_cookbook"
             app:navigationIcon="@drawable/ic_arrow_back" />
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -61,7 +61,7 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="bottom|center_horizontal"
                         android:layout_marginBottom="12dp"
-                        android:text="Kapak fotoğrafı eklemek için dokunun"
+                        android:text="@string/tap_to_add_cover_photo"
                         android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
                         android:textColor="?attr/colorOnPrimaryContainer"
                         android:alpha="0.7" />
@@ -81,7 +81,7 @@
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Fotoğraf Çek"
+                    android:text="@string/take_photo"
                     android:layout_marginEnd="8dp" />
 
                 <com.google.android.material.button.MaterialButton
@@ -89,7 +89,7 @@
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Galeriden Seç" />
+                    android:text="@string/choose_from_gallery" />
             </LinearLayout>
 
             <!-- Title -->
@@ -99,7 +99,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:hint="Defter Adı">
+                android:hint="@string/cookbook_name">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etCookbookTitle"
@@ -116,7 +116,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:hint="Açıklama">
+                android:hint="@string/description">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etCookbookDescription"
@@ -133,7 +133,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Herkese Açık Defter"
+                android:text="@string/public_cookbook"
                 android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
 
             <!-- Tags -->
@@ -141,7 +141,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="Etiketler"
+                android:text="@string/tags"
                 android:textAppearance="@style/TextAppearance.Material3.TitleSmall" />
 
             <com.google.android.material.chip.ChipGroup
@@ -156,7 +156,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:hint="Etiket ekle ve Enter'a bas">
+                android:hint="@string/add_tag_and_press_enter">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etTagInput"
@@ -174,7 +174,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:layout_marginBottom="32dp"
-                android:text="Kaydet" />
+                android:text="@string/save" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

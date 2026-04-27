@@ -73,7 +73,7 @@ public class CookbookAddEditActivity extends BaseActivity {
                 if (cameraGranted != null && cameraGranted) {
                     takePhoto();
                 } else {
-                    Toast.makeText(this, "Kamera izni reddedildi", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.permission_denied_camera, Toast.LENGTH_SHORT).show();
                 }
             }
     );
@@ -117,7 +117,7 @@ public class CookbookAddEditActivity extends BaseActivity {
                                 .build();
                         Coil.imageLoader(this).enqueue(request);
                     } catch (Exception e) {
-                        Toast.makeText(this, "Fotoğraf alınamadı", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, R.string.photo_pick_failed, Toast.LENGTH_SHORT).show();
                     }
                 }
             });
@@ -156,8 +156,8 @@ public class CookbookAddEditActivity extends BaseActivity {
         MaterialCardView cardCover = findViewById(R.id.cardCoverImage);
 
         if (isEditMode) {
-            toolbar.setTitle("Defteri Düzenle");
-            btnSave.setText("Güncelle");
+            toolbar.setTitle(R.string.cookbook_edit);
+            btnSave.setText(R.string.update);
         }
 
         cardCover.setOnClickListener(v -> galleryLauncher.launch("image/*"));
@@ -229,13 +229,13 @@ public class CookbookAddEditActivity extends BaseActivity {
                         existingCookbook = Cookbook.fromDocument(doc);
                         populateForm();
                     } else {
-                        Toast.makeText(this, "Defter bulunamadı", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, R.string.cookbook_not_found, Toast.LENGTH_SHORT).show();
                         finish();
                     }
                     btnSave.setEnabled(true);
                 })
                 .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Yükleme hatası", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.load_failed, Toast.LENGTH_SHORT).show();
                     finish();
                 });
     }
@@ -282,7 +282,7 @@ public class CookbookAddEditActivity extends BaseActivity {
         String desc = etDescription.getText().toString().trim();
 
         if (TextUtils.isEmpty(title)) {
-            etTitle.setError("Zorunlu alan");
+            etTitle.setError(getString(R.string.required_field));
             return;
         }
 
@@ -317,7 +317,7 @@ public class CookbookAddEditActivity extends BaseActivity {
                }
            })
            .addOnFailureListener(e -> {
-               Toast.makeText(this, "Resim yüklenemedi: " + e.getMessage(), Toast.LENGTH_LONG).show();
+               Toast.makeText(this, getString(R.string.image_upload_failed_with_reason, e.getMessage()), Toast.LENGTH_LONG).show();
                String existingImage = (isEditMode && existingCookbook != null)
                        ? existingCookbook.getCoverImageUrl() : "";
                saveToFirestore(title, desc, existingImage);
@@ -335,11 +335,11 @@ public class CookbookAddEditActivity extends BaseActivity {
 
         db.collection("cookbooks").document(docId).set(book)
                 .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(this, "Defter kaydedildi", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.cookbook_saved, Toast.LENGTH_SHORT).show();
                     finish();
                 })
                 .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Kayıt hatası", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.save_failed, Toast.LENGTH_SHORT).show();
                     btnSave.setEnabled(true);
                 });
     }
@@ -354,11 +354,11 @@ public class CookbookAddEditActivity extends BaseActivity {
 
             db.collection("cookbooks").document(editCookbookId).set(existingCookbook)
                     .addOnSuccessListener(aVoid -> {
-                        Toast.makeText(this, "Defter güncellendi", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, R.string.cookbook_updated, Toast.LENGTH_SHORT).show();
                         finish();
                     })
                     .addOnFailureListener(e -> {
-                        Toast.makeText(this, "Güncelleme hatası", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, R.string.update_failed, Toast.LENGTH_SHORT).show();
                         btnSave.setEnabled(true);
                     });
         } else {
@@ -370,11 +370,11 @@ public class CookbookAddEditActivity extends BaseActivity {
 
             db.collection("cookbooks").add(book)
                     .addOnSuccessListener(ref -> {
-                        Toast.makeText(this, "Defter kaydedildi", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, R.string.cookbook_saved, Toast.LENGTH_SHORT).show();
                         finish();
                     })
                     .addOnFailureListener(e -> {
-                        Toast.makeText(this, "Kayıt hatası", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, R.string.save_failed, Toast.LENGTH_SHORT).show();
                         btnSave.setEnabled(true);
                     });
         }
@@ -394,7 +394,7 @@ public class CookbookAddEditActivity extends BaseActivity {
             cameraImageUri = FileProvider.getUriForFile(this, getPackageName() + ".provider", photoFile);
             cameraLauncher.launch(cameraImageUri);
         } catch (Exception e) {
-            Toast.makeText(this, "Kamera açılamadı", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.camera_error, Toast.LENGTH_SHORT).show();
         }
     }
 }
