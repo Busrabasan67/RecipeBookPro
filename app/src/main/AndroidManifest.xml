@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- Required for Firebase Authentication and Firestore network access. -->
@@ -19,7 +19,7 @@
         android:theme="@style/Theme.RecipeBookPro">
 
         <activity
-            android:name=".ui.SplashActivity"
+            android:name=".presentation.ui.SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar">
             <intent-filter>
@@ -29,28 +29,28 @@
         </activity>
 
         <activity
-            android:name=".ui.auth.LoginActivity"
+            android:name=".presentation.ui.auth.LoginActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
 
         <activity
-            android:name=".ui.auth.RegisterActivity"
+            android:name=".presentation.ui.auth.RegisterActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
 
         <activity
-            android:name=".ui.MainActivity"
+            android:name=".presentation.ui.MainActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
 
         <activity
-            android:name=".ui.recipe.AddRecipeActivity"
+            android:name=".presentation.ui.recipe.AddRecipeActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar"
             android:windowSoftInputMode="adjustResize|stateHidden" />
 
         <activity
-            android:name=".ui.recipe.RecipeDetailActivity"
+            android:name=".presentation.ui.recipe.RecipeDetailActivity"
             android:exported="true"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar">
             <intent-filter>
@@ -62,25 +62,25 @@
         </activity>
 
         <activity
-            android:name=".ui.book.BookReaderActivity"
+            android:name=".presentation.ui.book.BookReaderActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
 
         <activity
-            android:name=".ui.cooking.CookingModeActivity"
+            android:name=".presentation.ui.cooking.CookingModeActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar"
             android:screenOrientation="portrait"
             android:keepScreenOn="true" />
 
         <activity
-            android:name=".ui.recipe.RecipeAddEditActivity"
+            android:name=".presentation.ui.recipe.RecipeAddEditActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar"
             android:windowSoftInputMode="adjustResize|stateHidden" />
 
         <activity
-            android:name=".ui.kitchen.CookbookDetailActivity"
+            android:name=".presentation.ui.kitchen.CookbookDetailActivity"
             android:exported="true"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar">
             <intent-filter>
@@ -92,23 +92,23 @@
         </activity>
 
         <activity
-            android:name=".ui.kitchen.CookbookAddEditActivity"
+            android:name=".presentation.ui.kitchen.CookbookAddEditActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar"
             android:windowSoftInputMode="adjustResize|stateHidden" />
 
         <activity
-            android:name=".ui.kitchen.PublicProfileActivity"
+            android:name=".presentation.ui.kitchen.PublicProfileActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
 
         <activity
-            android:name=".ui.kitchen.CollectionDetailActivity"
+            android:name=".presentation.ui.kitchen.CollectionDetailActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
 
         <activity
-            android:name=".ui.shopping.ShoppingListDetailActivity"
+            android:name=".presentation.ui.shopping.ShoppingListDetailActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
 

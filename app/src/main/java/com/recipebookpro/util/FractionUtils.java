@@ -2,7 +2,7 @@ package com.recipebookpro.util;
 
 /**
  * Utility for converting decimal amounts to user-friendly fraction strings.
- * Used in ingredient scaling (e.g. 0.5 → "1/2", 1.333 → "1 1/3").
+ * Used in ingredient scaling (e.g. 0.5 â†’ "1/2", 1.333 â†’ "1 1/3").
  */
 public final class FractionUtils {
 
@@ -17,7 +17,7 @@ public final class FractionUtils {
 
     /**
      * Convert a double value to a human-readable fraction string.
-     * Examples: 0.5 → "1/2", 1.5 → "1 1/2", 0.333 → "1/3", 2.0 → "2"
+     * Examples: 0.5 â†’ "1/2", 1.5 â†’ "1 1/2", 0.333 â†’ "1/3", 2.0 â†’ "2"
      */
     public static String toFractionString(double value) {
         if (value <= 0) return "0";
@@ -48,7 +48,7 @@ public final class FractionUtils {
                 return fraction[0] + "/" + fraction[1];
             }
         }
-        // No common fraction match — round to 1 decimal
+        // No common fraction match â€” round to 1 decimal
         String formatted = String.format("%.1f", decimal);
         // Remove trailing ".0"
         if (formatted.endsWith(".0")) {
