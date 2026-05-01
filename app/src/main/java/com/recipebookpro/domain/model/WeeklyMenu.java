@@ -16,7 +16,7 @@ public class WeeklyMenu implements Serializable {
     };
 
     public static final String[] DAY_LABELS_TR = {
-        "Pazartesi", "SalÄ±", "Ã‡arÅŸamba", "PerÅŸembe", "Cuma", "Cumartesi", "Pazar"
+        "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"
     };
 
     private String userId;

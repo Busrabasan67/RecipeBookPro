@@ -59,7 +59,7 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
                     startListening();
                 } else {
                     Toast.makeText(this, R.string.mic_permission_denied, Toast.LENGTH_SHORT).show();
-                    tvMicStatus.setText("Mikrofon izni yok");
+                    tvMicStatus.setText(R.string.mic_no_permission);
                 }
             }
     );
@@ -164,24 +164,24 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
                 @Override public void onBeginningOfSpeech() {}
                 @Override public void onRmsChanged(float rmsdB) {}
                 @Override public void onBufferReceived(byte[] buffer) {}
-                @Override public void onEndOfSpeech() { tvMicStatus.setText("Ä°ÅŸleniyor..."); }
+                @Override public void onEndOfSpeech() { tvMicStatus.setText(R.string.processing); }
                 
                 @Override
                 public void onError(int error) {
                     isListening = false;
                     if (isVoiceSessionActive) {
-                        tvMicStatus.setText("Dinleme yeniden baÅŸlatÄ±lÄ±yor...");
+                        tvMicStatus.setText(R.string.listening_restarting);
                         restartListeningWithDelay();
                     } else {
                         fabMic.setImageResource(R.drawable.ic_mic);
-                        tvMicStatus.setText("Dinleme durdu");
+                        tvMicStatus.setText(R.string.listening_stopped);
                     }
                 }
 
                 @Override
                 public void onResults(Bundle results) {
                     isListening = false;
-                    tvMicStatus.setText("Bekliyor");
+                    tvMicStatus.setText(R.string.waiting);
                     
                     ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                     if (matches != null && !matches.isEmpty()) {
@@ -198,7 +198,7 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
                 @Override public void onEvent(int eventType, Bundle params) {}
             });
         } else {
-            tvMicStatus.setText("Ses tanÄ±mlama desteklenmiyor");
+            tvMicStatus.setText(R.string.voice_recognition_unsupported);
             fabMic.setEnabled(false);
         }
     }
@@ -245,7 +245,7 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
             speechRecognizer.stopListening();
             isListening = false;
             fabMic.setImageResource(R.drawable.ic_mic);
-            tvMicStatus.setText("Bekliyor");
+            tvMicStatus.setText(R.string.waiting);
         }
     }
 
@@ -253,13 +253,13 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
         if (command.contains("sonraki")) {
             int current = vpCookingSteps.getCurrentItem();
             if (current < recipe.getStepList().size() - 1) vpCookingSteps.setCurrentItem(current + 1, true);
-        } else if (command.contains("Ã¶nceki")) {
+        } else if (command.contains("önceki")) {
             int current = vpCookingSteps.getCurrentItem();
             if (current > 0) vpCookingSteps.setCurrentItem(current - 1, true);
         } else if (command.contains("tekrarla") || command.contains("tekrar ok")) {
             int current = vpCookingSteps.getCurrentItem();
             readStep(recipe.getStepList().get(current));
-        } else if (command.contains("baÅŸlat")) {
+        } else if (command.contains("başlat")) {
             int current = vpCookingSteps.getCurrentItem();
             Step step = recipe.getStepList().get(current);
             if (step.hasTimer()) startTimer(step.getTimerMinutes());
@@ -287,7 +287,7 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
 
             @Override
             public void onFinish() {
-                tvActiveTimer.setText("00:00");
+                tvActiveTimer.setText(R.string.timer_zero);
                 Toast.makeText(CookingModeActivity.this, R.string.timer_finished, Toast.LENGTH_LONG).show();
                 if (isTtsEnabled && tts != null) {
                     tts.speak(getString(R.string.timer_finished), TextToSpeech.QUEUE_FLUSH, null, "TimerFinished");

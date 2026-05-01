@@ -6,37 +6,37 @@ import androidx.annotation.NonNull;
 import androidx.viewpager2.widget.ViewPager2;
 
 /**
- * GeliÅŸmiÅŸ 3D Sayfa Ã‡evirme (Book Flip) efekti.
- * Normal kaydÄ±rma yerine gerÃ§ek bir kitabÄ±n yapraklarÄ± gibi dÃ¶ner.
+ * Gelişmiş 3D Sayfa Çevirme (Book Flip) efekti. | Advanced 3D Page Flip effect.
+ * Normal kaydırma yerine gerçek bir kitabın yaprakları gibi döner. | Turns like real book pages instead of normal scrolling.
  */
 public class CurlPageTransformer implements ViewPager2.PageTransformer {
 
     @Override
     public void transformPage(@NonNull View page, float position) {
-        // Kamera uzaklÄ±ÄŸÄ±nÄ± artÄ±rarak perspektifi dÃ¼zeltiyoruz
+        // Kamera uzaklığını artırarak perspektifi düzeltiyoruz | Improving perspective by increasing camera distance
         page.setCameraDistance(20000);
 
-        if (position < -1) { // [-Infinity, -1) Sayfa tamamen solda
+        if (position < -1) { // [-Infinity, -1) Sayfa tamamen solda | Page completely on the left
             page.setAlpha(0f);
-        } else if (position <= 0) { // [-1, 0] Mevcut sayfa (sola doÄŸru gidiyor)
+        } else if (position <= 0) { // [-1, 0] Mevcut sayfa (sola doğru gidiyor) | Current page (moving left)
             page.setAlpha(1f);
-            page.setPivotX(page.getWidth()); // Merkez saÄŸ kenar
+            page.setPivotX(page.getWidth()); // Merkez sağ kenar | Pivot at right edge
             page.setPivotY(page.getHeight() * 0.5f);
             page.setRotationY(-90 * Math.abs(position));
             
-            // SayfanÄ±n normal ViewPager kaymasÄ±nÄ± iptal edip olduÄŸu yerde dÃ¶nmesini saÄŸlÄ±yoruz
+            // Sayfanın normal ViewPager kaymasını iptal edip olduğu yerde dönmesini sağlıyoruz | Cancel normal scrolling and make it rotate in place
             page.setTranslationX(page.getWidth() * -position);
             
-        } else if (position <= 1) { // (0, 1] Sonraki sayfa (saÄŸdan geliyor)
+        } else if (position <= 1) { // (0, 1] Sonraki sayfa (sağdan geliyor) | Next page (coming from right)
             page.setAlpha(1f);
-            page.setPivotX(0); // Merkez sol kenar
+            page.setPivotX(0); // Merkez sol kenar | Pivot at left edge
             page.setPivotY(page.getHeight() * 0.5f);
             page.setRotationY(90 * Math.abs(position));
             
-            // SayfanÄ±n normal ViewPager kaymasÄ±nÄ± iptal edip olduÄŸu yerde dÃ¶nmesini saÄŸlÄ±yoruz
+            // Sayfanın normal ViewPager kaymasını iptal edip olduğu yerde dönmesini sağlıyoruz | Cancel normal scrolling and make it rotate in place
             page.setTranslationX(page.getWidth() * -position);
             
-        } else { // (1, +Infinity] Sayfa tamamen saÄŸda
+        } else { // (1, +Infinity] Sayfa tamamen sağda | Page completely on the right
             page.setAlpha(0f);
         }
     }

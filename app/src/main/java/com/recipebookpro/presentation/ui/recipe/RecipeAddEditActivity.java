@@ -116,7 +116,7 @@ public class RecipeAddEditActivity extends BaseActivity {
             uri -> {
                 if (uri != null) {
                     try {
-                        // Resmi uygulamanÃ„Â±n iÃƒÂ§ine kopyalÃ„Â±yoruz (kalÃ„Â±cÃ„Â± olmasÃ„Â± iÃƒÂ§in)
+                        // Resmi uygulamanın içine kopyalıyoruz (kalıcı olması için) | Copying the image into the app (for persistence)
                         java.io.InputStream is = getContentResolver().openInputStream(uri);
                         java.io.File file = new java.io.File(getFilesDir(), "recipe_img_" + System.currentTimeMillis() + ".jpg");
                         java.io.FileOutputStream fos = new java.io.FileOutputStream(file);
@@ -166,7 +166,7 @@ public class RecipeAddEditActivity extends BaseActivity {
             populateData();
         } else {
             currentRecipe = new Recipe();
-            // Add initial empty rows
+            // Add initial empty rows | İlk boş satırları ekle
             ingredientList.add(new Recipe.Ingredient("", "", ""));
             stepList.add(new Step(1, "", 0, ""));
         }
@@ -218,7 +218,7 @@ public class RecipeAddEditActivity extends BaseActivity {
 
         btnSave.setOnClickListener(v -> saveRecipe());
 
-        // Robust keyboard detection and padding adjustment
+        // Robust keyboard detection and padding adjustment | Güçlü klavye algılama ve padding ayarlama
         View rootView = findViewById(android.R.id.content);
         rootView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
             Rect r = new Rect();
@@ -233,7 +233,7 @@ public class RecipeAddEditActivity extends BaseActivity {
             }
         });
 
-        // Focus listener to scroll to focused field
+        // Focus listener to scroll to focused field | Odaklanılan alana kaydırma dinleyicisi
         nsvAddEdit.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
             if (newFocus != null && (newFocus instanceof android.widget.EditText || newFocus instanceof android.widget.AutoCompleteTextView)) {
                 nsvAddEdit.postDelayed(() -> {
@@ -414,7 +414,7 @@ public class RecipeAddEditActivity extends BaseActivity {
         } catch (Exception ignored) {}
         currentRecipe.setServings(servings);
 
-        // Filter out empty ingredients and validate amount/unit
+        // Filter out empty ingredients and validate amount/unit | Boş malzemeleri filtrele ve miktar/birim doğrula
         List<Recipe.Ingredient> validIngredients = new ArrayList<>();
         for (Recipe.Ingredient ing : ingredientList) {
             String name = ing.getName().trim();
@@ -447,7 +447,7 @@ public class RecipeAddEditActivity extends BaseActivity {
         currentRecipe.setIngredients(validIngredients);
         currentRecipe.buildIngredientNames();
 
-        // Filter out empty steps and fix order
+        // Filter out empty steps and fix order | Boş adımları filtrele ve sırayı düzelt
         List<Step> validSteps = new ArrayList<>();
         int order = 1;
         for (Step step : stepList) {
@@ -483,7 +483,7 @@ public class RecipeAddEditActivity extends BaseActivity {
     }
 
     private void uploadImageAndSave(String docId) {
-        // Ã„Â°stediÃ„Å¸in dosya yapÃ„Â±sÃ„Â±: recipes/{recipe_id}/main.jpg
+        // İstediğin dosya yapısı: recipes/{recipe_id}/main.jpg | Desired file structure: recipes/{recipe_id}/main.jpg
         String path = "recipes/" + docId + "/main.jpg";
         StorageReference ref = FirebaseStorage.getInstance().getReference().child(path);
 
@@ -500,7 +500,7 @@ public class RecipeAddEditActivity extends BaseActivity {
             })
             .addOnFailureListener(e -> {
                 Toast.makeText(this, getString(R.string.image_upload_failed_with_reason, e.getMessage()), Toast.LENGTH_LONG).show();
-                // YÃƒÂ¼kleme baÃ…Å¸arÃ„Â±sÃ„Â±z olsa da tarif kaydedilsin (resimsiz olarak)
+                // Yükleme başarısız olsa da tarif kaydedilsin (resimsiz olarak) | Save recipe even if upload fails (without image)
                 saveToFirestore(docId);
             });
     }

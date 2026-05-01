@@ -108,6 +108,7 @@ public class RecipePageFragment extends Fragment {
         MaterialButton btnSelectDesign = view.findViewById(R.id.btnSelectDesign);
 
         // Show design selector only if in "All Recipes" mode and multiple books exist
+        // Tasarım seçiciyi yalnızca "Tüm Tarifler" modunda ve birden fazla defter varsa göster
         if (allBookIds != null && allBookIds.size() > 1) {
             btnSelectDesign.setVisibility(View.VISIBLE);
             btnSelectDesign.setOnClickListener(v -> showDesignSelector(v));
@@ -130,7 +131,7 @@ public class RecipePageFragment extends Fragment {
             FirebaseFirestore.getInstance().collection("cookbooks").document(bid).get()
                 .addOnSuccessListener(doc -> {
                     String name = doc.getString("name");
-                    if (name == null) name = "Defter " + (index + 1);
+                    if (name == null) name = getString(R.string.new_cookbook) + " " + (index + 1);
                     popup.getMenu().add(0, index, 0, name);
                     
                     if (index == allBookIds.size() - 1) {
@@ -290,7 +291,7 @@ public class RecipePageFragment extends Fragment {
     public void setEditMode(boolean editing) {
         this.isEditing = editing;
         if (editing) {
-            stickerCanvas.setBackgroundColor(0x15000000); // Subtle dark overlay for edit mode
+            stickerCanvas.setBackgroundColor(0x15000000); // Düzenleme modu için hafif koyu katman / Subtle dark overlay for edit mode
         } else {
             stickerCanvas.setBackgroundColor(0);
             stickerCanvas.removeAllViews(); // Clear immediately for visual feedback
@@ -374,7 +375,7 @@ public class RecipePageFragment extends Fragment {
             if (builder.length() > 0) {
                 builder.append("\n");
             }
-            builder.append("â€¢ ").append(cleaned);
+            builder.append("• ").append(cleaned);
         }
         return builder.toString();
     }
@@ -392,7 +393,7 @@ public class RecipePageFragment extends Fragment {
                 builder.append("\n\n");
             }
             builder.append(step).append(". ")
-                    .append(cleaned.replaceFirst("^[\\-â€¢*\\d.)\\s]+", "").trim());
+                    .append(cleaned.replaceFirst("^[\\-•*\\d.)\\s]+", "").trim());
             step++;
         }
         return builder.length() == 0 ? text : builder.toString();

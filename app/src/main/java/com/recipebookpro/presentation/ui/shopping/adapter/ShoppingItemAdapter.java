@@ -52,7 +52,9 @@ public class ShoppingItemAdapter extends RecyclerView.Adapter<ShoppingItemAdapte
         
         boolean haveIt = ShoppingItem.STATUS_HAVE_IT.equals(item.getHomeStatus());
         holder.switchStatus.setChecked(haveIt);
-        holder.switchStatus.setText(haveIt ? "Evde Var" : "AlÄ±nacak");
+        holder.switchStatus.setText(haveIt ? 
+                holder.itemView.getContext().getString(R.string.shopping_item_status_at_home) : 
+                holder.itemView.getContext().getString(R.string.shopping_item_status_to_buy));
         
         updateStrikeThrough(holder.tvName, item.isChecked() || haveIt);
 
@@ -62,7 +64,9 @@ public class ShoppingItemAdapter extends RecyclerView.Adapter<ShoppingItemAdapte
         });
         
         holder.switchStatus.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            holder.switchStatus.setText(isChecked ? "Evde Var" : "AlÄ±nacak");
+            holder.switchStatus.setText(isChecked ? 
+                    holder.itemView.getContext().getString(R.string.shopping_item_status_at_home) : 
+                    holder.itemView.getContext().getString(R.string.shopping_item_status_to_buy));
             updateStrikeThrough(holder.tvName, isChecked || holder.cbItem.isChecked());
             if (listener != null) listener.onHomeStatusChanged(holder.getAdapterPosition(), isChecked);
         });

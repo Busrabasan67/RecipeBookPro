@@ -19,18 +19,18 @@ public class LinedPaperView extends FrameLayout {
 
     private void init() {
         setWillNotDraw(false);
-        setBackgroundColor(0xFFFDFBF7); // KÄ±rÄ±k beyaz / krem kaÄŸÄ±t rengi
+        setBackgroundColor(0xFFFDFBF7); // Kirli beyaz / krem kağıt rengi | Off-white / cream paper color
 
         linePaint = new Paint();
-        linePaint.setColor(0x440066FF); // Soluk mavi Ã§izgiler
+        linePaint.setColor(0x440066FF); // Soluk mavi çizgiler | Faint blue lines
         linePaint.setStrokeWidth(3f);
         
         marginPaint = new Paint();
-        marginPaint.setColor(0x66FF0000); // KÄ±rmÄ±zÄ± marjin Ã§izgisi
+        marginPaint.setColor(0x66FF0000); // Kırmızı marjin çizgisi | Red margin line
         marginPaint.setStrokeWidth(5f);
 
         holesPaint = new Paint();
-        holesPaint.setColor(0xFF222222); // Delik rengi (koyu gri/siyah)
+        holesPaint.setColor(0xFF222222); // Delik rengi (koyu gri/siyah) | Hole color (dark gray/black)
         holesPaint.setStyle(Paint.Style.FILL);
     }
 
@@ -42,17 +42,17 @@ public class LinedPaperView extends FrameLayout {
         int height = getHeight();
         int marginX = 60;
 
-        // Defter deliklerini Ã§iz (Sol tarafa, spiral hissiyatÄ± vermek iÃ§in)
+        // Defter deliklerini çiz (Sol tarafa, spiral hissiyatı vermek için) | Draw notebook holes (left side, for spiral feel)
         for (int y = 100; y < height; y += 120) {
             canvas.drawCircle(25, y, 12, holesPaint);
         }
 
-        // Yatay mavi Ã§izgiler
+        // Yatay mavi çizgiler | Horizontal blue lines
         for (int y = 200; y < height; y += lineHeight) {
             canvas.drawLine(0, y, width, y, linePaint);
         }
         
-        // Dikey kÄ±rmÄ±zÄ± marjin
+        // Dikey kırmızı marjin | Vertical red margin
         canvas.drawLine(marginX, 0, marginX, height, marginPaint);
     }
 }

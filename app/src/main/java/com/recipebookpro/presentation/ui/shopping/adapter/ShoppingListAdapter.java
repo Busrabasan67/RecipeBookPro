@@ -37,10 +37,15 @@ public class ShoppingListAdapter extends RecyclerView.Adapter<ShoppingListAdapte
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         ShoppingList list = shoppingLists.get(position);
-        holder.tvName.setText(list.getName());
+        
+        String listName = list.getName();
+        if ("system_planner_weekly_menu".equals(listName) || "Weekly Menu Shopping".equals(listName) || "Haftalık Menü Alışverişi".equals(listName)) {
+            listName = holder.itemView.getContext().getString(R.string.planner_weekly_menu_list_name);
+        }
+        holder.tvName.setText(listName);
         
         int count = list.getItems() != null ? list.getItems().size() : 0;
-        holder.tvCount.setText(count + " Ã¼rÃ¼n");
+        holder.tvCount.setText(holder.itemView.getContext().getString(R.string.shopping_item_count_format, count));
 
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onListClick(list);

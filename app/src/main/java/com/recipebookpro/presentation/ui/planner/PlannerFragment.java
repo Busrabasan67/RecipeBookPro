@@ -224,7 +224,7 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
         Data inputData = new Data.Builder()
                 .putString(MergeIngredientsWorker.KEY_USER_ID, currentUser.getUid())
                 .putStringArray(MergeIngredientsWorker.KEY_RECIPE_IDS, allIds.toArray(new String[0]))
-                .putString(MergeIngredientsWorker.KEY_LIST_NAME, getString(R.string.planner_weekly_menu_list_name))
+                .putString(MergeIngredientsWorker.KEY_LIST_NAME, "system_planner_weekly_menu")
                 .putBoolean(MergeIngredientsWorker.KEY_OVERWRITE_EXISTING, true)
                 .build();
 

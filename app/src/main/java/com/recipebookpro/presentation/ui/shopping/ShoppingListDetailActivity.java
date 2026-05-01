@@ -64,18 +64,13 @@ public class ShoppingListDetailActivity extends BaseActivity {
         initViews();
         loadList();
 
-        View rootView = findViewById(android.R.id.content);
-        rootView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
-            Rect r = new Rect();
-            rootView.getWindowVisibleDisplayFrame(r);
-            int screenHeight = rootView.getRootView().getHeight();
-            int keypadHeight = screenHeight - r.bottom;
-
-            if (keypadHeight > screenHeight * 0.15) {
-                rootView.setPadding(0, 0, 0, keypadHeight);
-            } else {
-                rootView.setPadding(0, 0, 0, 0);
-            }
+        View layoutAddItem = findViewById(R.id.layoutAddItemContainer);
+        ViewCompat.setOnApplyWindowInsetsListener(layoutAddItem, (v, insets) -> {
+            androidx.core.graphics.Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            androidx.core.graphics.Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
+            v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), 
+                    Math.max(systemBars.bottom, ime.bottom));
+            return WindowInsetsCompat.CONSUMED;
         });
 
         etNewItem.setOnFocusChangeListener((v, hasFocus) -> {
@@ -150,7 +145,12 @@ public class ShoppingListDetailActivity extends BaseActivity {
                 return;
             }
             shoppingList = ShoppingList.fromDocument(doc);
-            toolbar.setTitle(shoppingList.getName());
+            
+            String listName = shoppingList.getName();
+            if ("system_planner_weekly_menu".equals(listName) || "Weekly Menu Shopping".equals(listName) || "Haftalık Menü Alışverişi".equals(listName)) {
+                listName = getString(R.string.planner_weekly_menu_list_name);
+            }
+            toolbar.setTitle(listName);
             
             items.clear();
             items.addAll(shoppingList.getItems());

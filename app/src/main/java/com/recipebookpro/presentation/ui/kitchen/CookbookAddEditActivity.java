@@ -181,7 +181,7 @@ public class CookbookAddEditActivity extends BaseActivity {
 
         nsvCookbook = findViewById(R.id.nsvCookbookAddEdit);
 
-        // Toolbar save button
+        // Toolbar save button | Toolbar kaydet butonu
         toolbar.inflateMenu(R.menu.menu_recipe_add_edit);
         toolbar.setOnMenuItemClickListener(item -> {
             if (item.getItemId() == R.id.action_save) {
@@ -191,7 +191,7 @@ public class CookbookAddEditActivity extends BaseActivity {
             return false;
         });
 
-        // Robust keyboard detection and padding adjustment
+        // Robust keyboard detection and padding adjustment | Güçlü klavye algılama ve padding ayarlama
         View rootView = findViewById(android.R.id.content);
         rootView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
             Rect r = new Rect();
@@ -206,19 +206,23 @@ public class CookbookAddEditActivity extends BaseActivity {
             }
         });
 
-        // Focus listener to scroll to focused field
+        // Focus listener to scroll to focused field | Odaklanılan alana kaydırma dinleyicisi
         nsvCookbook.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
             if (newFocus != null && (newFocus instanceof android.widget.EditText || newFocus instanceof android.widget.AutoCompleteTextView)) {
-                nsvCookbook.postDelayed(() -> {
-                    int[] viewPos = new int[2];
-                    newFocus.getLocationOnScreen(viewPos);
-                    int[] scrollPos = new int[2];
-                    nsvCookbook.getLocationOnScreen(scrollPos);
-                    int relativeTop = viewPos[1] - scrollPos[1];
-                    nsvCookbook.smoothScrollBy(0, relativeTop - 100);
-                }, 200);
+                nsvAddEditPostScroll(newFocus);
             }
         });
+    }
+
+    private void nsvAddEditPostScroll(View newFocus) {
+        nsvCookbook.postDelayed(() -> {
+            int[] viewPos = new int[2];
+            newFocus.getLocationOnScreen(viewPos);
+            int[] scrollPos = new int[2];
+            nsvCookbook.getLocationOnScreen(scrollPos);
+            int relativeTop = viewPos[1] - scrollPos[1];
+            nsvCookbook.smoothScrollBy(0, relativeTop - 100);
+        }, 200);
     }
 
     private void loadExistingCookbook() {
@@ -324,7 +328,7 @@ public class CookbookAddEditActivity extends BaseActivity {
            });
     }
 
-    // Yeni defterler iÃ§in ID'yi Ã¶nceden belirlediÄŸimiz iÃ§in bu yardÄ±mcÄ± metodu ekliyorum
+    // Yeni defterler için ID'yi önceden belirlediğimiz için bu yardımcı metodu ekliyorum | Adding this helper method since we pre-determine the ID for new cookbooks
     private void saveToFirestoreWithId(String docId, String title, String desc, String imageUrl) {
         Cookbook book = new Cookbook(currentUser.getUid(), title);
         book.setId(docId);

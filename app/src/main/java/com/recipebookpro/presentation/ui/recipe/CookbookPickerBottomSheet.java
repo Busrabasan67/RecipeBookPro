@@ -134,7 +134,7 @@ public class CookbookPickerBottomSheet extends BottomSheetDialogFragment {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         params.topMargin = books.isEmpty() ? 0 : 24;
         btnNew.setLayoutParams(params);
-        btnNew.setText("Yeni Defter OluÅŸtur");
+        btnNew.setText(getString(R.string.kitchen_new_book));
         btnNew.setIcon(ContextCompat.getDrawable(requireContext(), R.drawable.ic_add));
         btnNew.setOnClickListener(v -> {
             startActivity(new Intent(getContext(), CookbookAddEditActivity.class));
@@ -154,7 +154,7 @@ public class CookbookPickerBottomSheet extends BottomSheetDialogFragment {
         button.setLayoutParams(params);
 
         boolean isCollab = currentUser != null && !currentUser.getUid().equals(book.getUserId());
-        String label = isCollab ? book.getName() + " (Ortak)" : book.getName();
+        String label = isCollab ? book.getName() + " (" + getString(R.string.collaborators) + ")" : book.getName();
         button.setText(label);
         button.setIcon(ContextCompat.getDrawable(requireContext(), R.drawable.ic_book));
 
@@ -176,7 +176,7 @@ public class CookbookPickerBottomSheet extends BottomSheetDialogFragment {
               .update("recipeIds", FieldValue.arrayUnion(recipe.getId()))
               .addOnSuccessListener(aVoid -> showSuccessAndDismiss(book.getName()))
               .addOnFailureListener(e ->
-                  Snackbar.make(requireView(), "Hata oluÅŸtu", Snackbar.LENGTH_SHORT).show());
+                  Snackbar.make(requireView(), R.string.error_generic, Snackbar.LENGTH_SHORT).show());
         } else {
             copyRecipeToCookbook(book);
         }
@@ -212,14 +212,14 @@ public class CookbookPickerBottomSheet extends BottomSheetDialogFragment {
         batch.commit()
              .addOnSuccessListener(aVoid -> showSuccessAndDismiss(book.getName()))
              .addOnFailureListener(e ->
-                 Snackbar.make(requireView(), "Kopyalama hatasÄ±", Snackbar.LENGTH_SHORT).show());
+                 Snackbar.make(requireView(), R.string.error_generic, Snackbar.LENGTH_SHORT).show());
     }
 
     private void showSuccessAndDismiss(String cookbookName) {
         if (getActivity() != null) {
             View rootView = getActivity().findViewById(android.R.id.content);
             if (rootView != null) {
-                Snackbar.make(rootView, "Tarif \"" + cookbookName + "\" defterine eklendi", Snackbar.LENGTH_SHORT).show();
+                Snackbar.make(rootView, getString(R.string.recipe_copied), Snackbar.LENGTH_SHORT).show();
             }
         }
         dismiss();

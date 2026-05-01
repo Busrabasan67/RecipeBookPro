@@ -40,7 +40,7 @@ public class BookReaderActivity extends BaseActivity {
     private MaterialTextView tvEmpty;
     private android.widget.ProgressBar progressBar;
     private final List<Recipe> recipeList = new ArrayList<>();
-    private String userIdentity = "KullanÄ±cÄ±";
+    private String userIdentity = "Kullanıcı";
     private View rootView;
     private String filterCookbookId;
     private String filterCookbookName;
@@ -73,7 +73,7 @@ public class BookReaderActivity extends BaseActivity {
         btnToc.setOnClickListener(v -> goToToc());
         
         android.view.View btnEdit = findViewById(R.id.btnBookStickers);
-        btnEdit.setVisibility(View.GONE); // Default hidden until authorized
+        btnEdit.setVisibility(View.GONE); // Yetki verilene kadar varsayılan olarak gizli / Default hidden until authorized
         btnEdit.setOnClickListener(v -> toggleEditMode(true));
         
         findViewById(R.id.btnEditCancel).setOnClickListener(v -> {
@@ -123,13 +123,13 @@ public class BookReaderActivity extends BaseActivity {
                 .get().addOnSuccessListener(doc -> {
                     Cookbook book = Cookbook.fromDocument(doc);
                     
-                    // Yetki kontrolÃ¼: Sahip mi yoksa Ortak Ã‡alÄ±ÅŸan mÄ±?
+                    // Yetki kontrolü: Sahip mi yoksa Ortak Çalışan mı? / Authorization check: Owner or Collaborator?
                     boolean isAuthorized = user.getUid().equals(book.getUserId()) || 
                                            (book.getCollaboratorIds() != null && book.getCollaboratorIds().contains(user.getUid()));
                     
                     findViewById(R.id.btnBookStickers).setVisibility(isAuthorized ? View.VISIBLE : View.GONE);
 
-                    // Defter sahibinin adÄ±nÄ± getir
+                    // Defter sahibinin adını getir / Get the name of the cookbook owner
                     FirebaseFirestore.getInstance().collection("users").document(book.getUserId())
                         .get().addOnSuccessListener(userDoc -> {
                             if (userDoc.exists()) {
@@ -149,7 +149,7 @@ public class BookReaderActivity extends BaseActivity {
                             }
                             fetchAllRecipesAndFilter(user.getUid(), ids);
                         }).addOnFailureListener(e -> {
-                            // KullanÄ±cÄ± Ã§ekilemezse mevcut isimle devam et
+                            // Kullanıcı çekilemezse mevcut isimle devam et / If user cannot be fetched, continue with current name
                             List<String> ids = book.getRecipeIds();
                             if (ids == null || ids.isEmpty()) {
                                 onLoaded();
@@ -163,7 +163,7 @@ public class BookReaderActivity extends BaseActivity {
                     showEmpty();
                 });
         } else {
-            // Belirli bir defter yoksa (TÃ¼m Tariflerim), kullanÄ±cÄ± yetkilidir
+            // Belirli bir defter yoksa (Tüm Tariflerim), kullanıcı yetkilidir / If no specific book (All My Recipes), user is authorized
             findViewById(R.id.btnBookStickers).setVisibility(View.VISIBLE);
             fetchAllRecipesAndFilter(user.getUid(), null);
         }
@@ -171,7 +171,7 @@ public class BookReaderActivity extends BaseActivity {
 
     private void fetchAllRecipesAndFilter(String uid, List<String> allowedIds) {
         if (allowedIds == null || allowedIds.isEmpty()) {
-            // "TÃ¼mÃ¼" modu: Ã–nce tÃ¼m tarifleri Ã§ek, sonra defter eÅŸleÅŸmelerini bul
+            // "Tümü" modu: Önce tüm tarifleri çek, sonra defter eşleşmelerini bul / "All" mode: Fetch all recipes first, then find cookbook matches
             FirebaseFirestore.getInstance().collection("recipes")
                     .whereEqualTo("userId", uid)
                     .get()
@@ -217,7 +217,7 @@ public class BookReaderActivity extends BaseActivity {
             return;
         }
 
-        // Defter gÃ¶rÃ¼nÃ¼mÃ¼: Sadece izin verilen ID'leri getir
+        // Defter görünümü: Sadece izin verilen ID'leri getir / Cookbook view: Fetch only allowed IDs
         recipeList.clear();
         List<com.google.android.gms.tasks.Task<QuerySnapshot>> tasks = new ArrayList<>();
         for (int i = 0; i < allowedIds.size(); i += 10) {
@@ -254,7 +254,7 @@ public class BookReaderActivity extends BaseActivity {
     }
 
     public void goToRecipePage(int position) {
-        // +2 because of Cover and TOC pages
+        // Kapak ve İçindekiler sayfaları nedeniyle +2 / +2 because of Cover and TOC pages
         viewPager.setCurrentItem(position + 2, true);
     }
 
@@ -286,9 +286,9 @@ public class BookReaderActivity extends BaseActivity {
         this.isEditMode = enabled;
         layoutNormalActions.setVisibility(enabled ? View.GONE : View.VISIBLE);
         layoutEditActions.setVisibility(enabled ? View.VISIBLE : View.GONE);
-        viewPager.setUserInputEnabled(!enabled); // Disable swiping in edit mode
+        viewPager.setUserInputEnabled(!enabled); // Düzenleme modunda kaydırmayı devre dışı bırak / Disable swiping in edit mode
 
-        // Tell the current fragment to enable/disable editing
+        // Mevcut fragmana düzenlemeyi etkinleştir/devre dışı bırak de / Tell the current fragment to enable/disable editing
         androidx.fragment.app.Fragment currentFrag = getSupportFragmentManager().findFragmentByTag("f" + viewPager.getCurrentItem());
         if (currentFrag instanceof RecipePageFragment) {
             ((RecipePageFragment) currentFrag).setEditMode(enabled);

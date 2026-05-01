@@ -82,7 +82,7 @@
             android:id="@+id/rbLangEn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="English"/>
+            android:text="@string/language_english"/>
     </RadioGroup>
 
 </LinearLayout>

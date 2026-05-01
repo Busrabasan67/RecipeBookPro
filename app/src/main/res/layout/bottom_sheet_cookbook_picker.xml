@@ -14,14 +14,14 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        android:text="Deftere Ekle"
+        android:text="@string/add_to_cookbook"
         android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
         android:textStyle="bold" />
 
     <com.google.android.material.textview.MaterialTextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Bu tarifi hangi yemek defterine kaydetmek istersiniz?"
+        android:text="@string/cookbook_picker_prompt"
         android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:layout_marginBottom="24dp" />

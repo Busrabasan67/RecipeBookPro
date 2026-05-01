@@ -10,7 +10,7 @@ public class StickerModel implements Serializable {
     private float scale;
 
     public StickerModel() {
-        // Firebase iÃ§in gerekli boÅŸ yapÄ±cÄ± metot
+        // Firebase için gerekli boş yapıcı metot / Empty constructor required for Firebase
     }
 
     public StickerModel(String imageUrl, float x, float y, float rotation, float scale) {
@@ -21,7 +21,7 @@ public class StickerModel implements Serializable {
         this.scale = scale;
     }
 
-    // Getter ve Setter metotlarÄ±
+    // Getter ve Setter metotları / Getter and Setter methods
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 

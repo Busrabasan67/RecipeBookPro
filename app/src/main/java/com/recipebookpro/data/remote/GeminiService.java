@@ -16,8 +16,8 @@ import java.net.URL;
 
 public class GeminiService {
 
-    // LÃœTFEN KENDÄ° GEMINI API KEY'Ä°NÄ°ZÄ° BURAYA GÄ°RÄ°N:
-    // https://aistudio.google.com/ adresinden Ã¼cretsiz alabilirsiniz.
+    // LÜTFEN KENDİ GEMINI API KEY'İNİZİ BURAYA GİRİN: / PLEASE ENTER YOUR GEMINI API KEY HERE:
+    // https://aistudio.google.com/ adresinden ücretsiz alabilirsiniz. / You can get it for free at https://aistudio.google.com/
     private static final String API_KEY = BuildConfig.GEMINI_API_KEY;
     
     private static final String API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + API_KEY;
@@ -30,10 +30,10 @@ public class GeminiService {
     public static void analyzeNutrition(String ingredientsText, GeminiCallback callback) {
         new Thread(() -> {
             try {
-                // EÄŸer API key girilmemiÅŸse, deneme (mock) verisi dÃ¶ndÃ¼rÃ¼rÃ¼z ki arayÃ¼zÃ¼ gÃ¶rebilelim.
+                // Eğer API key girilmemişse, deneme (mock) verisi döndürürüz ki arayüzü görebilelim. / If no API key is entered, we return mock data.
                 if ("YOUR_GEMINI_API_KEY".equals(API_KEY)) {
-                    Thread.sleep(1500); // Yapay zeka dÃ¼ÅŸÃ¼nÃ¼yor efekti :)
-                    callback.onSuccess("API AnahtarÄ± eksik! Ã–rnek DeÄŸerler:\nKalori: 450 kcal\nProtein: 18g\nKarbonhidrat: 42g\nYaÄŸ: 14g");
+                    Thread.sleep(1500); // Yapay zeka düşünüyor efekti :) / AI thinking effect :)
+                    callback.onSuccess("API Anahtarı eksik! Örnek Değerler:\nKalori: 450 kcal\nProtein: 18g\nKarbonhidrat: 42g\nYağ: 14g");
                     return;
                 }
 
@@ -81,7 +81,7 @@ public class GeminiService {
                             
                     callback.onSuccess(text.trim());
                 } else {
-                    callback.onError("Sunucu HatasÄ±: " + conn.getResponseCode());
+                    callback.onError("Sunucu Hatası / Server Error: " + conn.getResponseCode());
                 }
             } catch (Exception e) {
                 Log.e("GeminiService", "API Error", e);

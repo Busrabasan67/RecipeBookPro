@@ -24,8 +24,8 @@ public class UnitConverterBottomSheet extends BottomSheetDialogFragment {
     private Spinner spinnerToUnit;
     private TextView tvConvertResult;
 
-    private final String[] UNITS = {"Cup", "ml", "oz", "gram", "tbsp", "tsp"};
-
+    private String[] unitLabels;
+    private String[] unitValues;
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -36,7 +36,10 @@ public class UnitConverterBottomSheet extends BottomSheetDialogFragment {
         spinnerToUnit = view.findViewById(R.id.spinnerToUnit);
         tvConvertResult = view.findViewById(R.id.tvConvertResult);
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, UNITS);
+        unitLabels = getResources().getStringArray(R.array.converter_unit_labels);
+        unitValues = getResources().getStringArray(R.array.converter_unit_values);
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, unitLabels);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
         spinnerFromUnit.setAdapter(adapter);
@@ -57,17 +60,23 @@ public class UnitConverterBottomSheet extends BottomSheetDialogFragment {
 
         try {
             double amount = Double.parseDouble(amountStr);
-            String fromUnit = (String) spinnerFromUnit.getSelectedItem();
-            String toUnit = (String) spinnerToUnit.getSelectedItem();
+            int fromIndex = spinnerFromUnit.getSelectedItemPosition();
+            int toIndex = spinnerToUnit.getSelectedItemPosition();
 
-            double result = UnitConverter.convert(amount, fromUnit, toUnit);
-            if (result == -1) {
-                tvConvertResult.setText("DÃ¶nÃ¼ÅŸÃ¼m Desteklenmiyor");
-            } else {
-                tvConvertResult.setText(String.format("SonuÃ§: %.2f %s", result, toUnit));
+            if (fromIndex >= 0 && toIndex >= 0) {
+                String fromUnit = unitValues[fromIndex];
+                String toUnit = unitValues[toIndex];
+                String toLabel = unitLabels[toIndex];
+
+                double result = UnitConverter.convert(amount, fromUnit, toUnit);
+                if (result == -1) {
+                    tvConvertResult.setText(getString(R.string.conversion_unsupported));
+                } else {
+                    tvConvertResult.setText(getString(R.string.conversion_result_format, result, toLabel));
+                }
             }
         } catch (Exception e) {
-            tvConvertResult.setText("HatalÄ± GiriÅŸ");
+            tvConvertResult.setText(getString(R.string.invalid_input));
         }
     }
 }
