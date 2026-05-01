@@ -130,8 +130,9 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
     @Override
     public void onInit(int status) {
         if (status == TextToSpeech.SUCCESS) {
-            Locale trLocale = new Locale("tr", "TR");
-            int result = tts.setLanguage(trLocale);
+            String currentLang = Locale.getDefault().getLanguage();
+            Locale targetLocale = currentLang.equalsIgnoreCase("en") ? Locale.ENGLISH : new Locale("tr", "TR");
+            int result = tts.setLanguage(targetLocale);
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 tts.setLanguage(Locale.getDefault());
             }
@@ -149,7 +150,9 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
     private void readStep(Step step) {
         if (!isTtsEnabled || tts == null) return;
         tts.stop();
-        tts.speak(step.getDescription(), TextToSpeech.QUEUE_FLUSH, null, "StepTTS");
+        String currentLang = Locale.getDefault().getLanguage();
+        String textToSpeak = step.getDisplayDescription();
+        tts.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "StepTTS");
     }
 
     private void initSpeechRecognizer() {
@@ -157,7 +160,10 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
             recognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
             recognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            recognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR");
+            
+            String currentLang = Locale.getDefault().getLanguage();
+            String speechLang = currentLang.equalsIgnoreCase("en") ? "en-US" : "tr-TR";
+            recognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, speechLang);
 
             speechRecognizer.setRecognitionListener(new RecognitionListener() {
                 @Override public void onReadyForSpeech(Bundle params) { tvMicStatus.setText(R.string.listening); }
@@ -250,20 +256,20 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
     }
 
     private void processVoiceCommand(String command) {
-        if (command.contains("sonraki")) {
+        if (command.contains("sonraki") || command.contains("next")) {
             int current = vpCookingSteps.getCurrentItem();
             if (current < recipe.getStepList().size() - 1) vpCookingSteps.setCurrentItem(current + 1, true);
-        } else if (command.contains("önceki")) {
+        } else if (command.contains("önceki") || command.contains("previous") || command.contains("back")) {
             int current = vpCookingSteps.getCurrentItem();
             if (current > 0) vpCookingSteps.setCurrentItem(current - 1, true);
-        } else if (command.contains("tekrarla") || command.contains("tekrar ok")) {
+        } else if (command.contains("tekrarla") || command.contains("repeat") || command.contains("again")) {
             int current = vpCookingSteps.getCurrentItem();
             readStep(recipe.getStepList().get(current));
-        } else if (command.contains("başlat")) {
+        } else if (command.contains("başlat") || command.contains("start")) {
             int current = vpCookingSteps.getCurrentItem();
             Step step = recipe.getStepList().get(current);
             if (step.hasTimer()) startTimer(step.getTimerMinutes());
-        } else if (command.contains("durdur")) {
+        } else if (command.contains("durdur") || command.contains("stop") || command.contains("cancel")) {
             stopTimer();
         } else {
             Toast.makeText(this, getString(R.string.voice_command_not_understood, command), Toast.LENGTH_SHORT).show();

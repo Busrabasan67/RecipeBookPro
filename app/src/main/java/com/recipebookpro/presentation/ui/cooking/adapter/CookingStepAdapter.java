@@ -42,7 +42,7 @@ public class CookingStepAdapter extends RecyclerView.Adapter<CookingStepAdapter.
         Step step = steps.get(position);
 
         holder.tvStepNumberBig.setText(holder.itemView.getContext().getString(R.string.step_number, step.getOrder()));
-        holder.tvStepDescriptionBig.setText(step.getDescription());
+        holder.tvStepDescriptionBig.setText(step.getDisplayDescription());
 
         if (step.hasTimer()) {
             holder.cardTimerInfo.setVisibility(View.VISIBLE);
