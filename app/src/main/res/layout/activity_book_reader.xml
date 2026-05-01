@@ -33,6 +33,15 @@
         <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
         
         <ImageButton
+            android:id="@+id/btnBookTranslate"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_translate"
+            app:tint="#444444"
+            android:layout_marginEnd="16dp" />
+
+        <ImageButton
             android:id="@+id/btnBookStickers"
             android:layout_width="48dp"
             android:layout_height="48dp"

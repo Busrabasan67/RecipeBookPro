@@ -8,11 +8,13 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import java.util.Locale;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.tabs.TabLayout;
@@ -38,6 +40,10 @@ import java.util.List;
 
 import coil.Coil;
 import coil.request.ImageRequest;
+import com.recipebookpro.domain.service.TranslationService;
+import com.recipebookpro.data.remote.MLKitTranslationService;
+import com.recipebookpro.domain.usecase.TranslateRecipeUseCase;
+import com.google.mlkit.nl.translate.TranslateLanguage;
 
 public class RecipeDetailActivity extends BaseActivity {
 
@@ -52,6 +58,8 @@ public class RecipeDetailActivity extends BaseActivity {
     private boolean isLiked = false;
     private MenuItem likeMenuItem;
     private ListenerRegistration likeStateListener;
+    private TranslationService translationService;
+    private TranslateRecipeUseCase translateRecipeUseCase;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +89,18 @@ public class RecipeDetailActivity extends BaseActivity {
         setupToolbar();
         loadUserAllergensAndSetupPager();
         setupFAB();
+        
+        translationService = new MLKitTranslationService(this);
+        translateRecipeUseCase = new TranslateRecipeUseCase(translationService);
+        findViewById(R.id.btnCloseTranslation).setOnClickListener(v -> {
+            findViewById(R.id.cardTranslation).setVisibility(View.GONE);
+        });
+
+        findViewById(R.id.btnRevertTranslation).setOnClickListener(v -> revertTranslation());
+        // Automatic translation if needed
+        // Always call translateRecipe; the UseCase will independently identify 
+        // the language and decide if translation is needed based on current app language.
+        translateRecipe();
     }
 
     private void fetchRecipeFromDeepLink(String recipeId) {
@@ -106,7 +126,8 @@ public class RecipeDetailActivity extends BaseActivity {
 
     private void setupToolbar() {
         MaterialToolbar toolbar = findViewById(R.id.toolbarDetail);
-        toolbar.setTitle(recipe.getTitle());
+        String currentLang = Locale.getDefault().getLanguage();
+        toolbar.setTitle(recipe.getDisplayTitle(currentLang));
 
         toolbar.setNavigationOnClickListener(v -> finish());
         
@@ -129,6 +150,9 @@ public class RecipeDetailActivity extends BaseActivity {
                 return true;
             } else if (itemId == R.id.action_add_shopping) {
                 addToShoppingList();
+                return true;
+            } else if (itemId == R.id.action_translate) {
+                translateRecipe();
                 return true;
             }
             return false;
@@ -309,6 +333,87 @@ public class RecipeDetailActivity extends BaseActivity {
         Toast.makeText(this, R.string.shopping_ingredients_preparing, Toast.LENGTH_SHORT).show();
     }
 
+    private void translateRecipe() {
+        if (recipe == null) return;
+        
+        findViewById(R.id.pbTranslation).setVisibility(View.VISIBLE);
+        ((android.widget.TextView) findViewById(R.id.tvTranslatedContent)).setText(R.string.downloading_model);
+        
+        String targetLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
+        translateRecipeUseCase.execute(recipe, targetLang, new TranslationService.TranslationCallback() {
+            @Override
+            public void onSuccess(String message) {
+                findViewById(R.id.pbTranslation).setVisibility(View.GONE);
+                findViewById(R.id.btnRevertTranslation).setVisibility(View.VISIBLE);
+                ((android.widget.TextView) findViewById(R.id.tvTranslatedContent)).setText(R.string.translation_completed);
+                
+                // Refresh all views with the new translated data
+                setupToolbar();
+                setupViewPagerAndTabs();
+                
+                // Update original language in Firestore for future persistence
+                FirebaseFirestore.getInstance().collection("recipes").document(recipe.getId())
+                        .update("originalLanguage", recipe.getOriginalLanguage());
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                findViewById(R.id.pbTranslation).setVisibility(View.GONE);
+                Toast.makeText(RecipeDetailActivity.this, getString(R.string.error_with_reason, e.getMessage()), Toast.LENGTH_LONG).show();
+            }
+
+            @Override
+            public void onDownloadProgress(String message) {
+                runOnUiThread(() -> {
+                    findViewById(R.id.cardTranslation).setVisibility(View.VISIBLE);
+                    findViewById(R.id.pbTranslation).setVisibility(View.VISIBLE);
+                    TextView tvContent = findViewById(R.id.tvTranslatedContent);
+                    tvContent.setText(message);
+                    findViewById(R.id.tvTranslatedTitle).setVisibility(View.GONE);
+                });
+            }
+        });
+    }
+
+    private void showTranslation(String title, String content) {
+        View card = findViewById(R.id.cardTranslation);
+        card.setVisibility(View.VISIBLE);
+        ((TextView) findViewById(R.id.tvTranslatedTitle)).setText(title);
+        ((TextView) findViewById(R.id.tvTranslatedContent)).setText(content);
+        
+        // Localize card labels
+        TextView tvLabel = card.findViewById(R.id.tvTranslationLabel);
+        if (tvLabel != null) tvLabel.setText(R.string.translation_title);
+        
+        // Scroll to the top of the card if needed, or just let the user see it
+        AppBarLayout appBarLayout = findViewById(R.id.appBarLayout);
+        if (appBarLayout != null) {
+            appBarLayout.setExpanded(true, true);
+        }
+    }
+
+    private void revertTranslation() {
+        if (recipe != null) {
+            recipe.clearAllTranslations();
+            setupToolbar();
+            setupViewPagerAndTabs();
+            findViewById(R.id.cardTranslation).setVisibility(View.GONE);
+            
+            // Also update Firestore to clear the translations permanently
+            saveTranslatedToFirestore();
+        }
+    }
+
+    private void saveTranslatedToFirestore() {
+        if (recipe == null || TextUtils.isEmpty(recipe.getId())) return;
+        
+        db.collection("recipes").document(recipe.getId())
+                .set(recipe) // Save the entire updated object to ensure all translated fields are persisted
+                .addOnFailureListener(e -> {
+                    // Silently fail or log, not critical for user experience
+                });
+    }
+
     @Override
     protected void onStart() {
         super.onStart();
@@ -339,5 +444,13 @@ public class RecipeDetailActivity extends BaseActivity {
                         likeMenuItem.setIcon(isLiked ? R.drawable.ic_heart_filled : R.drawable.ic_heart_outline);
                     }
                 });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (translationService != null) {
+            translationService.close();
+        }
     }
 }

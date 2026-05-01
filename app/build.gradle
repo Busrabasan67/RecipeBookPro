@@ -72,6 +72,10 @@ dependencies {
     implementation 'androidx.work:work-runtime:2.9.0'
     implementation 'com.google.guava:guava:31.1-android'
 
+    // ML Kit Translate & Language ID
+    implementation 'com.google.mlkit:translate:17.0.2'
+    implementation 'com.google.mlkit:language-id:17.0.6'
+
     // Google Play Services Tasks (Tasks.whenAllSuccess for parallel queries)
     implementation 'com.google.android.gms:play-services-tasks:18.1.0'
 }

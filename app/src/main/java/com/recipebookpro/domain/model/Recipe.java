@@ -29,6 +29,10 @@ public class Recipe implements Serializable {
     private List<String> ingredientNames;   // flat name list for search
     private String sourceRecipeId;           // original recipe ID if copied
     private List<StickerModel> stickers;    // decoration stickers
+    private String translatedTitle;
+    private String translatedDescription;
+    private String translatedInstructions;
+    private String originalLanguage; // e.g., "tr", "en"
 
     public Recipe() {
         ingredients = new ArrayList<>();
@@ -117,10 +121,47 @@ public class Recipe implements Serializable {
             recipe.setSteps(stepsStr);
             recipe.setStepList(parseStepsFromString(stepsStr));
         }
-
         // Parse stickers
         Object rawStickers = document.get("stickers");
         recipe.setStickers(parseStickers(rawStickers));
+
+        // Parse translations
+        recipe.setTranslatedTitle(document.getString("translatedTitle"));
+        recipe.setTranslatedDescription(document.getString("translatedDescription"));
+        recipe.setTranslatedInstructions(document.getString("translatedInstructions"));
+        recipe.setOriginalLanguage(document.getString("originalLanguage"));
+
+        List<Map<String, Object>> ingredientsMap = (List<Map<String, Object>>) document.get("ingredients");
+        if (ingredientsMap != null) {
+            List<Ingredient> ingredients = new ArrayList<>();
+            for (Map<String, Object> map : ingredientsMap) {
+                Ingredient ing = new Ingredient(
+                    (String) map.get("name"),
+                    (String) map.get("amount"),
+                    (String) map.get("unit")
+                );
+                ing.setTranslatedName((String) map.get("translatedName"));
+                ing.setTranslatedUnit((String) map.get("translatedUnit"));
+                ingredients.add(ing);
+            }
+            recipe.setIngredients(ingredients);
+        }
+
+        List<Map<String, Object>> stepsMap = (List<Map<String, Object>>) document.get("stepList");
+        if (stepsMap != null) {
+            List<Step> steps = new ArrayList<>();
+            for (Map<String, Object> map : stepsMap) {
+                Step step = new Step(
+                    ((Long) map.get("order")).intValue(),
+                    (String) map.get("description"),
+                    ((Long) map.get("timerMinutes")).intValue(),
+                    (String) map.get("imageUrl")
+                );
+                step.setTranslatedDescription((String) map.get("translatedDescription"));
+                steps.add(step);
+            }
+            recipe.setStepList(steps);
+        }
 
         return recipe;
     }
@@ -427,12 +468,65 @@ public class Recipe implements Serializable {
         this.stickers = stickers != null ? stickers : new ArrayList<>();
     }
 
+    public String getTranslatedTitle() {
+        return translatedTitle == null ? "" : translatedTitle;
+    }
+
+    public void setTranslatedTitle(String translatedTitle) {
+        this.translatedTitle = translatedTitle;
+    }
+
+    public String getTranslatedDescription() {
+        return translatedDescription == null ? "" : translatedDescription;
+    }
+
+    public void setTranslatedDescription(String translatedDescription) {
+        this.translatedDescription = translatedDescription;
+    }
+
+    public String getTranslatedInstructions() {
+        return translatedInstructions == null ? "" : translatedInstructions;
+    }
+
+    public void setTranslatedInstructions(String translatedInstructions) {
+        this.translatedInstructions = translatedInstructions;
+    }
+
+    public String getOriginalLanguage() { return originalLanguage == null ? "" : originalLanguage; }
+    public void setOriginalLanguage(String originalLanguage) { this.originalLanguage = originalLanguage; }
+
+    public String getDisplayTitle(String currentLang) {
+        if (translatedTitle != null && !translatedTitle.isEmpty()) return translatedTitle;
+        return getTitle();
+    }
+
+    public String getDisplayDescription(String currentLang) {
+        if (translatedDescription != null && !translatedDescription.isEmpty()) return translatedDescription;
+        return getDescription();
+    }
+
+    public String getDisplayInstructions(String currentLang) {
+        if (translatedInstructions != null && !translatedInstructions.isEmpty()) return translatedInstructions;
+        return getSteps();
+    }
+
+    public boolean hasTranslation() {
+        return (translatedTitle != null && !translatedTitle.isEmpty());
+    }
+
+    public boolean needsTranslation(String currentLang) {
+        if (originalLanguage == null || originalLanguage.isEmpty()) return true;
+        return !currentLang.equals(originalLanguage) && !hasTranslation();
+    }
+
     // ========================== Ingredient Inner Class ==========================
 
     public static class Ingredient implements Serializable {
         private String name;
         private String amount;
         private String unit;
+        private String translatedName;
+        private String translatedUnit;
         private double numericAmount;  // for scaling calculations
 
         public Ingredient() {
@@ -469,6 +563,20 @@ public class Recipe implements Serializable {
             this.unit = unit;
         }
 
+        public String getTranslatedName() { return translatedName; }
+        public void setTranslatedName(String translatedName) { this.translatedName = translatedName; }
+
+        public String getTranslatedUnit() { return translatedUnit; }
+        public void setTranslatedUnit(String translatedUnit) { this.translatedUnit = translatedUnit; }
+
+        public String getDisplayName() {
+            return (translatedName != null && !translatedName.isEmpty()) ? translatedName : getName();
+        }
+
+        public String getDisplayUnit() {
+            return (translatedUnit != null && !translatedUnit.isEmpty()) ? translatedUnit : getUnit();
+        }
+
         public double getNumericAmount() {
             return numericAmount;
         }
@@ -488,15 +596,20 @@ public class Recipe implements Serializable {
             } else if (!getAmount().trim().isEmpty()) {
                 builder.append(getAmount().trim());
             }
-            if (!getUnit().trim().isEmpty()) {
+            if (!getDisplayUnit().trim().isEmpty()) {
                 if (builder.length() > 0) builder.append(" ");
-                builder.append(getUnit().trim());
+                builder.append(getDisplayUnit().trim());
             }
-            if (!getName().trim().isEmpty()) {
+            if (!getDisplayName().trim().isEmpty()) {
                 if (builder.length() > 0) builder.append(" ");
-                builder.append(getName().trim());
+                builder.append(getDisplayName().trim());
             }
             return builder.toString().trim();
+        }
+
+        public void clearTranslation() {
+            this.translatedName = null;
+            this.translatedUnit = null;
         }
 
         public String getDisplayText() {
@@ -504,15 +617,27 @@ public class Recipe implements Serializable {
             if (!getAmount().trim().isEmpty()) {
                 builder.append(getAmount().trim());
             }
-            if (!getUnit().trim().isEmpty()) {
+            if (!getDisplayUnit().trim().isEmpty()) {
                 if (builder.length() > 0) builder.append(" ");
-                builder.append(getUnit().trim());
+                builder.append(getDisplayUnit().trim());
             }
-            if (!getName().trim().isEmpty()) {
+            if (!getDisplayName().trim().isEmpty()) {
                 if (builder.length() > 0) builder.append(" ");
-                builder.append(getName().trim());
+                builder.append(getDisplayName().trim());
             }
             return builder.toString().trim();
+        }
+    }
+
+    public void clearAllTranslations() {
+        this.translatedTitle = null;
+        this.translatedDescription = null;
+        this.translatedInstructions = null;
+        if (ingredients != null) {
+            for (Ingredient ing : ingredients) ing.clearTranslation();
+        }
+        if (stepList != null) {
+            for (Step s : stepList) s.setTranslatedDescription(null);
         }
     }
 }

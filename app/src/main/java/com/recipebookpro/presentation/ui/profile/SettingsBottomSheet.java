@@ -25,6 +25,7 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.EmailAuthProvider;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.recipebookpro.R;
 import com.recipebookpro.presentation.ui.LocaleHelper;
 import com.recipebookpro.presentation.ui.MainActivity;
@@ -84,6 +85,14 @@ public class SettingsBottomSheet extends BottomSheetDialogFragment {
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
             requireActivity().finish();
+        });
+
+        SwitchMaterial swWifiOnly = view.findViewById(R.id.swWifiOnly);
+        boolean isWifiOnly = prefs.getBoolean("download_wifi_only", true);
+        swWifiOnly.setChecked(isWifiOnly);
+        
+        swWifiOnly.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean("download_wifi_only", isChecked).apply();
         });
     }
 

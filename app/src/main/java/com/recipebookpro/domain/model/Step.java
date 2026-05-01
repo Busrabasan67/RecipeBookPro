@@ -13,6 +13,7 @@ public class Step implements Serializable {
     private String description;
     private int timerMinutes;   // 0 means no timer
     private String imageUrl;    // optional step image
+    private String translatedDescription;
 
     public Step() {
     }
@@ -42,6 +43,10 @@ public class Step implements Serializable {
         }
         Object imgVal = map.get("imageUrl");
         step.setImageUrl(imgVal != null ? String.valueOf(imgVal).trim() : "");
+        
+        Object transDesc = map.get("translatedDescription");
+        step.setTranslatedDescription(transDesc != null ? String.valueOf(transDesc).trim() : "");
+        
         return step;
     }
 
@@ -81,5 +86,12 @@ public class Step implements Serializable {
 
     public boolean hasTimer() {
         return timerMinutes > 0;
+    }
+
+    public String getTranslatedDescription() { return translatedDescription == null ? "" : translatedDescription; }
+    public void setTranslatedDescription(String translatedDescription) { this.translatedDescription = translatedDescription; }
+    
+    public String getDisplayDescription() {
+        return (translatedDescription != null && !translatedDescription.isEmpty()) ? translatedDescription : getDescription();
     }
 }

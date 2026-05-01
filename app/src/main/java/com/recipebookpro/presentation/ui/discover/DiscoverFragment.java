@@ -241,10 +241,53 @@ public class DiscoverFragment extends Fragment
         tvResultsTitle.setVisibility(View.GONE);
         setPublicCookbooksVisibility(false);
 
-        loadAllPublicRecipes(selected, textQuery);
+        if (textQuery.isEmpty()) {
+            loadAllPublicRecipes(selected, textQuery, "");
+            return;
+        }
+
+        // 1. Immediate Manual Patch for common search terms (Instant results)
+        String manualTranslated = applyManualPatchForSearch(textQuery);
+        if (!manualTranslated.isEmpty()) {
+            android.util.Log.d("DiscoverSearch", "Manual patch found: " + manualTranslated);
+            loadAllPublicRecipes(selected, textQuery, manualTranslated);
+            return;
+        }
+
+        // 2. Fallback to ML Kit if no manual patch
+        com.google.mlkit.nl.languageid.LanguageIdentification.getClient()
+                .identifyLanguage(textQuery)
+                .addOnSuccessListener(sourceLang -> {
+                    String targetLang = sourceLang.equals("tr") ? "en" : "tr";
+                    
+                    com.google.mlkit.nl.translate.TranslatorOptions options = new com.google.mlkit.nl.translate.TranslatorOptions.Builder()
+                            .setSourceLanguage(sourceLang)
+                            .setTargetLanguage(targetLang)
+                            .build();
+                    
+                    com.google.mlkit.nl.translate.Translator translator = com.google.mlkit.nl.translate.Translation.getClient(options);
+                    
+                    translator.downloadModelIfNeeded()
+                            .addOnSuccessListener(unused -> {
+                                translator.translate(textQuery)
+                                        .addOnSuccessListener(translatedQuery -> {
+                                            loadAllPublicRecipes(selected, textQuery, translatedQuery);
+                                            translator.close();
+                                        })
+                                        .addOnFailureListener(e -> {
+                                            loadAllPublicRecipes(selected, textQuery, "");
+                                            translator.close();
+                                        });
+                            })
+                            .addOnFailureListener(e -> {
+                                loadAllPublicRecipes(selected, textQuery, "");
+                                translator.close();
+                            });
+                })
+                .addOnFailureListener(e -> loadAllPublicRecipes(selected, textQuery, ""));
     }
 
-    private void loadAllPublicRecipes(List<String> selectedIngredients, String textQuery) {
+    private void loadAllPublicRecipes(List<String> selectedIngredients, String textQuery, String translatedQuery) {
         Set<String> collectedRecipeIds = new LinkedHashSet<>();
         List<Recipe> allRecipes = new ArrayList<>();
         // 2 queries for recipes (isPublic + public) + 2 for cookbooks (isPublic + public)
@@ -252,7 +295,7 @@ public class DiscoverFragment extends Fragment
 
         Runnable checkDone = () -> {
             pending[0]--;
-            if (pending[0] == 0) filterAndDisplay(allRecipes, selectedIngredients, textQuery);
+            if (pending[0] == 0) filterAndDisplay(allRecipes, selectedIngredients, textQuery, translatedQuery);
         };
 
         for (String field : new String[]{"isPublic", "public"}) {
@@ -319,20 +362,22 @@ public class DiscoverFragment extends Fragment
         }
     }
 
-    private void filterAndDisplay(List<Recipe> allRecipes, List<String> selectedIngredients, String textQuery) {
+    private void filterAndDisplay(List<Recipe> allRecipes, List<String> selectedIngredients, String textQuery, String translatedQuery) {
         if (!isAdded()) return;
 
         List<Recipe> filtered = new ArrayList<>();
         Set<String> selectedSet = new HashSet<>(selectedIngredients);
 
         for (Recipe r : allRecipes) {
-            Set<String> recipeIngs = getRecipeIngredientNames(r);
+            Set<String> recipeSearchTerms = getRecipeSearchTerms(r);
 
             if (!selectedSet.isEmpty()) {
                 boolean hasAny = false;
                 for (String sel : selectedSet) {
-                    for (String ri : recipeIngs) {
-                        if (ri.contains(sel) || sel.contains(ri)) {
+                    String translatedSel = applyManualPatchForSearch(sel);
+                    for (String term : recipeSearchTerms) {
+                        if (term.contains(sel) || sel.contains(term) || 
+                            (!translatedSel.isEmpty() && (term.contains(translatedSel) || translatedSel.contains(term)))) {
                             hasAny = true;
                             break;
                         }
@@ -343,9 +388,22 @@ public class DiscoverFragment extends Fragment
             }
 
             if (!textQuery.isEmpty()) {
-                String q = textQuery.toLowerCase();
-                if (!r.getTitle().toLowerCase().contains(q) &&
-                    !r.getDescription().toLowerCase().contains(q)) {
+                String q1 = textQuery.toLowerCase();
+                String q2 = translatedQuery != null ? translatedQuery.toLowerCase() : "";
+                
+                boolean matchInTitleDesc = r.getTitle().toLowerCase().contains(q1) || 
+                                         r.getDescription().toLowerCase().contains(q1) ||
+                                         (!q2.isEmpty() && (r.getTitle().toLowerCase().contains(q2) || r.getDescription().toLowerCase().contains(q2)));
+                
+                boolean matchInTerms = false;
+                for (String term : recipeSearchTerms) {
+                    if (term.contains(q1) || (!q2.isEmpty() && term.contains(q2))) {
+                        matchInTerms = true;
+                        break;
+                    }
+                }
+                
+                if (!matchInTitleDesc && !matchInTerms) {
                     continue;
                 }
             }
@@ -356,17 +414,27 @@ public class DiscoverFragment extends Fragment
         scoreAndDisplay(filtered, selectedIngredients);
     }
 
-    private Set<String> getRecipeIngredientNames(Recipe r) {
-        Set<String> names = new HashSet<>();
-        for (String name : r.getIngredientNames()) {
-            names.add(name.toLowerCase().trim());
+    private Set<String> getRecipeSearchTerms(Recipe r) {
+        Set<String> terms = new HashSet<>();
+        // Add original names
+        if (r.getIngredientNames() != null) {
+            for (String name : r.getIngredientNames()) terms.add(name.toLowerCase().trim());
         }
         if (r.getIngredients() != null) {
             for (Recipe.Ingredient ing : r.getIngredients()) {
-                names.add(ing.getName().toLowerCase().trim());
+                terms.add(ing.getName().toLowerCase().trim());
+                if (ing.getUnit() != null) terms.add(ing.getUnit().toLowerCase().trim());
+                
+                // CRITICAL: Add TRANSLATED names/units to the search index
+                if (ing.getTranslatedName() != null && !ing.getTranslatedName().isEmpty()) {
+                    terms.add(ing.getTranslatedName().toLowerCase().trim());
+                }
+                if (ing.getTranslatedUnit() != null && !ing.getTranslatedUnit().isEmpty()) {
+                    terms.add(ing.getTranslatedUnit().toLowerCase().trim());
+                }
             }
         }
-        return names;
+        return terms;
     }
 
     private void scoreAndDisplay(List<Recipe> recipes, List<String> selectedIngredients) {
@@ -374,7 +442,7 @@ public class DiscoverFragment extends Fragment
         Set<String> selectedSet = new HashSet<>(selectedIngredients);
 
         for (Recipe recipe : recipes) {
-            Set<String> recipeIngs = getRecipeIngredientNames(recipe);
+            Set<String> recipeIngs = getRecipeSearchTerms(recipe);
 
             int matchPercent;
             List<String> missing = new ArrayList<>();
@@ -566,6 +634,35 @@ public class DiscoverFragment extends Fragment
         } else {
             tvEmptyPublicCookbooks.setVisibility(View.GONE);
         }
+    }
+
+    private String applyManualPatchForSearch(String input) {
+        String text = input.toLowerCase().trim();
+        // TR to EN
+        if (text.equals("yumurta")) return "egg";
+        if (text.equals("süt")) return "milk";
+        if (text.equals("su")) return "water";
+        if (text.equals("un")) return "flour";
+        if (text.equals("mısır") || text.equals("misir")) return "corn";
+        if (text.equals("tuz")) return "salt";
+        if (text.equals("yağ")) return "oil";
+        if (text.equals("tavuk")) return "chicken";
+        if (text.equals("et")) return "meat";
+        if (text.equals("şeker")) return "sugar";
+        
+        // EN to TR
+        if (text.equals("egg")) return "yumurta";
+        if (text.equals("milk")) return "süt";
+        if (text.equals("water")) return "su";
+        if (text.equals("flour")) return "un";
+        if (text.equals("corn")) return "mısır";
+        if (text.equals("salt")) return "tuz";
+        if (text.equals("oil")) return "yağ";
+        if (text.equals("chicken")) return "tavuk";
+        if (text.equals("meat")) return "et";
+        if (text.equals("sugar")) return "şeker";
+        
+        return "";
     }
 
     private <T> List<List<T>> partition(List<T> list, int size) {

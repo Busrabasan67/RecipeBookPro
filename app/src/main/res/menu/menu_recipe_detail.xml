@@ -12,6 +12,11 @@
         android:title="@string/like"
         app:showAsAction="ifRoom" />
     <item
+        android:id="@+id/action_translate"
+        android:icon="@drawable/ic_translate"
+        android:title="Translate"
+        app:showAsAction="ifRoom" />
+    <item
         android:id="@+id/action_add_shopping"
         android:title="@string/add_to_shopping"
         app:showAsAction="never" />

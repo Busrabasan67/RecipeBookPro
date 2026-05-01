@@ -36,7 +36,7 @@ public class StepAdapter extends RecyclerView.Adapter<StepAdapter.ViewHolder> {
         Step step = steps.get(position);
         
         holder.tvStepNumber.setText(String.valueOf(step.getOrder()));
-        holder.tvStepDescription.setText(step.getDescription());
+        holder.tvStepDescription.setText(step.getDisplayDescription());
         
         if (step.hasTimer()) {
             holder.chipTimer.setVisibility(View.VISIBLE);

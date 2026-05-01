@@ -41,6 +41,10 @@ import com.recipebookpro.domain.model.Step;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import java.util.UUID;
+import com.recipebookpro.domain.service.TranslationService;
+import com.recipebookpro.data.remote.MLKitTranslationService;
+import com.recipebookpro.domain.usecase.TranslateRecipeUseCase;
+import com.google.mlkit.nl.translate.TranslateLanguage;
 import com.recipebookpro.presentation.ui.BaseActivity;
 import com.recipebookpro.presentation.ui.recipe.adapter.EditableIngredientAdapter;
 import com.recipebookpro.presentation.ui.recipe.adapter.EditableStepAdapter;
@@ -62,6 +66,7 @@ public class RecipeAddEditActivity extends BaseActivity {
 
     private Recipe currentRecipe;
     private boolean isEditMode = false;
+    private TranslateRecipeUseCase translateRecipeUseCase;
 
     // Views
     private ImageView ivPreview;
@@ -159,6 +164,8 @@ public class RecipeAddEditActivity extends BaseActivity {
         setupAdapters();
         setupAllergens();
         fetchCookbooks();
+        
+        translateRecipeUseCase = new TranslateRecipeUseCase(new MLKitTranslationService(this));
 
         currentRecipe = (Recipe) getIntent().getSerializableExtra(EXTRA_RECIPE);
         if (currentRecipe != null) {
@@ -475,6 +482,10 @@ public class RecipeAddEditActivity extends BaseActivity {
         String docId = isEditMode ? currentRecipe.getId() : db.collection("recipes").document().getId();
         currentRecipe.setId(docId);
 
+        proceedToSave(docId);
+    }
+
+    private void proceedToSave(String docId) {
         if (selectedImageUri != null && !selectedImageUri.toString().startsWith("http")) {
             uploadImageAndSave(docId);
         } else {

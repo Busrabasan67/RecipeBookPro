@@ -73,8 +73,8 @@ public class DiscoverRecipeAdapter extends RecyclerView.Adapter<DiscoverRecipeAd
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         ScoredRecipe scored = items.get(position);
         Recipe recipe = scored.recipe;
-
-        holder.tvTitle.setText(recipe.getTitle());
+        String currentLang = java.util.Locale.getDefault().getLanguage();
+        holder.tvTitle.setText(recipe.getDisplayTitle(currentLang));
         holder.tvMatch.setText(holder.itemView.getContext().getString(R.string.match_percent_display, scored.matchPercent));
 
         User owner = ownerMap.get(recipe.getUserId());

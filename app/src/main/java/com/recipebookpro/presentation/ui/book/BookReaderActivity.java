@@ -72,6 +72,15 @@ public class BookReaderActivity extends BaseActivity {
         btnBack.setOnClickListener(v -> finish());
         btnToc.setOnClickListener(v -> goToToc());
         
+        findViewById(R.id.btnBookTranslate).setOnClickListener(v -> {
+            androidx.fragment.app.Fragment currentFrag = getSupportFragmentManager().findFragmentByTag("f" + viewPager.getCurrentItem());
+            if (currentFrag instanceof RecipePageFragment) {
+                ((RecipePageFragment) currentFrag).translatePage(null);
+            } else {
+                android.widget.Toast.makeText(this, R.string.translation_only_recipes, android.widget.Toast.LENGTH_SHORT).show();
+            }
+        });
+        
         android.view.View btnEdit = findViewById(R.id.btnBookStickers);
         btnEdit.setVisibility(View.GONE); // Yetki verilene kadar varsayılan olarak gizli / Default hidden until authorized
         btnEdit.setOnClickListener(v -> toggleEditMode(true));

@@ -50,7 +50,7 @@ public class IngredientAdapter extends RecyclerView.Adapter<IngredientAdapter.Vi
              holder.tvIngredientName.setText(ingredient.getScaledDisplayText(currentScaleRatio));
              holder.tvIngredientAmountUnit.setVisibility(View.GONE);
         } else {
-             holder.tvIngredientName.setText(ingredient.getName());
+             holder.tvIngredientName.setText(ingredient.getDisplayName());
              String au = (ingredient.getAmount() + " " + ingredient.getUnit()).trim();
              if (!au.isEmpty()) {
                  holder.tvIngredientAmountUnit.setText(au);

@@ -46,7 +46,8 @@ public class DayRecipeAdapter extends RecyclerView.Adapter<DayRecipeAdapter.View
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Recipe recipe = recipes.get(position);
-        holder.tvRecipeName.setText(recipe.getTitle());
+        String currentLang = java.util.Locale.getDefault().getLanguage();
+        holder.tvRecipeName.setText(recipe.getDisplayTitle(currentLang));
 
         holder.itemView.setOnClickListener(v -> {
             if (clickListener != null) clickListener.onRecipeClick(recipe);
