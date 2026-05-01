@@ -67,7 +67,7 @@
     <string name="no_ingredients">Malzeme eklenmemiş.</string>
     <string name="no_steps">Adım eklenmemiş.</string>
     <string name="discover_search_hint">Herkese açık tarifleri ara…</string>
-    <string name="discover_coming_soon">Public recipes coming soon</string>
+    <string name="discover_coming_soon">Herkese açık tarifler çok yakında</string>
     <string name="my_kitchen_title">Tarif Defterlerim</string>
     <string name="my_kitchen_empty">Henüz bir koleksiyon oluşturmadınız.</string>
     <string name="kitchen_pending_invitations">Bekleyen Davetler</string>
@@ -233,6 +233,12 @@
     <string name="save_failed">Kayıt hatası</string>
     <string name="update_failed">Güncelleme hatası</string>
     <string name="search_recipes">Tarifleri Ara</string>
+    <string name="view_all">Tümünü Gör</string>
+    <string name="sort_popular">En Çok Takip Edilen</string>
+    <string name="sort_newest">En Yeni</string>
+    <string name="sort_most_liked">En Çok Beğenilen</string>
+    <string name="sort_most_added">En Çok Eklenen</string>
+    <string name="search_cookbooks">Defterlerde ara...</string>
     <string name="public_cookbooks">Herkese Açık Defterler</string>
     <string name="public_recipes">Herkese Açık Tarifler</string>
     <string name="no_public_cookbooks">Henüz herkese açık defter yok</string>

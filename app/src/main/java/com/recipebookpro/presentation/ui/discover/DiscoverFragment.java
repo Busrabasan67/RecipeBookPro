@@ -1,5 +1,6 @@
 package com.recipebookpro.presentation.ui.discover;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -48,7 +49,10 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
     private ChipGroup chipGroupIngredients;
     private RecyclerView rvDiscoverResults, rvPublicCookbooks;
     private ProgressBar progressDiscover;
-    private TextView tvDiscoverEmpty, tvResultsTitle, tvPublicCookbooksLabel;
+    private TextView tvDiscoverEmpty, tvResultsTitle;
+    private View hsvRecipeSort, layoutPublicCookbooksHeader;
+    private ChipGroup chipGroupRecipeSort;
+    private MaterialButton btnViewAllCookbooks;
 
     private FirebaseFirestore db;
     private DiscoverRecipeAdapter adapter;
@@ -75,7 +79,21 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
         progressDiscover = view.findViewById(R.id.progressDiscover);
         tvDiscoverEmpty = view.findViewById(R.id.tvDiscoverEmpty);
         tvResultsTitle = view.findViewById(R.id.tvResultsTitle);
-        tvPublicCookbooksLabel = view.findViewById(R.id.tvPublicCookbooksLabel);
+        btnViewAllCookbooks = view.findViewById(R.id.btnViewAllCookbooks);
+        layoutPublicCookbooksHeader = view.findViewById(R.id.layoutPublicCookbooksHeader);
+        hsvRecipeSort = view.findViewById(R.id.hsvRecipeSort);
+        chipGroupRecipeSort = view.findViewById(R.id.chipGroupRecipeSort);
+
+        btnViewAllCookbooks.setOnClickListener(v -> {
+            Intent intent = new Intent(getContext(), PublicCookbooksActivity.class);
+            startActivity(intent);
+        });
+
+        chipGroupRecipeSort.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (!results.isEmpty()) {
+                sortRecipesBySelection();
+            }
+        });
 
         // Keyboard "Search" action trigger
         etSearch.setOnEditorActionListener((v, actionId, event) -> {
@@ -92,6 +110,7 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
         rvDiscoverResults.setAdapter(adapter);
 
         cookbookAdapter = new CookbookAdapter(publicCookbooks, this);
+        cookbookAdapter.setHorizontal(true);
         rvPublicCookbooks.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
         rvPublicCookbooks.setAdapter(cookbookAdapter);
 
@@ -103,10 +122,12 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
     }
 
     private void populateIngredients() {
-        String[] commonIngredients = {"Yumurta", "Süt", "Un", "Şeker", "Yağ", "Tuz", "Domates", "Patates", "Tavuk", "Et", "Soğan", "Sarımsak", "Biber", "Mısır"};
+        String[] commonIngredients = getResources().getStringArray(R.array.discover_default_ingredients);
         for (String ing : commonIngredients) {
             Chip chip = new Chip(requireContext());
-            chip.setText(ing);
+            // Capitalize first letter for UI
+            String capitalized = ing.substring(0, 1).toUpperCase() + ing.substring(1);
+            chip.setText(capitalized);
             chip.setCheckable(true);
             chip.setClickable(true);
             chip.setOnCheckedChangeListener((buttonView, isChecked) -> performSearch());
@@ -386,13 +407,34 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
             results.add(new ScoredRecipe(recipe, matchPercent, missing));
         }
 
-        results.sort((a, b) -> Integer.compare(b.matchPercent, a.matchPercent));
+        sortRecipesBySelection();
         adapter.setOwnerMap(ownersById);
         
-        String resultsText = getString(R.string.results) + " (" + results.size() + ")";
-        tvResultsTitle.setText(resultsText);
+        tvResultsTitle.setText(getString(R.string.results_count, results.size()));
         
         updateResultVisibility();
+    }
+
+    private void sortRecipesBySelection() {
+        int checkedId = chipGroupRecipeSort.getCheckedChipId();
+        
+        if (checkedId == R.id.chipSortRecipePopular) {
+            results.sort((a, b) -> Integer.compare(b.recipe.getLikes(), a.recipe.getLikes()));
+        } else if (checkedId == R.id.chipSortRecipeNewest) {
+            results.sort((a, b) -> Long.compare(b.recipe.getCreatedAt(), a.recipe.getCreatedAt()));
+        } else if (checkedId == R.id.chipSortRecipeAdded) {
+            // "Most Added" usually maps to popularity or total saves. 
+            // Since we don't have a separate save counter, we'll use likes as a proxy or stick to match percent as primary.
+            // Let's use likes but prioritize match percent if they are equal.
+            results.sort((a, b) -> {
+                int res = Integer.compare(b.recipe.getLikes(), a.recipe.getLikes());
+                return res != 0 ? res : Integer.compare(b.matchPercent, a.matchPercent);
+            });
+        } else {
+            // Default: Match Percent
+            results.sort((a, b) -> Integer.compare(b.matchPercent, a.matchPercent));
+        }
+        adapter.notifyDataSetChanged();
     }
 
     private void updateResultVisibility() {
@@ -401,27 +443,29 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
             tvDiscoverEmpty.setVisibility(View.VISIBLE);
             rvDiscoverResults.setVisibility(View.GONE);
             tvResultsTitle.setVisibility(View.GONE);
+            hsvRecipeSort.setVisibility(View.GONE);
         } else {
             tvDiscoverEmpty.setVisibility(View.GONE);
             rvDiscoverResults.setVisibility(View.VISIBLE);
             tvResultsTitle.setVisibility(View.VISIBLE);
+            hsvRecipeSort.setVisibility(View.VISIBLE);
             adapter.notifyDataSetChanged();
         }
 
         if (!publicCookbooks.isEmpty()) {
-            tvPublicCookbooksLabel.setVisibility(View.VISIBLE);
-            rvPublicCookbooks.setVisibility(View.VISIBLE);
+            // Show only first 10 for discover page, sorted by popularity
+            Collections.sort(publicCookbooks, (c1, c2) -> Integer.compare(c2.getFollowerCount(), c1.getFollowerCount()));
             cookbookAdapter.notifyDataSetChanged();
+            setPublicCookbooksVisibility(true);
         } else {
-            tvPublicCookbooksLabel.setVisibility(View.GONE);
-            rvPublicCookbooks.setVisibility(View.GONE);
+            setPublicCookbooksVisibility(false);
         }
     }
 
     private void setPublicCookbooksVisibility(boolean show) {
         int visibility = show ? View.VISIBLE : View.GONE;
-        tvPublicCookbooksLabel.setVisibility(visibility);
-        rvPublicCookbooks.setVisibility(visibility);
+        if (layoutPublicCookbooksHeader != null) layoutPublicCookbooksHeader.setVisibility(visibility);
+        if (rvPublicCookbooks != null) rvPublicCookbooks.setVisibility(visibility);
     }
 
     private List<String> getSelectedIngredients() {
@@ -444,20 +488,37 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
         patches.put("water", "su");
         patches.put("flour", "un");
         patches.put("corn", "mısır");
-        patches.put("span", "karış");
         patches.put("sugar", "şeker");
         patches.put("oil", "yağ");
         patches.put("salt", "tuz");
+        patches.put("chicken", "tavuk");
+        patches.put("meat", "et");
+        patches.put("potato", "patates");
+        patches.put("onion", "soğan");
+        patches.put("tomato", "domates");
+        patches.put("cheese", "peynir");
+        patches.put("butter", "tereyağı");
+        patches.put("rice", "pirinç");
+        patches.put("pasta", "makarna");
+        
         // Turkish -> English
         patches.put("yumurta", "egg");
         patches.put("süt", "milk");
         patches.put("su", "water");
         patches.put("un", "flour");
         patches.put("mısır", "corn");
-        patches.put("karış", "span");
         patches.put("şeker", "sugar");
         patches.put("yağ", "oil");
         patches.put("tuz", "salt");
+        patches.put("tavuk", "chicken");
+        patches.put("et", "meat");
+        patches.put("patates", "potato");
+        patches.put("soğan", "onion");
+        patches.put("domates", "tomato");
+        patches.put("peynir", "cheese");
+        patches.put("tereyağı", "butter");
+        patches.put("pirinç", "rice");
+        patches.put("makarna", "pasta");
         
         return patches.getOrDefault(lower, "");
     }
@@ -473,29 +534,71 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
     @Override
     public void onRecipeClick(Recipe recipe) {
         android.content.Intent intent = new android.content.Intent(getContext(), RecipeDetailActivity.class);
-        intent.putExtra("recipe", recipe);
+        intent.putExtra(RecipeDetailActivity.EXTRA_RECIPE, recipe);
         startActivity(intent);
     }
 
     @Override
     public void onAddMissingToShopping(Recipe recipe, List<String> missing) {
-        Toast.makeText(getContext(), R.string.recipe_saved, Toast.LENGTH_SHORT).show();
+        Toast.makeText(getContext(), R.string.missing_added_to_shopping, Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void onAuthorClick(String userId) {
-        // Handle author click (e.g. open profile)
+        Intent intent = new Intent(getContext(), com.recipebookpro.presentation.ui.kitchen.PublicProfileActivity.class);
+        intent.putExtra(com.recipebookpro.presentation.ui.kitchen.PublicProfileActivity.EXTRA_USER_ID, userId);
+        startActivity(intent);
     }
 
     @Override
     public void onToggleFollowAuthor(String userId, boolean currentlyFollowing) {
-        // Handle follow/unfollow
+        String currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().getUid();
+        if (currentUid == null || currentUid.equals(userId)) return;
+
+        db.runTransaction(transaction -> {
+            DocumentSnapshot targetUserDoc = transaction.get(db.collection("users").document(userId));
+            DocumentSnapshot currentUserDoc = transaction.get(db.collection("users").document(currentUid));
+
+            List<String> targetFollowerIds = (List<String>) targetUserDoc.get("followerIds");
+            if (targetFollowerIds == null) targetFollowerIds = new ArrayList<>();
+            long targetFollowerCount = targetUserDoc.getLong("followerCount") != null ? targetUserDoc.getLong("followerCount") : 0;
+
+            List<String> currentFollowingIds = (List<String>) currentUserDoc.get("followingIds");
+            if (currentFollowingIds == null) currentFollowingIds = new ArrayList<>();
+            long currentFollowingCount = currentUserDoc.getLong("followingCount") != null ? currentUserDoc.getLong("followingCount") : 0;
+
+            if (currentlyFollowing) {
+                targetFollowerIds.remove(currentUid);
+                targetFollowerCount = Math.max(0, targetFollowerCount - 1);
+                currentFollowingIds.remove(userId);
+                currentFollowingCount = Math.max(0, currentFollowingCount - 1);
+            } else {
+                targetFollowerIds.add(currentUid);
+                targetFollowerCount++;
+                currentFollowingIds.add(userId);
+                currentFollowingCount++;
+            }
+
+            transaction.update(db.collection("users").document(userId),
+                    "followerIds", targetFollowerIds,
+                    "followerCount", targetFollowerCount);
+            
+            transaction.update(db.collection("users").document(currentUid),
+                    "followingIds", currentFollowingIds,
+                    "followingCount", currentFollowingCount);
+
+            return null;
+        }).addOnFailureListener(e -> {
+            if (getContext() != null) {
+                Toast.makeText(getContext(), R.string.follow_action_failed, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override
     public void onCookbookClick(Cookbook cookbook) {
         android.content.Intent intent = new android.content.Intent(getContext(), CookbookDetailActivity.class);
-        intent.putExtra("cookbook", cookbook);
+        intent.putExtra(CookbookDetailActivity.EXTRA_COOKBOOK_ID, cookbook.getId());
         startActivity(intent);
     }
 

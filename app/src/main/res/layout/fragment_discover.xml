@@ -93,15 +93,34 @@
                 android:text="@string/search_recipes"
                 app:icon="@drawable/ic_nav_discover" />
 
-            <!-- Public Cookbooks Section -->
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/tvPublicCookbooksLabel"
+            <!-- Public Cookbooks Section Header -->
+            <RelativeLayout
+                android:id="@+id/layoutPublicCookbooksHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/margin_medium"
-                android:paddingHorizontal="@dimen/padding_medium"
-                android:text="@string/public_cookbooks"
-                android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+                android:paddingHorizontal="@dimen/padding_medium">
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/tvPublicCookbooksLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:text="@string/public_cookbooks"
+                    android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnViewAllCookbooks"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:text="@string/view_all"
+                    app:icon="@drawable/ic_chevron_right"
+                    app:iconGravity="end" />
+            </RelativeLayout>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvPublicCookbooks"
@@ -123,7 +142,7 @@
                 android:alpha="0.6"
                 android:visibility="gone" />
 
-            <!-- Search Results -->
+            <!-- Search Results & Sorting -->
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/tvResultsTitle"
                 android:layout_width="match_parent"
@@ -132,7 +151,50 @@
                 android:paddingHorizontal="@dimen/padding_medium"
                 android:text="@string/results"
                 android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                android:textStyle="bold"
                 android:visibility="gone" />
+
+            <HorizontalScrollView
+                android:id="@+id/hsvRecipeSort"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:scrollbars="none"
+                android:paddingHorizontal="16dp"
+                android:visibility="gone">
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipGroupRecipeSort"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    app:singleSelection="true"
+                    app:selectionRequired="true">
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipSortRecipeNewest"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sort_newest"
+                        android:checked="true" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipSortRecipePopular"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sort_most_liked" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipSortRecipeAdded"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sort_most_added" />
+
+                </com.google.android.material.chip.ChipGroup>
+            </HorizontalScrollView>
 
             <ProgressBar
                 android:id="@+id/progressDiscover"

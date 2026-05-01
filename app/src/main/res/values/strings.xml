@@ -262,6 +262,12 @@
     <string name="no_followed_cookbooks">No followed public cookbooks yet</string>
     <string name="results">Results</string>
     <string name="results_count">Results (%1$d)</string>
+    <string name="view_all">View All</string>
+    <string name="sort_popular">Popular</string>
+    <string name="sort_newest">Newest</string>
+    <string name="sort_most_liked">Most Liked</string>
+    <string name="sort_most_added">Most Added</string>
+    <string name="search_cookbooks">Search public cookbooks...</string>
     <string name="discover_select_ingredient_prompt">Select ingredients and search</string>
     <string name="missing_ingredients_list_name">%1$s - Missing Ingredients</string>
     <string name="missing_added_to_shopping">Missing items added to shopping list</string>

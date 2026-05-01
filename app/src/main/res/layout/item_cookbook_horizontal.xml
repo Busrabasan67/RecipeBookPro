@@ -2,12 +2,13 @@
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
+    android:layout_width="260dp"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="2dp"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="4dp"
     app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+    app:strokeWidth="0dp"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground">
@@ -17,15 +18,38 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <ImageView
-            android:id="@+id/ivCookbookCover"
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="140dp"
-            android:scaleType="centerCrop"
-            android:src="@drawable/ic_book"
-            android:padding="32dp"
-            android:background="?attr/colorPrimaryContainer"
-            app:tint="?attr/colorOnPrimaryContainer" />
+            android:layout_height="160dp">
+
+            <ImageView
+                android:id="@+id/ivCookbookCover"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_book"
+                android:padding="48dp"
+                android:background="?attr/colorPrimaryContainer"
+                app:tint="?attr/colorOnPrimaryContainer" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/gradient_overlay_bottom" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipFollowerCount"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|start"
+                android:layout_margin="12dp"
+                android:alpha="0.9"
+                app:chipIcon="@drawable/ic_nav_profile"
+                app:chipIconSize="16dp"
+                app:chipBackgroundColor="@android:color/white"
+                tools:text="1.2k" />
+        </FrameLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -44,22 +68,24 @@
                 tools:text="Hafta Sonu Menüsü" />
 
             <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/tvRecipeCount"
+                android:id="@+id/tvCookbookDesc"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:textAppearance="@style/TextAppearance.Material3.BodySmall"
                 android:textColor="?attr/colorOnSurfaceVariant"
-                tools:text="12 Tarif" />
+                android:maxLines="2"
+                android:ellipsize="end"
+                tools:text="Harika hafta sonu kahvaltıları için seçilmiş en iyi tarifler..." />
 
             <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/tvCookbookLikes"
+                android:id="@+id/tvRecipeCount"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                tools:text="8 likes" />
+                android:layout_marginTop="8dp"
+                android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+                android:textColor="?attr/colorPrimary"
+                tools:text="12 Tarif" />
         </LinearLayout>
     </LinearLayout>
 

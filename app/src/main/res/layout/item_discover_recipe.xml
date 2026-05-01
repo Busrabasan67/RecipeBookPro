@@ -7,7 +7,11 @@
     android:layout_margin="8dp"
     app:cardCornerRadius="16dp"
     app:cardElevation="2dp"
-    app:cardBackgroundColor="?attr/colorSurfaceContainerLow">
+    app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+    app:strokeWidth="0dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
 
     <LinearLayout
         android:layout_width="match_parent"

@@ -115,13 +115,34 @@ public class DiscoverRecipeAdapter extends RecyclerView.Adapter<DiscoverRecipeAd
         }
 
         if (!recipe.getImageUrl().isEmpty()) {
+            holder.ivImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
             holder.ivImage.setPadding(0, 0, 0, 0);
             holder.ivImage.setBackgroundColor(0);
             ImageRequest request = new ImageRequest.Builder(holder.itemView.getContext())
                     .data(recipe.getImageUrl())
                     .target(holder.ivImage)
+                    .crossfade(true)
+                    .placeholder(R.drawable.ic_cook)
+                    .error(R.drawable.ic_cook)
                     .build();
             Coil.imageLoader(holder.itemView.getContext()).enqueue(request);
+        } else {
+            // Cancel any pending Coil request
+            Coil.imageLoader(holder.itemView.getContext()).enqueue(new ImageRequest.Builder(holder.itemView.getContext())
+                    .data((Object) null)
+                    .target(holder.ivImage)
+                    .build());
+            
+            holder.ivImage.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+            holder.ivImage.setImageResource(R.drawable.ic_cook);
+            holder.ivImage.setPadding(48, 48, 48, 48);
+
+            android.util.TypedValue typedValue = new android.util.TypedValue();
+            android.content.Context context = holder.itemView.getContext();
+            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorPrimaryContainer, typedValue, true);
+            holder.ivImage.setBackgroundColor(typedValue.data);
+            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnPrimaryContainer, typedValue, true);
+            holder.ivImage.setImageTintList(android.content.res.ColorStateList.valueOf(typedValue.data));
         }
 
         holder.chipGroupMissing.removeAllViews();

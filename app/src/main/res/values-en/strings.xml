@@ -255,6 +255,10 @@
     <string name="save_failed">Save failed</string>
     <string name="update_failed">Update failed</string>
     <string name="search_recipes">Search Recipes</string>
+    <string name="view_all">View All</string>
+    <string name="sort_popular">Most Followed</string>
+    <string name="sort_newest">Newest</string>
+    <string name="search_cookbooks">Search cookbooks...</string>
     <string name="public_cookbooks">Public Cookbooks</string>
     <string name="public_recipes">Public Recipes</string>
     <string name="no_public_cookbooks">No public cookbooks yet</string>

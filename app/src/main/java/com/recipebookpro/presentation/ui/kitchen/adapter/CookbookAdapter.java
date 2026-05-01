@@ -9,6 +9,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.chip.Chip;
 import com.recipebookpro.R;
 import com.recipebookpro.domain.model.Cookbook;
 
@@ -21,6 +22,7 @@ public class CookbookAdapter extends RecyclerView.Adapter<CookbookAdapter.ViewHo
     
     private final List<Cookbook> cookbooks;
     private final OnCookbookClickListener listener;
+    private boolean isHorizontal = false;
 
     public interface OnCookbookClickListener {
         void onCookbookClick(Cookbook cookbook);
@@ -31,10 +33,15 @@ public class CookbookAdapter extends RecyclerView.Adapter<CookbookAdapter.ViewHo
         this.listener = listener;
     }
 
+    public void setHorizontal(boolean horizontal) {
+        this.isHorizontal = horizontal;
+    }
+
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_cookbook, parent, false);
+        int layoutId = isHorizontal ? R.layout.item_cookbook_horizontal : R.layout.item_cookbook;
+        View view = LayoutInflater.from(parent.getContext()).inflate(layoutId, parent, false);
         return new ViewHolder(view);
     }
 
@@ -44,9 +51,20 @@ public class CookbookAdapter extends RecyclerView.Adapter<CookbookAdapter.ViewHo
         holder.tvCookbookName.setText(book.getName());
         int count = book.getRecipeIds() != null ? book.getRecipeIds().size() : 0;
         holder.tvRecipeCount.setText(holder.itemView.getContext().getString(R.string.recipe_count, count));
-        holder.tvCookbookLikes.setText(holder.itemView.getContext().getString(R.string.likes_count, book.getFollowerCount()));
+        
+        if (isHorizontal) {
+            if (holder.tvCookbookDesc != null) holder.tvCookbookDesc.setText(book.getDescription());
+            if (holder.chipFollowers != null) {
+                holder.chipFollowers.setText(String.valueOf(book.getFollowerCount()));
+            }
+        } else {
+            if (holder.tvCookbookLikes != null) {
+                holder.tvCookbookLikes.setText(holder.itemView.getContext().getString(R.string.followers_count, book.getFollowerCount()));
+            }
+        }
         
         if (book.getCoverImageUrl() != null && !book.getCoverImageUrl().isEmpty()) {
+            holder.ivCookbookCover.setScaleType(ImageView.ScaleType.CENTER_CROP);
             holder.ivCookbookCover.setPadding(0, 0, 0, 0);
             holder.ivCookbookCover.setBackground(null);
             holder.ivCookbookCover.setImageTintList(null);
@@ -60,10 +78,22 @@ public class CookbookAdapter extends RecyclerView.Adapter<CookbookAdapter.ViewHo
                     .build();
             Coil.imageLoader(holder.itemView.getContext()).enqueue(request);
         } else {
-            // Reset to placeholder state if no image
+            // Cancel any pending Coil request
+            Coil.imageLoader(holder.itemView.getContext()).enqueue(new ImageRequest.Builder(holder.itemView.getContext())
+                    .data((Object) null)
+                    .target(holder.ivCookbookCover)
+                    .build());
+
+            holder.ivCookbookCover.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
             holder.ivCookbookCover.setImageResource(R.drawable.ic_book);
-            holder.ivCookbookCover.setPadding(32, 32, 32, 32);
-            // These might need ContextCompat if tinting manually, but we'll assume XML defaults or stick to basic reset
+            holder.ivCookbookCover.setPadding(isHorizontal ? 48 : 32, isHorizontal ? 48 : 32, isHorizontal ? 48 : 32, isHorizontal ? 48 : 32);
+            
+            android.util.TypedValue typedValue = new android.util.TypedValue();
+            android.content.Context context = holder.itemView.getContext();
+            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorPrimaryContainer, typedValue, true);
+            holder.ivCookbookCover.setBackgroundColor(typedValue.data);
+            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnPrimaryContainer, typedValue, true);
+            holder.ivCookbookCover.setImageTintList(android.content.res.ColorStateList.valueOf(typedValue.data));
         }
 
         holder.itemView.setOnClickListener(v -> {
@@ -73,19 +103,22 @@ public class CookbookAdapter extends RecyclerView.Adapter<CookbookAdapter.ViewHo
 
     @Override
     public int getItemCount() {
-        return cookbooks.size();
+        return cookbooks == null ? 0 : cookbooks.size();
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvCookbookName, tvRecipeCount, tvCookbookLikes;
+        TextView tvCookbookName, tvRecipeCount, tvCookbookLikes, tvCookbookDesc;
         ImageView ivCookbookCover;
+        Chip chipFollowers;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvCookbookName = itemView.findViewById(R.id.tvCookbookName);
             tvRecipeCount = itemView.findViewById(R.id.tvRecipeCount);
             tvCookbookLikes = itemView.findViewById(R.id.tvCookbookLikes);
+            tvCookbookDesc = itemView.findViewById(R.id.tvCookbookDesc);
             ivCookbookCover = itemView.findViewById(R.id.ivCookbookCover);
+            chipFollowers = itemView.findViewById(R.id.chipFollowerCount);
         }
     }
 }
