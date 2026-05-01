@@ -15,6 +15,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.FileProvider;
 import android.content.Intent;
@@ -373,13 +375,40 @@ public class RecipeAddEditActivity extends BaseActivity {
         etServings.setText(String.valueOf(currentRecipe.getServings()));
         actvCategory.setText(com.recipebookpro.util.CategoryLocalization.getDisplayName(this, currentRecipe.getCategory()), false);
 
+        // Default placeholder state
+        ivPreview.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        ivPreview.setImageResource(R.drawable.ic_cook);
+        ivPreview.setPadding(0, 0, 0, 0);
+        
+        android.util.TypedValue typedValue = new android.util.TypedValue();
+        getTheme().resolveAttribute(com.google.android.material.R.attr.colorPrimaryContainer, typedValue, true);
+        ivPreview.setBackgroundColor(typedValue.data);
+        getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnPrimaryContainer, typedValue, true);
+        ivPreview.setImageTintList(android.content.res.ColorStateList.valueOf(typedValue.data));
+        llImagePlaceholder.setVisibility(View.GONE);
+
         if (!TextUtils.isEmpty(currentRecipe.getImageUrl())) {
             ImageRequest request = new ImageRequest.Builder(this)
                 .data(currentRecipe.getImageUrl())
-                .target(ivPreview)
+                .target(new coil.target.Target() {
+                    @Override
+                    public void onStart(@Nullable android.graphics.drawable.Drawable placeholder) {}
+
+                    @Override
+                    public void onSuccess(@NonNull android.graphics.drawable.Drawable result) {
+                        ivPreview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                        ivPreview.setBackground(null);
+                        ivPreview.setImageTintList(null);
+                        ivPreview.setImageDrawable(result);
+                    }
+
+                    @Override
+                    public void onError(@Nullable android.graphics.drawable.Drawable error) {
+                        // Keep placeholder state
+                    }
+                })
                 .build();
             Coil.imageLoader(this).enqueue(request);
-            llImagePlaceholder.setVisibility(View.GONE);
         }
 
         ingredientList.clear();

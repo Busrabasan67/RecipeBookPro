@@ -5,7 +5,9 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.core.graphics.ColorUtils;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -118,19 +120,56 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.RecipeView
             tvDescription.setText(recipe.getDisplayDescription(currentLang));
             tvIngredientsPreview.setText(recipe.getFormattedIngredients());
 
-            if (recipe.getImageUrl() != null && !recipe.getImageUrl().isEmpty()) {
-                ivRecipeImage.setVisibility(View.VISIBLE);
-                ImageRequest request = new ImageRequest.Builder(itemView.getContext())
-                        .data(recipe.getImageUrl())
-                        .target(ivRecipeImage)
-                        .crossfade(true)
-                        .placeholder(R.drawable.ic_nav_discover)
-                        .error(R.drawable.ic_nav_discover)
-                        .build();
-                Coil.imageLoader(itemView.getContext()).enqueue(request);
-            } else {
-                ivRecipeImage.setVisibility(View.GONE);
-            }
+            // Determine data to load: URL or placeholder resource
+            Object imageData = (recipe.getImageUrl() != null && !recipe.getImageUrl().isEmpty()) 
+                    ? recipe.getImageUrl() 
+                    : R.drawable.ic_cook;
+            boolean isRealImage = imageData instanceof String;
+
+            android.util.TypedValue typedValue = new android.util.TypedValue();
+            android.content.Context context = itemView.getContext();
+            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorPrimaryContainer, typedValue, true);
+            int bgColor = typedValue.data;
+            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnPrimaryContainer, typedValue, true);
+            int tintColor = typedValue.data;
+
+            ivRecipeImage.setVisibility(View.VISIBLE);
+            ImageRequest request = new ImageRequest.Builder(context)
+                    .data(imageData)
+                    .target(new coil.target.Target() {
+                        @Override
+                        public void onStart(@Nullable android.graphics.drawable.Drawable placeholder) {}
+
+                        @Override
+                        public void onSuccess(@NonNull android.graphics.drawable.Drawable result) {
+                            if (isRealImage) {
+                                ivRecipeImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                                ivRecipeImage.setBackground(null);
+                                ivRecipeImage.setImageTintList(null);
+                                ivRecipeImage.setPadding(0, 0, 0, 0);
+                                ivRecipeImage.setImageDrawable(result);
+                            } else {
+                                ivRecipeImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                                ivRecipeImage.setBackgroundColor(bgColor);
+                                ivRecipeImage.setPadding(0, 0, 0, 0);
+                                
+                                android.graphics.drawable.Drawable tinted = result.mutate();
+                                androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, tintColor);
+                                ivRecipeImage.setImageDrawable(tinted);
+                            }
+                        }
+
+                        @Override
+                        public void onError(@Nullable android.graphics.drawable.Drawable error) {
+                            ivRecipeImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                            ivRecipeImage.setImageResource(R.drawable.ic_cook);
+                            ivRecipeImage.setBackgroundColor(bgColor);
+                            ivRecipeImage.setImageTintList(android.content.res.ColorStateList.valueOf(tintColor));
+                        }
+                    })
+                    .crossfade(true)
+                    .build();
+            Coil.imageLoader(context).enqueue(request);
 
             if (recipe.getCategory() == null || recipe.getCategory().trim().isEmpty()) {
                 chipCategory.setVisibility(View.GONE);

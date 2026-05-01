@@ -7,6 +7,8 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.chip.Chip;
@@ -63,38 +65,55 @@ public class CookbookAdapter extends RecyclerView.Adapter<CookbookAdapter.ViewHo
             }
         }
         
-        if (book.getCoverImageUrl() != null && !book.getCoverImageUrl().isEmpty()) {
-            holder.ivCookbookCover.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            holder.ivCookbookCover.setPadding(0, 0, 0, 0);
-            holder.ivCookbookCover.setBackground(null);
-            holder.ivCookbookCover.setImageTintList(null);
-            
-            ImageRequest request = new ImageRequest.Builder(holder.itemView.getContext())
-                    .data(book.getCoverImageUrl())
-                    .target(holder.ivCookbookCover)
-                    .crossfade(true)
-                    .placeholder(R.drawable.ic_book)
-                    .error(R.drawable.ic_book)
-                    .build();
-            Coil.imageLoader(holder.itemView.getContext()).enqueue(request);
-        } else {
-            // Cancel any pending Coil request
-            Coil.imageLoader(holder.itemView.getContext()).enqueue(new ImageRequest.Builder(holder.itemView.getContext())
-                    .data((Object) null)
-                    .target(holder.ivCookbookCover)
-                    .build());
+        // Determine data to load: URL or placeholder resource
+        Object imageData = (book.getCoverImageUrl() != null && !book.getCoverImageUrl().isEmpty()) 
+                ? book.getCoverImageUrl() 
+                : R.drawable.ic_book;
+        boolean isRealImage = imageData instanceof String;
 
-            holder.ivCookbookCover.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-            holder.ivCookbookCover.setImageResource(R.drawable.ic_book);
-            holder.ivCookbookCover.setPadding(isHorizontal ? 48 : 32, isHorizontal ? 48 : 32, isHorizontal ? 48 : 32, isHorizontal ? 48 : 32);
-            
-            android.util.TypedValue typedValue = new android.util.TypedValue();
-            android.content.Context context = holder.itemView.getContext();
-            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorPrimaryContainer, typedValue, true);
-            holder.ivCookbookCover.setBackgroundColor(typedValue.data);
-            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnPrimaryContainer, typedValue, true);
-            holder.ivCookbookCover.setImageTintList(android.content.res.ColorStateList.valueOf(typedValue.data));
-        }
+        android.util.TypedValue typedValue = new android.util.TypedValue();
+        android.content.Context context = holder.itemView.getContext();
+        context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorPrimaryContainer, typedValue, true);
+        int bgColor = typedValue.data;
+        context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnPrimaryContainer, typedValue, true);
+        int tintColor = typedValue.data;
+
+        ImageRequest request = new ImageRequest.Builder(context)
+                .data(imageData)
+                .target(new coil.target.Target() {
+                    @Override
+                    public void onStart(@Nullable android.graphics.drawable.Drawable placeholder) {}
+
+                    @Override
+                    public void onSuccess(@NonNull android.graphics.drawable.Drawable result) {
+                        if (isRealImage) {
+                            holder.ivCookbookCover.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                            holder.ivCookbookCover.setBackground(null);
+                            holder.ivCookbookCover.setImageTintList(null);
+                            holder.ivCookbookCover.setPadding(0, 0, 0, 0);
+                            holder.ivCookbookCover.setImageDrawable(result);
+                        } else {
+                            holder.ivCookbookCover.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                            holder.ivCookbookCover.setBackgroundColor(bgColor);
+                            holder.ivCookbookCover.setPadding(0, 0, 0, 0);
+                            
+                            android.graphics.drawable.Drawable tinted = result.mutate();
+                            androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, tintColor);
+                            holder.ivCookbookCover.setImageDrawable(tinted);
+                        }
+                    }
+
+                    @Override
+                    public void onError(@Nullable android.graphics.drawable.Drawable error) {
+                        holder.ivCookbookCover.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                        holder.ivCookbookCover.setImageResource(R.drawable.ic_book);
+                        holder.ivCookbookCover.setBackgroundColor(bgColor);
+                        holder.ivCookbookCover.setImageTintList(android.content.res.ColorStateList.valueOf(tintColor));
+                    }
+                })
+                .crossfade(true)
+                .build();
+        Coil.imageLoader(context).enqueue(request);
 
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onCookbookClick(book);

@@ -10,6 +10,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 import java.util.Locale;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.viewpager2.widget.ViewPager2;
 
@@ -170,15 +172,39 @@ public class RecipeDetailActivity extends BaseActivity {
 
         // Load image using Coil
         ImageView ivRecipeCover = findViewById(R.id.ivRecipeCover);
+        // Default placeholder state
+        ivRecipeCover.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        ivRecipeCover.setImageResource(R.drawable.ic_cook);
+        ivRecipeCover.setPadding(0, 0, 0, 0);
+        
+        android.util.TypedValue typedValue = new android.util.TypedValue();
+        getTheme().resolveAttribute(com.google.android.material.R.attr.colorPrimaryContainer, typedValue, true);
+        ivRecipeCover.setBackgroundColor(typedValue.data);
+        getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnPrimaryContainer, typedValue, true);
+        ivRecipeCover.setImageTintList(android.content.res.ColorStateList.valueOf(typedValue.data));
+
         if (!TextUtils.isEmpty(recipe.getImageUrl())) {
             ImageRequest request = new ImageRequest.Builder(this)
                 .data(recipe.getImageUrl())
-                .target(ivRecipeCover)
+                .target(new coil.target.Target() {
+                    @Override
+                    public void onStart(@Nullable android.graphics.drawable.Drawable placeholder) {}
+
+                    @Override
+                    public void onSuccess(@NonNull android.graphics.drawable.Drawable result) {
+                        ivRecipeCover.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                        ivRecipeCover.setBackground(null);
+                        ivRecipeCover.setImageTintList(null);
+                        ivRecipeCover.setImageDrawable(result);
+                    }
+
+                    @Override
+                    public void onError(@Nullable android.graphics.drawable.Drawable error) {
+                        // Keep the placeholder state
+                    }
+                })
                 .build();
             Coil.imageLoader(this).enqueue(request);
-        } else {
-            // fallback generic image if needed, or just let scrim cover it
-            ivRecipeCover.setBackgroundColor(getResources().getColor(android.R.color.black, getTheme()));
         }
     }
 

@@ -9,6 +9,8 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -159,13 +161,37 @@ public class CookbookDetailActivity extends BaseActivity {
             tvDescription.setVisibility(View.VISIBLE);
         }
 
+        // Default placeholder state
+        ivCover.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        ivCover.setImageResource(R.drawable.ic_book);
+        ivCover.setPadding(0, 0, 0, 0);
+        
+        android.util.TypedValue typedValue = new android.util.TypedValue();
+        getTheme().resolveAttribute(com.google.android.material.R.attr.colorPrimaryContainer, typedValue, true);
+        ivCover.setBackgroundColor(typedValue.data);
+        getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnPrimaryContainer, typedValue, true);
+        ivCover.setImageTintList(android.content.res.ColorStateList.valueOf(typedValue.data));
+
         if (!TextUtils.isEmpty(cookbook.getCoverImageUrl())) {
-            ivCover.setPadding(0, 0, 0, 0);
-            ivCover.setBackground(null);
-            ivCover.setImageTintList(null);
             ImageRequest request = new ImageRequest.Builder(this)
                 .data(cookbook.getCoverImageUrl())
-                .target(ivCover)
+                .target(new coil.target.Target() {
+                    @Override
+                    public void onStart(@Nullable android.graphics.drawable.Drawable placeholder) {}
+
+                    @Override
+                    public void onSuccess(@NonNull android.graphics.drawable.Drawable result) {
+                        ivCover.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                        ivCover.setBackground(null);
+                        ivCover.setImageTintList(null);
+                        ivCover.setImageDrawable(result);
+                    }
+
+                    @Override
+                    public void onError(@Nullable android.graphics.drawable.Drawable error) {
+                        // Keep placeholder state
+                    }
+                })
                 .build();
             Coil.imageLoader(this).enqueue(request);
         }
