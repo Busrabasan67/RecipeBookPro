@@ -60,6 +60,12 @@ public class IngredientsTabFragment extends Fragment {
         tvServingsCount = view.findViewById(R.id.tvServingsCount);
         ImageButton btnMinus = view.findViewById(R.id.btnMinus);
         ImageButton btnPlus = view.findViewById(R.id.btnPlus);
+        com.google.android.material.chip.Chip chipCalories = view.findViewById(R.id.chipCalories);
+
+        if (recipe.getCalories() > 0) {
+            chipCalories.setVisibility(View.VISIBLE);
+            chipCalories.setText(recipe.getCalories() + " " + getString(R.string.kcal_unit));
+        }
         
         rvIngredients.setLayoutManager(new LinearLayoutManager(getContext()));
         adapter = new IngredientAdapter(recipe.getIngredients(), userAllergens);

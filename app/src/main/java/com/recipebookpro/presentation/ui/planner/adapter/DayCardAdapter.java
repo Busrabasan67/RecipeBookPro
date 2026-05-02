@@ -28,12 +28,15 @@ public class DayCardAdapter extends RecyclerView.Adapter<DayCardAdapter.DayViewH
 
     private final Map<String, List<Recipe>> dayRecipesMap = new HashMap<>();
     private final OnDayInteractionListener listener;
+    private int duration = 7;
 
     public DayCardAdapter(OnDayInteractionListener listener) {
         this.listener = listener;
-        for (String key : WeeklyMenu.DAY_KEYS) {
-            dayRecipesMap.put(key, new ArrayList<>());
-        }
+    }
+
+    public void setDuration(int duration) {
+        this.duration = duration;
+        notifyDataSetChanged();
     }
 
     public void setDayRecipes(String dayKey, List<Recipe> recipes) {
@@ -43,17 +46,17 @@ public class DayCardAdapter extends RecyclerView.Adapter<DayCardAdapter.DayViewH
     }
 
     public void setAllDayRecipes(Map<String, List<Recipe>> allData) {
-        for (String key : WeeklyMenu.DAY_KEYS) {
-            dayRecipesMap.put(key, allData.containsKey(key) ? allData.get(key) : new ArrayList<>());
-        }
+        dayRecipesMap.clear();
+        dayRecipesMap.putAll(allData);
         notifyDataSetChanged();
     }
 
     private int dayIndex(String dayKey) {
-        for (int i = 0; i < WeeklyMenu.DAY_KEYS.length; i++) {
-            if (WeeklyMenu.DAY_KEYS[i].equals(dayKey)) return i;
+        try {
+            return Integer.parseInt(dayKey.replace("day_", ""));
+        } catch (Exception e) {
+            return -1;
         }
-        return -1;
     }
 
     @NonNull
@@ -66,13 +69,31 @@ public class DayCardAdapter extends RecyclerView.Adapter<DayCardAdapter.DayViewH
 
     @Override
     public void onBindViewHolder(@NonNull DayViewHolder holder, int position) {
-        String dayKey = WeeklyMenu.DAY_KEYS[position];
-        String[] dayLabels = holder.itemView.getResources().getStringArray(R.array.week_day_labels);
-        String dayLabel = position < dayLabels.length ? dayLabels[position] : dayKey;
+        String dayKey = "day_" + position;
+        String dayLabel;
+        if (duration == 7) {
+            String[] dayLabels = holder.itemView.getResources().getStringArray(R.array.week_day_labels);
+            dayLabel = position < dayLabels.length ? dayLabels[position] : (position + 1) + ". Gün";
+        } else {
+            dayLabel = (position + 1) + ". Gün";
+        }
+        
         List<Recipe> recipes = dayRecipesMap.get(dayKey);
         if (recipes == null) recipes = new ArrayList<>();
 
         holder.tvDayName.setText(dayLabel);
+        
+        int dailyCalories = 0;
+        for (Recipe r : recipes) {
+            dailyCalories += r.getCalories();
+        }
+        
+        if (dailyCalories > 0) {
+            holder.tvDayCalories.setVisibility(View.VISIBLE);
+            holder.tvDayCalories.setText(dailyCalories + " kcal");
+        } else {
+            holder.tvDayCalories.setVisibility(View.GONE);
+        }
         holder.tvDayEmpty.setVisibility(recipes.isEmpty() ? View.VISIBLE : View.GONE);
         holder.rvDayRecipes.setVisibility(recipes.isEmpty() ? View.GONE : View.VISIBLE);
 
@@ -93,11 +114,11 @@ public class DayCardAdapter extends RecyclerView.Adapter<DayCardAdapter.DayViewH
 
     @Override
     public int getItemCount() {
-        return WeeklyMenu.DAY_KEYS.length;
+        return duration;
     }
 
     static class DayViewHolder extends RecyclerView.ViewHolder {
-        MaterialTextView tvDayName, tvDayEmpty;
+        MaterialTextView tvDayName, tvDayEmpty, tvDayCalories;
         RecyclerView rvDayRecipes;
         View btnAddToDay;
 
@@ -105,6 +126,7 @@ public class DayCardAdapter extends RecyclerView.Adapter<DayCardAdapter.DayViewH
             super(itemView);
             tvDayName = itemView.findViewById(R.id.tvDayName);
             tvDayEmpty = itemView.findViewById(R.id.tvDayEmpty);
+            tvDayCalories = itemView.findViewById(R.id.tvDayCalories);
             rvDayRecipes = itemView.findViewById(R.id.rvDayRecipes);
             btnAddToDay = itemView.findViewById(R.id.btnAddToDay);
         }

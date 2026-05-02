@@ -23,6 +23,17 @@
             android:textStyle="bold"
             tools:text="Pazartesi" />
 
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/tvDayCalories"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+            android:textColor="?attr/colorTertiary"
+            android:layout_marginTop="2dp"
+            android:visibility="gone"
+            tools:text="500 kcal"
+            tools:visibility="visible" />
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvDayRecipes"
             android:layout_width="match_parent"

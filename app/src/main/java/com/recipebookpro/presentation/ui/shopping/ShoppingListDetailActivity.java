@@ -104,6 +104,18 @@ public class ShoppingListDetailActivity extends BaseActivity {
             return false;
         });
 
+        toolbar.inflateMenu(R.menu.menu_shopping_list_detail);
+        toolbar.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == R.id.action_share_list) {
+                shareList();
+                return true;
+            } else if (item.getItemId() == R.id.action_delete_list) {
+                confirmDeleteList();
+                return true;
+            }
+            return false;
+        });
+
         rvItems.setLayoutManager(new LinearLayoutManager(this));
         adapter = new ShoppingItemAdapter(items, new ShoppingItemAdapter.OnItemInteractionListener() {
             @Override
@@ -184,6 +196,28 @@ public class ShoppingListDetailActivity extends BaseActivity {
             db.collection("shopping_lists").document(listId).set(shoppingList)
                     .addOnFailureListener(e -> Toast.makeText(this, R.string.error_generic, Toast.LENGTH_SHORT).show());
         }
+    }
+
+    private void shareList() {
+        if (shoppingList == null) return;
+        com.recipebookpro.presentation.ui.kitchen.CollaboratorsBottomSheet sheet = 
+            com.recipebookpro.presentation.ui.kitchen.CollaboratorsBottomSheet.newInstance(
+                listId, "shopping_list", shoppingList.getName());
+        sheet.show(getSupportFragmentManager(), "Collaborators");
+    }
+
+    private void confirmDeleteList() {
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(R.string.delete_recipe)
+                .setMessage(R.string.shopping_list_delete_confirm)
+                .setPositiveButton(R.string.delete, (d, w) -> {
+                    deletingBecauseEmpty = true;
+                    db.collection("shopping_lists").document(listId).delete()
+                            .addOnSuccessListener(aVoid -> finish())
+                            .addOnFailureListener(e -> Toast.makeText(this, R.string.error_generic, Toast.LENGTH_SHORT).show());
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 
     @Override

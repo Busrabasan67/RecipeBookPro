@@ -19,6 +19,7 @@ public class Recipe implements Serializable {
     private List<Step> stepList;             // structured step list
     private String userId;
     private long createdAt;
+    private int calories;
 
     // --- New fields ---
     private String imageUrl;                // Firebase Storage or URI
@@ -95,6 +96,11 @@ public class Recipe implements Serializable {
         Object likesVal = document.get("likes");
         if (likesVal instanceof Number) {
             recipe.setLikes(((Number) likesVal).intValue());
+        }
+
+        Object caloriesVal = document.get("calories");
+        if (caloriesVal instanceof Number) {
+            recipe.setCalories(((Number) caloriesVal).intValue());
         }
 
         // Parse allergens
@@ -434,6 +440,14 @@ public class Recipe implements Serializable {
 
     public void setLikes(int likes) {
         this.likes = likes;
+    }
+
+    public int getCalories() {
+        return calories;
+    }
+
+    public void setCalories(int calories) {
+        this.calories = calories;
     }
 
     public List<String> getAllergens() {

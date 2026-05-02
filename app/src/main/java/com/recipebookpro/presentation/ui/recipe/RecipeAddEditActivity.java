@@ -73,7 +73,7 @@ public class RecipeAddEditActivity extends BaseActivity {
     // Views
     private ImageView ivPreview;
     private View llImagePlaceholder;
-    private TextInputEditText etTitle, etDescription, etServings;
+    private TextInputEditText etTitle, etDescription, etServings, etCalories;
     private AutoCompleteTextView actvCategory, actvCookbook;
     private ChipGroup cgAllergens;
     private RecyclerView rvIngredientsEdit, rvStepsEdit;
@@ -198,6 +198,7 @@ public class RecipeAddEditActivity extends BaseActivity {
         etTitle = findViewById(R.id.etTitle);
         etDescription = findViewById(R.id.etDescription);
         etServings = findViewById(R.id.etServings);
+        etCalories = findViewById(R.id.etCalories);
         actvCategory = findViewById(R.id.actvCategory);
         actvCookbook = findViewById(R.id.actvCookbook);
         cgAllergens = findViewById(R.id.cgAllergens);
@@ -373,6 +374,7 @@ public class RecipeAddEditActivity extends BaseActivity {
         etTitle.setText(currentRecipe.getTitle());
         etDescription.setText(currentRecipe.getDescription());
         etServings.setText(String.valueOf(currentRecipe.getServings()));
+        etCalories.setText(String.valueOf(currentRecipe.getCalories()));
         actvCategory.setText(com.recipebookpro.util.CategoryLocalization.getDisplayName(this, currentRecipe.getCategory()), false);
 
         // Default placeholder state
@@ -449,6 +451,12 @@ public class RecipeAddEditActivity extends BaseActivity {
             servings = Integer.parseInt(etServings.getText().toString().trim());
         } catch (Exception ignored) {}
         currentRecipe.setServings(servings);
+        
+        int calories = 0;
+        try {
+            calories = Integer.parseInt(etCalories.getText().toString().trim());
+        } catch (Exception ignored) {}
+        currentRecipe.setCalories(calories);
 
         // Filter out empty ingredients and validate amount/unit | Boş malzemeleri filtrele ve miktar/birim doğrula
         List<Recipe.Ingredient> validIngredients = new ArrayList<>();

@@ -461,4 +461,27 @@
     <string name="shopping_item_count_format">%1$d ürün</string>
     <string name="shopping_item_status_at_home">Evde Var</string>
     <string name="shopping_item_status_to_buy">Alınacak</string>
+    <string name="meal_plan_duration">Süre</string>
+    <string name="meal_plan_days_3">3 Günlük</string>
+    <string name="meal_plan_days_7">7 Günlük</string>
+    <string name="meal_plan_days_10">10 Günlük</string>
+    <string name="meal_plan_name">Yemek Planı Adı</string>
+    <string name="meal_plan_save">Planı Kaydet</string>
+    <string name="meal_plan_load">Planı Yükle</string>
+    <string name="meal_plan_saved">Yemek planı başarıyla kaydedildi.</string>
+    <string name="meal_plan_total_calories">Toplam Kalori: %1$d kcal</string>
+    <string name="meal_plan_daily_calories">Günlük: %1$d kcal</string>
+    <string name="meal_plan_delete_confirm">Bu yemek planını silmek istediğinize emin misiniz?</string>
+    <string name="shopping_list_delete_confirm">Bu alışveriş listesini silmek istediğinize emin misiniz?</string>
+    <string name="invite_to_plan">Plana Davet Et</string>
+    <string name="invite_to_list">Listeye Davet Et</string>
+    <string name="plan_collaborators">Plan Ortakları</string>
+    <string name="list_collaborators">Liste Ortakları</string>
+    <string name="meal_plan_save_first">Lütfen önce planı kaydedin</string>
+    <string name="invitation_type_plan">(Plan)</string>
+    <string name="invitation_type_list">(Liste)</string>
+    <string name="invitation_type_cookbook">(Defter)</string>
+    <string name="meal_plan_new_confirm_title">Yeni Plan</string>
+    <string name="meal_plan_new_confirm_msg">Yeni bir yemek planı başlatmak istiyor musunuz? Mevcut kaydedilmemiş değişiklikler kaybolacaktır.</string>
+    <string name="meal_plan_new_create">Yeni Oluştur</string>
 </resources>

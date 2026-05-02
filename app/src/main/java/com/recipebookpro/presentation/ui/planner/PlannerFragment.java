@@ -24,6 +24,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
@@ -31,7 +32,9 @@ import com.google.firebase.firestore.QuerySnapshot;
 import com.recipebookpro.R;
 import com.recipebookpro.domain.model.Recipe;
 import com.recipebookpro.domain.model.ShoppingList;
-import com.recipebookpro.domain.model.WeeklyMenu;
+import com.recipebookpro.domain.model.MealPlan;
+import com.recipebookpro.domain.repository.MealPlanRepository;
+import com.recipebookpro.data.repository.MealPlanRepositoryImpl;
 import com.recipebookpro.presentation.ui.planner.adapter.DayCardAdapter;
 import com.recipebookpro.presentation.ui.recipe.RecipeDetailActivity;
 import com.recipebookpro.presentation.ui.shopping.ShoppingListDetailActivity;
@@ -52,19 +55,24 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
 
     private FirebaseFirestore db;
     private FirebaseUser currentUser;
-    private WeeklyMenu weeklyMenu;
+    private MealPlan currentPlan;
+    private MealPlanRepository planRepository;
 
     private RecyclerView rvDayCards;
     private RecyclerView rvShoppingListsInline;
     private ProgressBar progressPlanner;
     private View tvPlannerEmpty;
     private MaterialTextView tvEmptyShoppingInline;
+    private MaterialTextView tvTotalCalories, tvPlanName;
+    private View cardCalorieSummary;
+    private com.google.android.material.chip.ChipGroup cgDuration;
     private DayCardAdapter dayCardAdapter;
     private ShoppingListAdapter shoppingListAdapter;
     private final List<ShoppingList> shoppingLists = new ArrayList<>();
     private ListenerRegistration shoppingListsListener;
 
     private final Map<String, List<Recipe>> resolvedRecipes = new HashMap<>();
+    private ListenerRegistration currentPlanListener;
 
     @Nullable
     @Override
@@ -79,13 +87,22 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
 
         db = FirebaseFirestore.getInstance();
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        planRepository = new MealPlanRepositoryImpl();
 
         rvDayCards = view.findViewById(R.id.rvDayCards);
         rvShoppingListsInline = view.findViewById(R.id.rvShoppingListsInline);
         progressPlanner = view.findViewById(R.id.progressPlanner);
         tvPlannerEmpty = view.findViewById(R.id.tvPlannerEmpty);
         tvEmptyShoppingInline = view.findViewById(R.id.tvEmptyShoppingInline);
+        tvTotalCalories = view.findViewById(R.id.tvTotalCalories);
+        tvPlanName = view.findViewById(R.id.tvPlanName);
+        cardCalorieSummary = view.findViewById(R.id.cardCalorieSummary);
+        cgDuration = view.findViewById(R.id.cgDuration);
+
         MaterialButton btnGenerate = view.findViewById(R.id.btnGenerateShoppingList);
+        MaterialButton btnSavePlan = view.findViewById(R.id.btnSavePlan);
+        MaterialButton btnLoadPlan = view.findViewById(R.id.btnLoadPlan);
+        MaterialButton btnSharePlan = view.findViewById(R.id.btnSharePlan);
 
         dayCardAdapter = new DayCardAdapter(this);
         rvDayCards.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
@@ -99,37 +116,203 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
         rvShoppingListsInline.setLayoutManager(new LinearLayoutManager(getContext()));
         rvShoppingListsInline.setAdapter(shoppingListAdapter);
 
+        MaterialToolbar toolbarPlanner = view.findViewById(R.id.toolbarPlanner);
         btnGenerate.setOnClickListener(v -> generateShoppingList());
+        btnSavePlan.setOnClickListener(v -> showSavePlanDialog());
+        btnLoadPlan.setOnClickListener(v -> showLoadPlanDialog());
+        btnSharePlan.setOnClickListener(v -> shareCurrentPlan());
 
-        loadWeeklyMenu();
+        toolbarPlanner.inflateMenu(R.menu.menu_planner);
+        toolbarPlanner.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == R.id.action_new_plan) {
+                confirmNewPlan();
+                return true;
+            }
+            return false;
+        });
+
+        cgDuration.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (!checkedIds.isEmpty()) {
+                int duration = 7;
+                int id = checkedIds.get(0);
+                if (id == R.id.chip3Days) duration = 3;
+                else if (id == R.id.chip7Days) duration = 7;
+                else if (id == R.id.chip10Days) duration = 10;
+                
+                updateDuration(duration);
+            }
+        });
+
+        loadCurrentOrDefaultPlan();
         loadShoppingLists();
     }
 
-    private void loadWeeklyMenu() {
+    private void showSavePlanDialog() {
+        if (currentUser == null || currentPlan == null) return;
+
+        android.widget.EditText et = new android.widget.EditText(requireContext());
+        et.setText(currentPlan.getName());
+        et.setHint(R.string.meal_plan_name);
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.meal_plan_save)
+                .setView(et)
+                .setPositiveButton(R.string.save, (d, w) -> {
+                    String name = et.getText().toString().trim();
+                    if (!name.isEmpty()) {
+                        currentPlan.setName(name);
+                        savePlan();
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void savePlan() {
+        progressPlanner.setVisibility(View.VISIBLE);
+        planRepository.saveMealPlan(currentPlan, new MealPlanRepository.OnMealPlanActionCompleteListener() {
+            @Override
+            public void onSuccess() {
+                progressPlanner.setVisibility(View.GONE);
+                Toast.makeText(getContext(), R.string.meal_plan_saved, Toast.LENGTH_SHORT).show();
+                if (currentPlanListener == null && currentPlan.getId() != null) {
+                    attachPlanListener(currentPlan.getId());
+                }
+            }
+
+            @Override
+            public void onError(Exception e) {
+                progressPlanner.setVisibility(View.GONE);
+                Toast.makeText(getContext(), R.string.save_failed, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void showLoadPlanDialog() {
+        SavedPlansBottomSheet sheet = new SavedPlansBottomSheet();
+        sheet.setOnPlanSelectedListener(plan -> {
+            attachPlanListener(plan.getId());
+        });
+        sheet.show(getChildFragmentManager(), "SavedPlans");
+    }
+
+    private void shareCurrentPlan() {
+        // Implement sharing logic using Invitations (Phase 4)
+        // For now, show the collaborators bottom sheet if we have an ID
+        if (currentPlan == null || currentPlan.getId() == null) {
+            Toast.makeText(getContext(), R.string.meal_plan_save_first, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        com.recipebookpro.presentation.ui.kitchen.CollaboratorsBottomSheet sheet = 
+            com.recipebookpro.presentation.ui.kitchen.CollaboratorsBottomSheet.newInstance(
+                currentPlan.getId(), "meal_plan", currentPlan.getName());
+        sheet.show(getChildFragmentManager(), "Collaborators");
+    }
+
+    private void loadCurrentOrDefaultPlan() {
         if (currentUser == null) return;
         progressPlanner.setVisibility(View.VISIBLE);
 
-        db.collection("weekly_menus").document(currentUser.getUid())
-                .addSnapshotListener((doc, error) -> {
-                    if (error != null) {
-                        progressPlanner.setVisibility(View.GONE);
-                        return;
-                    }
-
-                    if (doc != null && doc.exists()) {
-                        weeklyMenu = WeeklyMenu.fromDocument(doc);
+        // Find the most recent plan where user is owner or collaborator
+        db.collection("meal_plans")
+                .where(com.google.firebase.firestore.Filter.or(
+                        com.google.firebase.firestore.Filter.equalTo("userId", currentUser.getUid()),
+                        com.google.firebase.firestore.Filter.arrayContains("collaboratorIds", currentUser.getUid())
+                ))
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .limit(1)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    if (!queryDocumentSnapshots.isEmpty()) {
+                        String planId = queryDocumentSnapshots.getDocuments().get(0).getId();
+                        attachPlanListener(planId);
                     } else {
-                        weeklyMenu = new WeeklyMenu(currentUser.getUid());
-                        db.collection("weekly_menus").document(currentUser.getUid())
-                                .set(weeklyMenu);
+                        createNewPlan(7);
                     }
-
-                    resolveAllRecipes();
+                })
+                .addOnFailureListener(e -> {
+                    progressPlanner.setVisibility(View.GONE);
+                    createNewPlan(7);
                 });
     }
 
+    private void attachPlanListener(String planId) {
+        if (currentPlanListener != null) currentPlanListener.remove();
+
+        currentPlanListener = db.collection("meal_plans").document(planId)
+                .addSnapshotListener((value, error) -> {
+                    if (error != null || value == null || !value.exists()) return;
+
+                    MealPlan updatedPlan = MealPlan.fromDocument(value);
+                    
+                    // Only full UI update if recipe IDs changed or duration changed
+                    boolean needsFullUpdate = currentPlan == null 
+                            || updatedPlan.getDuration() != currentPlan.getDuration()
+                            || !updatedPlan.getAllRecipeIds().equals(currentPlan.getAllRecipeIds());
+
+                    this.currentPlan = updatedPlan;
+                    
+                    if (needsFullUpdate) {
+                        updateUIForPlan();
+                    } else {
+                        // Just update metadata if recipes are same
+                        tvPlanName.setText(currentPlan.getName());
+                    }
+                    progressPlanner.setVisibility(View.GONE);
+                });
+    }
+
+    private void confirmNewPlan() {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.meal_plan_new_confirm_title)
+                .setMessage(R.string.meal_plan_new_confirm_msg)
+                .setPositiveButton(R.string.meal_plan_new_create, (d, w) -> {
+                    if (currentPlanListener != null) {
+                        currentPlanListener.remove();
+                        currentPlanListener = null;
+                    }
+                    createNewPlan(7);
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void createNewPlan(int duration) {
+        if (currentUser == null) return;
+        currentPlan = new MealPlan(currentUser.getUid(), "New Plan", duration);
+        updateUIForPlan();
+    }
+
+    private void updateDuration(int duration) {
+        if (currentPlan != null && currentPlan.getDuration() != duration) {
+            currentPlan.setDuration(duration);
+            // Re-initialize days map for the new duration if needed
+            for (int i = 0; i < duration; i++) {
+                String key = "day_" + i;
+                if (!currentPlan.getDays().containsKey(key)) {
+                    currentPlan.getDays().put(key, new ArrayList<>());
+                }
+            }
+            updateUIForPlan();
+        }
+    }
+
+    private void updateUIForPlan() {
+        if (currentPlan == null) return;
+        
+        // Update Chips
+        if (currentPlan.getDuration() == 3) cgDuration.check(R.id.chip3Days);
+        else if (currentPlan.getDuration() == 7) cgDuration.check(R.id.chip7Days);
+        else if (currentPlan.getDuration() == 10) cgDuration.check(R.id.chip10Days);
+
+        dayCardAdapter.setDuration(currentPlan.getDuration());
+        resolveAllRecipes();
+    }
+
     private void resolveAllRecipes() {
-        List<String> allIds = weeklyMenu.getAllRecipeIds();
+        if (currentPlan == null) return;
+        List<String> allIds = currentPlan.getAllRecipeIds();
 
         if (allIds.isEmpty()) {
             progressPlanner.setVisibility(View.GONE);
@@ -156,12 +339,15 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
             }
 
             Map<String, List<Recipe>> dayData = new HashMap<>();
-            for (String dayKey : WeeklyMenu.DAY_KEYS) {
-                List<String> dayIds = weeklyMenu.getRecipeIdsForDay(dayKey);
+            for (int i = 0; i < currentPlan.getDuration(); i++) {
+                String dayKey = "day_" + i;
+                List<String> dayIds = currentPlan.getDays().get(dayKey);
                 List<Recipe> dayRecipes = new ArrayList<>();
-                for (String id : dayIds) {
-                    Recipe r = recipeMap.get(id);
-                    if (r != null) dayRecipes.add(r);
+                if (dayIds != null) {
+                    for (String id : dayIds) {
+                        Recipe r = recipeMap.get(id);
+                        if (r != null) dayRecipes.add(r);
+                    }
                 }
                 dayData.put(dayKey, dayRecipes);
             }
@@ -176,16 +362,42 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
         resolvedRecipes.putAll(dayData);
         dayCardAdapter.setAllDayRecipes(dayData);
         updatePlannerEmptyState();
+        calculateTotalCalories();
+    }
+
+    private void calculateTotalCalories() {
+        int total = 0;
+        for (List<Recipe> recipes : resolvedRecipes.values()) {
+            for (Recipe r : recipes) {
+                total += r.getCalories();
+            }
+        }
+        
+        if (currentPlan != null) {
+            currentPlan.setTotalCalories(total);
+        }
+
+        if (total > 0) {
+            cardCalorieSummary.setVisibility(View.VISIBLE);
+            tvTotalCalories.setText(getString(R.string.meal_plan_total_calories, total));
+        } else {
+            cardCalorieSummary.setVisibility(View.GONE);
+        }
     }
 
     @Override
     public void onAddRecipeClick(String dayKey, int dayIndex) {
         RecipeSearchBottomSheet sheet = RecipeSearchBottomSheet.newInstance(dayKey);
         sheet.setOnRecipeSelectedListener((key, recipe) -> {
-            if (currentUser == null) return;
-            db.collection("weekly_menus").document(currentUser.getUid())
-                    .update("days." + key, FieldValue.arrayUnion(recipe.getId()))
-                    .addOnSuccessListener(unused -> addRecipeToDayLocally(key, recipe));
+            if (currentPlan == null) return;
+            
+            List<String> dayIds = currentPlan.getDays().get(key);
+            if (dayIds == null) {
+                dayIds = new ArrayList<>();
+                currentPlan.getDays().put(key, dayIds);
+            }
+            dayIds.add(recipe.getId());
+            addRecipeToDayLocally(key, recipe);
         });
         sheet.show(getChildFragmentManager(), "RecipeSearch");
     }
@@ -196,10 +408,12 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
                 .setTitle(recipe.getTitle())
                 .setMessage(getString(R.string.planner_remove_recipe_confirm, dayKey))
                 .setPositiveButton(R.string.delete, (d, w) -> {
-                    if (currentUser == null) return;
-                    db.collection("weekly_menus").document(currentUser.getUid())
-                            .update("days." + dayKey, FieldValue.arrayRemove(recipe.getId()))
-                            .addOnSuccessListener(unused -> removeRecipeFromDayLocally(dayKey, recipe.getId()));
+                    if (currentPlan == null) return;
+                    List<String> dayIds = currentPlan.getDays().get(dayKey);
+                    if (dayIds != null) {
+                        dayIds.remove(recipe.getId());
+                        removeRecipeFromDayLocally(dayKey, recipe.getId());
+                    }
                 })
                 .setNegativeButton(R.string.cancel, null)
                 .show();
@@ -213,18 +427,23 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
     }
 
     private void generateShoppingList() {
-        if (currentUser == null || weeklyMenu == null) return;
+        if (currentUser == null || currentPlan == null) return;
 
-        List<String> allIds = weeklyMenu.getAllRecipeIdsWithDuplicates();
+        List<String> allIds = currentPlan.getAllRecipeIdsWithDuplicates();
         if (allIds.isEmpty()) {
             Toast.makeText(getContext(), R.string.planner_no_recipe_in_menu, Toast.LENGTH_SHORT).show();
             return;
         }
 
+        String listName = "system_planner_weekly_menu";
+        if (currentPlan != null && currentPlan.getName() != null && !currentPlan.getName().isEmpty() && !currentPlan.getName().equals("New Plan")) {
+            listName = currentPlan.getName() + " Shopping";
+        }
+
         Data inputData = new Data.Builder()
                 .putString(MergeIngredientsWorker.KEY_USER_ID, currentUser.getUid())
                 .putStringArray(MergeIngredientsWorker.KEY_RECIPE_IDS, allIds.toArray(new String[0]))
-                .putString(MergeIngredientsWorker.KEY_LIST_NAME, "system_planner_weekly_menu")
+                .putString(MergeIngredientsWorker.KEY_LIST_NAME, listName)
                 .putBoolean(MergeIngredientsWorker.KEY_OVERWRITE_EXISTING, true)
                 .build();
 
@@ -253,14 +472,10 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
             dayRecipes = new ArrayList<>();
             resolvedRecipes.put(dayKey, dayRecipes);
         }
-        for (Recipe existing : dayRecipes) {
-            if (existing.getId() != null && existing.getId().equals(recipe.getId())) {
-                return;
-            }
-        }
         dayRecipes.add(recipe);
         dayCardAdapter.setDayRecipes(dayKey, dayRecipes);
         updatePlannerEmptyState();
+        calculateTotalCalories();
     }
 
     private void removeRecipeFromDayLocally(String dayKey, String recipeId) {
@@ -275,11 +490,14 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
         }
         dayCardAdapter.setDayRecipes(dayKey, dayRecipes);
         updatePlannerEmptyState();
+        calculateTotalCalories();
     }
 
     private void updatePlannerEmptyState() {
+        if (currentPlan == null) return;
         boolean allEmpty = true;
-        for (String key : WeeklyMenu.DAY_KEYS) {
+        for (int i = 0; i < currentPlan.getDuration(); i++) {
+            String key = "day_" + i;
             List<Recipe> list = resolvedRecipes.get(key);
             if (list != null && !list.isEmpty()) {
                 allEmpty = false;
@@ -289,31 +507,60 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
         tvPlannerEmpty.setVisibility(allEmpty ? View.VISIBLE : View.GONE);
     }
 
+    private Map<String, ShoppingList> ownerShoppingMap = new HashMap<>();
+    private Map<String, ShoppingList> collabShoppingMap = new HashMap<>();
+    private ListenerRegistration ownerShoppingListener;
+    private ListenerRegistration collabShoppingListener;
+
     private void loadShoppingLists() {
         if (currentUser == null) return;
-        if (shoppingListsListener != null) {
-            shoppingListsListener.remove();
-        }
-        shoppingListsListener = db.collection("shopping_lists")
+        
+        if (ownerShoppingListener != null) ownerShoppingListener.remove();
+        if (collabShoppingListener != null) collabShoppingListener.remove();
+        
+        ownerShoppingListener = db.collection("shopping_lists")
                 .whereEqualTo("userId", currentUser.getUid())
-                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .addSnapshotListener((value, error) -> {
-                    if (error != null) return;
-                    shoppingLists.clear();
                     if (value != null) {
+                        ownerShoppingMap.clear();
                         for (QueryDocumentSnapshot doc : value) {
                             ShoppingList sl = ShoppingList.fromDocument(doc);
                             if (sl.getItems() != null && !sl.getItems().isEmpty()) {
-                                shoppingLists.add(sl);
+                                ownerShoppingMap.put(doc.getId(), sl);
                             }
                         }
-                    }
-                    shoppingListAdapter.notifyDataSetChanged();
-                    if (tvEmptyShoppingInline != null) {
-                        tvEmptyShoppingInline.setVisibility(
-                                shoppingLists.isEmpty() ? View.VISIBLE : View.GONE);
+                        mergeAndDisplayShoppingLists();
                     }
                 });
+
+        collabShoppingListener = db.collection("shopping_lists")
+                .whereArrayContains("collaboratorIds", currentUser.getUid())
+                .addSnapshotListener((value, error) -> {
+                    if (value != null) {
+                        collabShoppingMap.clear();
+                        for (QueryDocumentSnapshot doc : value) {
+                            ShoppingList sl = ShoppingList.fromDocument(doc);
+                            if (sl.getItems() != null && !sl.getItems().isEmpty()) {
+                                collabShoppingMap.put(doc.getId(), sl);
+                            }
+                        }
+                        mergeAndDisplayShoppingLists();
+                    }
+                });
+    }
+
+    private void mergeAndDisplayShoppingLists() {
+        shoppingLists.clear();
+        Map<String, ShoppingList> all = new HashMap<>(ownerShoppingMap);
+        all.putAll(collabShoppingMap);
+        
+        shoppingLists.addAll(all.values());
+        shoppingLists.sort((l1, l2) -> Long.compare(l2.getCreatedAt(), l1.getCreatedAt()));
+        
+        shoppingListAdapter.notifyDataSetChanged();
+        if (tvEmptyShoppingInline != null) {
+            tvEmptyShoppingInline.setVisibility(shoppingLists.isEmpty() ? View.VISIBLE : View.GONE);
+        }
     }
 
     @Override
@@ -324,9 +571,17 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
 
     @Override
     public void onDestroyView() {
-        if (shoppingListsListener != null) {
-            shoppingListsListener.remove();
-            shoppingListsListener = null;
+        if (ownerShoppingListener != null) {
+            ownerShoppingListener.remove();
+            ownerShoppingListener = null;
+        }
+        if (collabShoppingListener != null) {
+            collabShoppingListener.remove();
+            collabShoppingListener = null;
+        }
+        if (currentPlanListener != null) {
+            currentPlanListener.remove();
+            currentPlanListener = null;
         }
         super.onDestroyView();
     }

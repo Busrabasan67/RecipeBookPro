@@ -205,7 +205,7 @@ public class MyKitchenFragment extends Fragment {
     private void loadInvitations() {
         if (currentUser == null) return;
 
-        db.collection("cookbook_invitations")
+        db.collection("invitations")
                 .whereEqualTo("toUserId", currentUser.getUid())
                 .whereEqualTo("status", "pending")
                 .addSnapshotListener((value, error) -> {
@@ -220,38 +220,52 @@ public class MyKitchenFragment extends Fragment {
                     tvInvitationsLabel.setVisibility(View.VISIBLE);
 
                     for (QueryDocumentSnapshot doc : value) {
-                        String invitationId = doc.getId();
-                        String cookbookName = doc.getString("cookbookName");
-                        String fromUserName = doc.getString("fromUserName");
-                        String cookbookId = doc.getString("cookbookId");
+                        com.recipebookpro.domain.model.Invitation invitation = doc.toObject(com.recipebookpro.domain.model.Invitation.class);
+                        if (invitation == null) continue;
+                        if (invitation.getId() == null) invitation.setId(doc.getId());
 
                         View card = LayoutInflater.from(getContext())
                                 .inflate(R.layout.item_invitation, containerInvitations, false);
 
-                        MaterialTextView tvCookbook = card.findViewById(R.id.tvInvitationCookbook);
+                        MaterialTextView tvTarget = card.findViewById(R.id.tvInvitationCookbook);
                         MaterialTextView tvFrom = card.findViewById(R.id.tvInvitationFrom);
                         MaterialButton btnAccept = card.findViewById(R.id.btnAccept);
                         MaterialButton btnDecline = card.findViewById(R.id.btnDecline);
 
-                        tvCookbook.setText(cookbookName != null ? cookbookName : "Defter");
-                        tvFrom.setText(fromUserName != null ? fromUserName + " sizi davet etti" : "Davet");
+                        String typeLabel = "";
+                        switch (invitation.getType()) {
+                            case "meal_plan": typeLabel = " " + getString(R.string.invitation_type_plan); break;
+                            case "shopping_list": typeLabel = " " + getString(R.string.invitation_type_list); break;
+                            default: typeLabel = " " + getString(R.string.invitation_type_cookbook); break;
+                        }
 
-                        btnAccept.setOnClickListener(v -> acceptInvitation(invitationId, cookbookId));
-                        btnDecline.setOnClickListener(v -> declineInvitation(invitationId));
+                        tvTarget.setText(invitation.getTargetName() + typeLabel);
+                        tvFrom.setText(invitation.getFromUserName() + " sizi davet etti");
+
+                        btnAccept.setOnClickListener(v -> acceptInvitation(invitation));
+                        btnDecline.setOnClickListener(v -> declineInvitation(invitation.getId()));
 
                         containerInvitations.addView(card);
                     }
                 });
     }
 
-    private void acceptInvitation(String invitationId, String cookbookId) {
-        if (currentUser == null || cookbookId == null) return;
+    private void acceptInvitation(com.recipebookpro.domain.model.Invitation invitation) {
+        if (currentUser == null || invitation == null) return;
 
-        db.collection("cookbook_invitations").document(invitationId)
+        db.collection("invitations").document(invitation.getId())
                 .update("status", "accepted")
                 .addOnSuccessListener(aVoid -> {
-                    db.collection("cookbooks").document(cookbookId)
+                    String collection;
+                    switch (invitation.getType()) {
+                        case "meal_plan": collection = "meal_plans"; break;
+                        case "shopping_list": collection = "shopping_lists"; break;
+                        default: collection = "cookbooks"; break;
+                    }
+
+                    db.collection(collection).document(invitation.getTargetId())
                             .update("collaboratorIds", FieldValue.arrayUnion(currentUser.getUid()));
+                    
                     if (isAdded() && getContext() != null) {
                         Toast.makeText(getContext(), R.string.invitation_accepted, Toast.LENGTH_SHORT).show();
                     }
@@ -264,7 +278,7 @@ public class MyKitchenFragment extends Fragment {
     }
 
     private void declineInvitation(String invitationId) {
-        db.collection("cookbook_invitations").document(invitationId)
+        db.collection("invitations").document(invitationId)
                 .update("status", "declined")
                 .addOnSuccessListener(aVoid -> {
                     if (isAdded() && getContext() != null) {

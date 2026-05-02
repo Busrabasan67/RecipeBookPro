@@ -15,6 +15,8 @@ public class ShoppingList implements Serializable {
     private String userId;
     private String name;
     private long createdAt;
+    private List<String> collaboratorIds;
+    private String planId; // Link to a MealPlan
     private List<ShoppingItem> items;
 
     public ShoppingList() {
@@ -33,6 +35,12 @@ public class ShoppingList implements Serializable {
         list.setId(doc.getId());
         list.setUserId(doc.getString("userId"));
         list.setName(doc.getString("name"));
+        list.setPlanId(doc.getString("planId"));
+
+        Object collabVal = doc.get("collaboratorIds");
+        if (collabVal instanceof List<?>) {
+            list.setCollaboratorIds((List<String>) collabVal);
+        }
 
         Object createdAtVal = doc.get("createdAt");
         if (createdAtVal instanceof Number) {
@@ -70,6 +78,12 @@ public class ShoppingList implements Serializable {
 
     public List<ShoppingItem> getItems() { return items == null ? new ArrayList<>() : items; }
     public void setItems(List<ShoppingItem> items) { this.items = items != null ? items : new ArrayList<>(); }
+
+    public List<String> getCollaboratorIds() { return collaboratorIds == null ? new ArrayList<>() : collaboratorIds; }
+    public void setCollaboratorIds(List<String> collaboratorIds) { this.collaboratorIds = collaboratorIds; }
+
+    public String getPlanId() { return planId; }
+    public void setPlanId(String planId) { this.planId = planId; }
 
     // ========================== Inner Class ==========================
 

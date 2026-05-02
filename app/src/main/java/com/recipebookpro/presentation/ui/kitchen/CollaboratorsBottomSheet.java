@@ -38,10 +38,16 @@ import java.util.List;
 
 public class CollaboratorsBottomSheet extends BottomSheetDialogFragment {
 
-    private static final String ARG_COOKBOOK_ID = "cookbook_id";
+    private static final String ARG_TARGET_ID = "target_id";
+    private static final String ARG_TARGET_TYPE = "target_type";
+    private static final String ARG_TARGET_NAME = "target_name";
 
-    private String cookbookId;
-    private Cookbook cookbook;
+    private String targetId;
+    private String targetType; // "cookbook", "meal_plan", "shopping_list"
+    private String targetName;
+    
+    private List<String> collaboratorIds = new ArrayList<>();
+    private String ownerId;
     private FirebaseFirestore db;
     private FirebaseUser currentUser;
 
@@ -53,19 +59,27 @@ public class CollaboratorsBottomSheet extends BottomSheetDialogFragment {
     private final Handler searchHandler = new Handler(Looper.getMainLooper());
     private Runnable searchRunnable;
 
-    public static CollaboratorsBottomSheet newInstance(String cookbookId) {
+    public static CollaboratorsBottomSheet newInstance(String targetId, String targetType, String targetName) {
         CollaboratorsBottomSheet fragment = new CollaboratorsBottomSheet();
         Bundle args = new Bundle();
-        args.putString(ARG_COOKBOOK_ID, cookbookId);
+        args.putString(ARG_TARGET_ID, targetId);
+        args.putString(ARG_TARGET_TYPE, targetType);
+        args.putString(ARG_TARGET_NAME, targetName);
         fragment.setArguments(args);
         return fragment;
+    }
+
+    public static CollaboratorsBottomSheet newInstance(String targetId) {
+        return newInstance(targetId, "cookbook", "");
     }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            cookbookId = getArguments().getString(ARG_COOKBOOK_ID);
+            targetId = getArguments().getString(ARG_TARGET_ID);
+            targetType = getArguments().getString(ARG_TARGET_TYPE, "cookbook");
+            targetName = getArguments().getString(ARG_TARGET_NAME, "");
         }
         db = FirebaseFirestore.getInstance();
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -98,16 +112,31 @@ public class CollaboratorsBottomSheet extends BottomSheetDialogFragment {
             }
         });
 
-        loadCookbook();
+        loadTarget();
 
         return view;
     }
 
-    private void loadCookbook() {
-        cookbookListener = db.collection("cookbooks").document(cookbookId).addSnapshotListener((doc, e) -> {
+    private void loadTarget() {
+        String collection;
+        switch (targetType) {
+            case "meal_plan": collection = "meal_plans"; break;
+            case "shopping_list": collection = "shopping_lists"; break;
+            default: collection = "cookbooks"; break;
+        }
+
+        cookbookListener = db.collection(collection).document(targetId).addSnapshotListener((doc, e) -> {
             if (e != null || doc == null || !doc.exists()) return;
             if (!isAdded() || getContext() == null) return;
-            cookbook = Cookbook.fromDocument(doc);
+            
+            collaboratorIds = (List<String>) doc.get("collaboratorIds");
+            if (collaboratorIds == null) collaboratorIds = new ArrayList<>();
+            ownerId = doc.getString("userId");
+            if (targetName == null || targetName.isEmpty()) {
+                targetName = doc.getString("name");
+                if (targetName == null) targetName = doc.getString("title");
+            }
+            
             updateCollaboratorsList();
         });
     }
@@ -148,7 +177,7 @@ public class CollaboratorsBottomSheet extends BottomSheetDialogFragment {
                             user.setUid(doc.getId());
                         }
                         if (currentUser != null && currentUser.getUid().equals(user.getUid())) continue;
-                        if (cookbook != null && cookbook.getCollaboratorIds().contains(user.getUid())) continue;
+                        if (collaboratorIds.contains(user.getUid())) continue;
 
                         View row = LayoutInflater.from(getContext())
                                 .inflate(android.R.layout.simple_list_item_2, containerSearchResults, false);
@@ -167,10 +196,8 @@ public class CollaboratorsBottomSheet extends BottomSheetDialogFragment {
     }
 
     private void inviteUser(String userId, String displayName) {
-        if (cookbook == null) return;
-
-        db.collection("cookbook_invitations")
-                .whereEqualTo("cookbookId", cookbookId)
+        db.collection("invitations")
+                .whereEqualTo("targetId", targetId)
                 .whereEqualTo("toUserId", userId)
                 .whereEqualTo("status", "pending")
                 .get()
@@ -179,16 +206,18 @@ public class CollaboratorsBottomSheet extends BottomSheetDialogFragment {
                         Toast.makeText(getContext(), R.string.invitation_already_sent, Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    java.util.Map<String, Object> invitation = new java.util.HashMap<>();
-                    invitation.put("cookbookId", cookbookId);
-                    invitation.put("cookbookName", cookbook.getName());
-                    invitation.put("fromUserId", currentUser.getUid());
-                    invitation.put("fromUserName", currentUser.getDisplayName());
-                    invitation.put("toUserId", userId);
-                    invitation.put("status", "pending");
-                    invitation.put("createdAt", System.currentTimeMillis());
+                    
+                    com.recipebookpro.domain.model.Invitation invitation = new com.recipebookpro.domain.model.Invitation();
+                    invitation.setTargetId(targetId);
+                    invitation.setType(targetType);
+                    invitation.setTargetName(targetName);
+                    invitation.setFromUserId(currentUser.getUid());
+                    invitation.setFromUserName(currentUser.getDisplayName());
+                    invitation.setToUserId(userId);
+                    invitation.setStatus("pending");
+                    invitation.setCreatedAt(System.currentTimeMillis());
 
-                    db.collection("cookbook_invitations").add(invitation)
+                    db.collection("invitations").add(invitation)
                             .addOnSuccessListener(ref -> {
                                 Toast.makeText(getContext(), getString(R.string.invitation_sent_to_user, displayName), Toast.LENGTH_SHORT).show();
                                 etSearch.setText("");
@@ -198,12 +227,12 @@ public class CollaboratorsBottomSheet extends BottomSheetDialogFragment {
     }
 
     private void updateCollaboratorsList() {
-        if (containerCollaborators == null || cookbook == null || !isAdded() || getContext() == null) return;
+        if (containerCollaborators == null || !isAdded() || getContext() == null) return;
         containerCollaborators.removeAllViews();
 
-        boolean isOwner = currentUser != null && currentUser.getUid().equals(cookbook.getUserId());
+        boolean isOwner = currentUser != null && currentUser.getUid().equals(ownerId);
 
-        List<String> collabIds = cookbook.getCollaboratorIds();
+        List<String> collabIds = collaboratorIds;
         if (collabIds == null || collabIds.isEmpty()) {
             TextView tvEmpty = new TextView(getContext());
             tvEmpty.setText(R.string.no_collaborators_yet);
@@ -286,7 +315,13 @@ public class CollaboratorsBottomSheet extends BottomSheetDialogFragment {
     }
 
     private void removeCollaborator(String uid) {
-        db.collection("cookbooks").document(cookbookId)
+        String collection;
+        switch (targetType) {
+            case "meal_plan": collection = "meal_plans"; break;
+            case "shopping_list": collection = "shopping_lists"; break;
+            default: collection = "cookbooks"; break;
+        }
+        db.collection(collection).document(targetId)
                 .update("collaboratorIds", FieldValue.arrayRemove(uid));
     }
 }

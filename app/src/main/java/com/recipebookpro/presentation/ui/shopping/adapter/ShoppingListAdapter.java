@@ -17,9 +17,18 @@ public class ShoppingListAdapter extends RecyclerView.Adapter<ShoppingListAdapte
 
     private final List<ShoppingList> shoppingLists;
     private final OnShoppingListClickListener listener;
+    private OnShoppingListLongClickListener longClickListener;
 
     public interface OnShoppingListClickListener {
         void onListClick(ShoppingList list);
+    }
+
+    public interface OnShoppingListLongClickListener {
+        void onListLongClick(ShoppingList list);
+    }
+
+    public void setOnLongClickListener(OnShoppingListLongClickListener listener) {
+        this.longClickListener = listener;
     }
 
     public ShoppingListAdapter(List<ShoppingList> shoppingLists, OnShoppingListClickListener listener) {
@@ -49,6 +58,14 @@ public class ShoppingListAdapter extends RecyclerView.Adapter<ShoppingListAdapte
 
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onListClick(list);
+        });
+
+        holder.itemView.setOnLongClickListener(v -> {
+            if (longClickListener != null) {
+                longClickListener.onListLongClick(list);
+                return true;
+            }
+            return false;
         });
     }
 

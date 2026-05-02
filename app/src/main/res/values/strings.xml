@@ -483,4 +483,27 @@
     <string name="shopping_item_count_format">%1$d items</string>
     <string name="shopping_item_status_at_home">At Home</string>
     <string name="shopping_item_status_to_buy">To Buy</string>
+    <string name="meal_plan_duration">Duration</string>
+    <string name="meal_plan_days_3">3 Days</string>
+    <string name="meal_plan_days_7">7 Days</string>
+    <string name="meal_plan_days_10">10 Days</string>
+    <string name="meal_plan_name">Meal Plan Name</string>
+    <string name="meal_plan_save">Save Plan</string>
+    <string name="meal_plan_load">Load Plan</string>
+    <string name="meal_plan_saved">Meal plan saved successfully.</string>
+    <string name="meal_plan_total_calories">Total Calories: %1$d kcal</string>
+    <string name="meal_plan_daily_calories">Daily: %1$d kcal</string>
+    <string name="meal_plan_delete_confirm">Are you sure you want to delete this meal plan?</string>
+    <string name="shopping_list_delete_confirm">Are you sure you want to delete this shopping list?</string>
+    <string name="invite_to_plan">Invite to Plan</string>
+    <string name="invite_to_list">Invite to List</string>
+    <string name="plan_collaborators">Plan Collaborators</string>
+    <string name="list_collaborators">List Collaborators</string>
+    <string name="meal_plan_save_first">Please save the plan first</string>
+    <string name="invitation_type_plan">(Plan)</string>
+    <string name="invitation_type_list">(List)</string>
+    <string name="invitation_type_cookbook">(Cookbook)</string>
+    <string name="meal_plan_new_confirm_title">New Plan</string>
+    <string name="meal_plan_new_confirm_msg">Would you like to start a fresh meal plan? Current unsaved changes will be lost.</string>
+    <string name="meal_plan_new_create">Create New</string>
 </resources>

@@ -6,6 +6,7 @@ import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import com.google.firebase.firestore.Filter;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
@@ -31,7 +32,9 @@ import com.recipebookpro.domain.model.ShoppingList;
 import com.recipebookpro.presentation.ui.shopping.adapter.ShoppingListAdapter;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ShoppingListFragment extends Fragment {
 
@@ -65,6 +68,8 @@ public class ShoppingListFragment extends Fragment {
             intent.putExtra(ShoppingListDetailActivity.EXTRA_LIST_ID, list.getId());
             startActivity(intent);
         });
+        
+        adapter.setOnLongClickListener(list -> confirmDeleteList(list));
         rvShoppingLists.setAdapter(adapter);
 
         fabAddList.setOnClickListener(v -> showCreateListDialog());
@@ -74,34 +79,67 @@ public class ShoppingListFragment extends Fragment {
         return view;
     }
 
+    private Map<String, ShoppingList> ownerListsMap = new HashMap<>();
+    private Map<String, ShoppingList> collabListsMap = new HashMap<>();
+    private ListenerRegistration ownerListener;
+    private ListenerRegistration collabListener;
+
     private void loadShoppingLists() {
         if (currentUser == null) return;
         progressShoppingLists.setVisibility(View.VISIBLE);
 
-        if (shoppingListsListener != null) {
-            shoppingListsListener.remove();
-        }
-        shoppingListsListener = db.collection("shopping_lists")
-          .whereEqualTo("userId", currentUser.getUid())
-          .orderBy("createdAt", Query.Direction.DESCENDING)
-          .addSnapshotListener((value, error) -> {
-              progressShoppingLists.setVisibility(View.GONE);
-              if (error != null) {
-                  Toast.makeText(getContext(), R.string.shopping_lists_load_failed, Toast.LENGTH_SHORT).show();
-                  return;
-              }
-              listCollection.clear();
-              if (value != null) {
-                  for (QueryDocumentSnapshot doc : value) {
-                      ShoppingList sl = ShoppingList.fromDocument(doc);
-                      if (sl.getItems() != null && !sl.getItems().isEmpty()) {
-                          listCollection.add(sl);
-                      }
-                  }
-              }
-              adapter.notifyDataSetChanged();
-              tvEmptyLists.setVisibility(listCollection.isEmpty() ? View.VISIBLE : View.GONE);
-          });
+        if (ownerListener != null) ownerListener.remove();
+        if (collabListener != null) collabListener.remove();
+        
+        ownerListener = db.collection("shopping_lists")
+                .whereEqualTo("userId", currentUser.getUid())
+                .addSnapshotListener((value, error) -> {
+                    if (value != null) {
+                        ownerListsMap.clear();
+                        for (QueryDocumentSnapshot doc : value) {
+                            ownerListsMap.put(doc.getId(), ShoppingList.fromDocument(doc));
+                        }
+                        mergeAndDisplayLists();
+                    }
+                });
+
+        collabListener = db.collection("shopping_lists")
+                .whereArrayContains("collaboratorIds", currentUser.getUid())
+                .addSnapshotListener((value, error) -> {
+                    if (value != null) {
+                        collabListsMap.clear();
+                        for (QueryDocumentSnapshot doc : value) {
+                            collabListsMap.put(doc.getId(), ShoppingList.fromDocument(doc));
+                        }
+                        mergeAndDisplayLists();
+                    }
+                });
+    }
+
+    private void mergeAndDisplayLists() {
+        progressShoppingLists.setVisibility(View.GONE);
+        listCollection.clear();
+        Map<String, ShoppingList> all = new HashMap<>(ownerListsMap);
+        all.putAll(collabListsMap);
+        
+        listCollection.addAll(all.values());
+        listCollection.sort((l1, l2) -> Long.compare(l2.getCreatedAt(), l1.getCreatedAt()));
+        
+        adapter.notifyDataSetChanged();
+        tvEmptyLists.setVisibility(listCollection.isEmpty() ? View.VISIBLE : View.GONE);
+    }
+
+    private void confirmDeleteList(ShoppingList list) {
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.delete_recipe)
+                .setMessage(R.string.shopping_list_delete_confirm)
+                .setPositiveButton(R.string.delete, (d, w) -> {
+                    db.collection("shopping_lists").document(list.getId()).delete()
+                            .addOnSuccessListener(aVoid -> Toast.makeText(getContext(), R.string.recipe_deleted, Toast.LENGTH_SHORT).show())
+                            .addOnFailureListener(e -> Toast.makeText(getContext(), R.string.error_generic, Toast.LENGTH_SHORT).show());
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 
     @Override
@@ -112,10 +150,8 @@ public class ShoppingListFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
-        if (shoppingListsListener != null) {
-            shoppingListsListener.remove();
-            shoppingListsListener = null;
-        }
+        if (ownerListener != null) ownerListener.remove();
+        if (collabListener != null) collabListener.remove();
         super.onDestroyView();
     }
 
