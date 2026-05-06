@@ -240,7 +240,7 @@ public class MyKitchenFragment extends Fragment {
                         }
 
                         tvTarget.setText(invitation.getTargetName() + typeLabel);
-                        tvFrom.setText(invitation.getFromUserName() + " sizi davet etti");
+                        tvFrom.setText(getString(R.string.invitation_sent_by, invitation.getFromUserName()));
 
                         btnAccept.setOnClickListener(v -> acceptInvitation(invitation));
                         btnDecline.setOnClickListener(v -> declineInvitation(invitation.getId()));

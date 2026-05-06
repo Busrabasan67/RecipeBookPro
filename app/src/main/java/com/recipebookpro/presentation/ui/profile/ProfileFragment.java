@@ -199,17 +199,38 @@ public class ProfileFragment extends Fragment {
     private void loadUserAllergens() {
         if (currentUser == null) return;
 
-        db.collection("users").document(currentUser.getUid()).get()
+        final String uid = currentUser.getUid();
+        final com.recipebookpro.data.local.AppDatabase localDb = com.recipebookpro.data.local.AppDatabase.getDatabase(requireContext());
+
+        // 1. Load from Room (Local) first
+        new Thread(() -> {
+            com.recipebookpro.data.local.entity.UserEntity localUser = localDb.userDao().getUserByUid(uid);
+            if (localUser != null && isAdded()) {
+                requireActivity().runOnUiThread(() -> {
+                    userAllergens = new ArrayList<>(localUser.getAllergens());
+                    populateAllergenChips();
+                });
+            }
+            
+            // 2. Fetch from Firestore (Remote) and update Room
+            db.collection("users").document(uid).get()
                 .addOnSuccessListener(doc -> {
                     if (doc.exists()) {
                         User user = doc.toObject(User.class);
-                        if (user != null && user.getAllergens() != null) {
+                        if (user != null) {
                             userAllergens = new ArrayList<>(user.getAllergens());
+                            populateAllergenChips();
+                            
+                            // Save to Room
+                            new Thread(() -> {
+                                localDb.userDao().insertUser(new com.recipebookpro.data.local.entity.UserEntity(
+                                    uid, user.getEmail(), user.getDisplayName(), user.getProfileImageUrl(), user.getAllergens()
+                                ));
+                            }).start();
                         }
                     }
-                    populateAllergenChips();
-                })
-                .addOnFailureListener(e -> populateAllergenChips());
+                });
+        }).start();
     }
 
     private void populateAllergenChips() {
@@ -308,6 +329,19 @@ public class ProfileFragment extends Fragment {
         userAllergens = selected;
         db.collection("users").document(currentUser.getUid())
                 .update("allergens", selected);
+
+        // Update Room
+        final String uid = currentUser.getUid();
+        final List<String> finalSelected = selected;
+        new Thread(() -> {
+            com.recipebookpro.data.local.AppDatabase localDb = com.recipebookpro.data.local.AppDatabase.getDatabase(requireContext());
+            com.recipebookpro.data.local.entity.UserEntity entity = localDb.userDao().getUserByUid(uid);
+            if (entity != null) {
+                entity.setAllergens(finalSelected);
+                entity.setLastUpdated(System.currentTimeMillis());
+                localDb.userDao().insertUser(entity);
+            }
+        }).start();
     }
 
     private void uploadProfileImage(Uri imageUri) {
@@ -364,10 +398,17 @@ public class ProfileFragment extends Fragment {
             return;
         }
 
-        List<String> permissionsToRequest = new ArrayList<>();
-        if (!cameraGranted) permissionsToRequest.add(Manifest.permission.CAMERA);
-        if (!galleryGranted && galleryPermission != null) permissionsToRequest.add(galleryPermission);
-        permissionLauncher.launch(permissionsToRequest.toArray(new String[0]));
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.permission_required)
+                .setMessage(R.string.camera_permission_rationale)
+                .setPositiveButton(R.string.accept, (dialog, which) -> {
+                    List<String> permissionsToRequest = new ArrayList<>();
+                    if (!cameraGranted) permissionsToRequest.add(Manifest.permission.CAMERA);
+                    if (!galleryGranted && galleryPermission != null) permissionsToRequest.add(galleryPermission);
+                    permissionLauncher.launch(permissionsToRequest.toArray(new String[0]));
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 
     private String getGalleryPermission() {

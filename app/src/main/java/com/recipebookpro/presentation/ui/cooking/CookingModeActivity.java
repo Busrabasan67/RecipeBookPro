@@ -9,11 +9,16 @@ import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
+import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.material.button.MaterialButton;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -39,11 +44,12 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
     private TextView tvMicStatus;
     private View cardTimerOverlay;
     private TextView tvActiveTimer;
-    private ImageButton btnTtsToggle;
+    private MaterialButton btnTtsToggle;
     private FloatingActionButton fabMic;
 
     private TextToSpeech tts;
     private boolean isTtsEnabled = true;
+    private boolean isFirstReadAttempted = false;
 
     private SpeechRecognizer speechRecognizer;
     private Intent recognizerIntent;
@@ -83,6 +89,8 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
         setupViewPager();
         initTTS();
         initSpeechRecognizer();
+        checkMicAndListen();
+        setupDraggableTimer();
 
         findViewById(R.id.btnExit).setOnClickListener(v -> finish());
     }
@@ -94,11 +102,17 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
         tvActiveTimer = findViewById(R.id.tvActiveTimer);
         btnTtsToggle = findViewById(R.id.btnTtsToggle);
         fabMic = findViewById(R.id.fabMic);
+        MaterialButton btnBack = findViewById(R.id.btnBack);
+
+        btnBack.setOnClickListener(v -> finish());
 
         btnTtsToggle.setOnClickListener(v -> {
             isTtsEnabled = !isTtsEnabled;
-            btnTtsToggle.setAlpha(isTtsEnabled ? 1.0f : 0.5f);
+            btnTtsToggle.setIconTint(ContextCompat.getColorStateList(this, 
+                isTtsEnabled ? R.color.md_theme_light_primary : R.color.md_theme_light_outline));
+            btnTtsToggle.setAlpha(isTtsEnabled ? 1.0f : 0.6f);
             if (!isTtsEnabled && tts != null) tts.stop();
+            else if (isTtsEnabled) readStep(recipe.getStepList().get(vpCookingSteps.getCurrentItem()));
         });
 
         fabMic.setOnClickListener(v -> {
@@ -106,6 +120,29 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
                 stopListeningSession();
             } else {
                 checkMicAndListen();
+            }
+        });
+    }
+
+    private void setupDraggableTimer() {
+        cardTimerOverlay.setOnTouchListener(new View.OnTouchListener() {
+            private float dX, dY;
+
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        dX = view.getX() - event.getRawX();
+                        dY = view.getY() - event.getRawY();
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        view.setX(event.getRawX() + dX);
+                        view.setY(event.getRawY() + dY);
+                        break;
+                    default:
+                        return false;
+                }
+                return true;
             }
         });
     }
@@ -118,7 +155,9 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
             @Override
             public void onPageSelected(int position) {
                 super.onPageSelected(position);
-                readStep(recipe.getStepList().get(position));
+                Step step = recipe.getStepList().get(position);
+                readStep(step);
+                updateTimerForStep(step);
             }
         });
     }
@@ -132,27 +171,68 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
         if (status == TextToSpeech.SUCCESS) {
             String currentLang = Locale.getDefault().getLanguage();
             Locale targetLocale = currentLang.equalsIgnoreCase("en") ? Locale.ENGLISH : new Locale("tr", "TR");
-            int result = tts.setLanguage(targetLocale);
-            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                tts.setLanguage(Locale.getDefault());
-            }
-            // Read the first step if possible
-            vpCookingSteps.postDelayed(() -> {
-                if (!recipe.getStepList().isEmpty()) {
-                    readStep(recipe.getStepList().get(0));
+            tts.setLanguage(targetLocale);
+            
+            tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                @Override public void onStart(String utteranceId) {
+                    runOnUiThread(() -> {
+                        if (isVoiceSessionActive) stopListening();
+                    });
                 }
-            }, 1000);
+                
+                @Override public void onDone(String utteranceId) {
+                    runOnUiThread(() -> {
+                        if (isVoiceSessionActive) startListening();
+                    });
+                }
+                
+                @Override public void onError(String utteranceId) {
+                    Log.e("TTS", "Error in TTS: " + utteranceId);
+                    runOnUiThread(() -> {
+                        if (isVoiceSessionActive) startListening();
+                    });
+                }
+            });
+
+            // Read the first step if it hasn't been read yet by the ViewPager callback
+            vpCookingSteps.postDelayed(() -> {
+                if (!recipe.getStepList().isEmpty() && !isFirstReadAttempted) {
+                    Step currentStep = recipe.getStepList().get(vpCookingSteps.getCurrentItem());
+                    readStep(currentStep);
+                    updateTimerForStep(currentStep);
+                }
+            }, 500);
         } else {
             Toast.makeText(this, R.string.tts_init_failed, Toast.LENGTH_SHORT).show();
         }
     }
 
     private void readStep(Step step) {
-        if (!isTtsEnabled || tts == null) return;
-        tts.stop();
-        String currentLang = Locale.getDefault().getLanguage();
+        if (!isTtsEnabled || tts == null || step == null) return;
+        isFirstReadAttempted = true;
+        
         String textToSpeak = step.getDisplayDescription();
-        tts.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "StepTTS");
+        if (textToSpeak == null || textToSpeak.trim().isEmpty()) return;
+
+        // Force stop any current speech to avoid overlap
+        tts.stop();
+        
+        // Refined language detection
+        String currentLang = Locale.getDefault().getLanguage();
+        if (step.getTranslatedDescription() != null && !step.getTranslatedDescription().isEmpty()) {
+            tts.setLanguage(Locale.ENGLISH);
+        } else {
+            tts.setLanguage(currentLang.equalsIgnoreCase("en") ? Locale.ENGLISH : new Locale("tr", "TR"));
+        }
+
+        // Use a slightly longer delay to ensure the UI has settled if coming from a page change
+        vpCookingSteps.postDelayed(() -> {
+            if (isTtsEnabled && tts != null) {
+                Bundle params = new Bundle();
+                params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "Step_" + step.getOrder());
+                tts.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, params, "Step_" + step.getOrder());
+            }
+        }, 100);
     }
 
     private void initSpeechRecognizer() {
@@ -175,7 +255,10 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
                 @Override
                 public void onError(int error) {
                     isListening = false;
+                    Log.d("Voice", "Error code: " + error);
                     if (isVoiceSessionActive) {
+                        // Error 7 is timeout, error 6 is no speech, etc.
+                        // We restart for most errors to keep the session alive.
                         tvMicStatus.setText(R.string.listening_restarting);
                         restartListeningWithDelay();
                     } else {
@@ -211,7 +294,14 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
 
     private void checkMicAndListen() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            requestMicPermission.launch(Manifest.permission.RECORD_AUDIO);
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.permission_required)
+                    .setMessage(R.string.mic_permission_rationale)
+                    .setPositiveButton(R.string.accept, (dialog, which) -> {
+                        requestMicPermission.launch(Manifest.permission.RECORD_AUDIO);
+                    })
+                    .setNegativeButton(R.string.cancel, null)
+                    .show();
         } else {
             startListeningSession();
         }
@@ -225,7 +315,6 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
     private void startListening() {
         if (!isVoiceSessionActive || isListening) return;
         if (speechRecognizer != null && recognizerIntent != null) {
-            if (tts != null) tts.stop(); // Stop talking while listening
             speechRecognizer.startListening(recognizerIntent);
             isListening = true;
             fabMic.setImageResource(R.drawable.ic_volume_up); // Show some active state
@@ -234,11 +323,12 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
     }
 
     private void restartListeningWithDelay() {
+        if (tts != null && tts.isSpeaking()) return; // Don't restart if TTS is active
         tvMicStatus.postDelayed(() -> {
             if (!isFinishing() && !isDestroyed() && isVoiceSessionActive) {
                 startListening();
             }
-        }, 350);
+        }, 500);
     }
 
     private void stopListeningSession() {
@@ -258,7 +348,16 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
     private void processVoiceCommand(String command) {
         if (command.contains("sonraki") || command.contains("next")) {
             int current = vpCookingSteps.getCurrentItem();
-            if (current < recipe.getStepList().size() - 1) vpCookingSteps.setCurrentItem(current + 1, true);
+            if (current < recipe.getStepList().size() - 1) {
+                vpCookingSteps.setCurrentItem(current + 1, true);
+            } else {
+                if (isTtsEnabled && tts != null) {
+                    tts.speak(getString(R.string.recipe_finished), TextToSpeech.QUEUE_FLUSH, null, "RecipeFinished");
+                }
+                Toast.makeText(this, R.string.recipe_finished, Toast.LENGTH_LONG).show();
+                // Return to details automatically
+                vpCookingSteps.postDelayed(this::finish, 3000);
+            }
         } else if (command.contains("önceki") || command.contains("previous") || command.contains("back")) {
             int current = vpCookingSteps.getCurrentItem();
             if (current > 0) vpCookingSteps.setCurrentItem(current - 1, true);
@@ -294,12 +393,44 @@ public class CookingModeActivity extends BaseActivity implements TextToSpeech.On
             @Override
             public void onFinish() {
                 tvActiveTimer.setText(R.string.timer_zero);
-                Toast.makeText(CookingModeActivity.this, R.string.timer_finished, Toast.LENGTH_LONG).show();
+                String msg = getString(R.string.timer_finished) + " " + getString(R.string.step_finished);
+                Toast.makeText(CookingModeActivity.this, msg, Toast.LENGTH_LONG).show();
+                
                 if (isTtsEnabled && tts != null) {
-                    tts.speak(getString(R.string.timer_finished), TextToSpeech.QUEUE_FLUSH, null, "TimerFinished");
+                    tts.speak(msg, TextToSpeech.QUEUE_FLUSH, null, "TimerFinished");
                 }
+
+                // Auto-advance to next step if possible
+                vpCookingSteps.postDelayed(() -> {
+                    int current = vpCookingSteps.getCurrentItem();
+                    if (current < recipe.getStepList().size() - 1) {
+                        vpCookingSteps.setCurrentItem(current + 1, true);
+                    } else {
+                        // All steps done via timer
+                        if (isTtsEnabled && tts != null) {
+                            tts.speak(getString(R.string.recipe_finished), TextToSpeech.QUEUE_FLUSH, null, "RecipeFinished");
+                        }
+                        Toast.makeText(CookingModeActivity.this, R.string.recipe_finished, Toast.LENGTH_LONG).show();
+                        vpCookingSteps.postDelayed(CookingModeActivity.this::finish, 3000);
+                    }
+                }, 2000); // 2 second delay to allow hearing the completion message
             }
         }.start();
+    }
+
+    private void updateTimerForStep(Step step) {
+        if (step != null && step.hasTimer()) {
+            if (currentTimer != null) {
+                currentTimer.cancel();
+                currentTimer = null;
+            }
+            cardTimerOverlay.setVisibility(View.VISIBLE);
+            int minutes = step.getTimerMinutes();
+            tvActiveTimer.setText(String.format(Locale.getDefault(), "%02d:00", minutes));
+        } else {
+            // Hide timer if step doesn't have one
+            stopTimer();
+        }
     }
 
     private void stopTimer() {

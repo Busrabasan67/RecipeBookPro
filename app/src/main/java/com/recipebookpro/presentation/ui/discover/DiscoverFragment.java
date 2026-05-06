@@ -15,6 +15,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.core.widget.NestedScrollView;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
@@ -50,6 +51,7 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
     private RecyclerView rvDiscoverResults, rvPublicCookbooks;
     private ProgressBar progressDiscover;
     private TextView tvDiscoverEmpty, tvResultsTitle;
+    private NestedScrollView nsvDiscover;
     private View hsvRecipeSort, layoutPublicCookbooksHeader;
     private ChipGroup chipGroupRecipeSort;
     private MaterialButton btnViewAllCookbooks;
@@ -79,6 +81,7 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
         progressDiscover = view.findViewById(R.id.progressDiscover);
         tvDiscoverEmpty = view.findViewById(R.id.tvDiscoverEmpty);
         tvResultsTitle = view.findViewById(R.id.tvResultsTitle);
+        nsvDiscover = view.findViewById(R.id.nsvDiscover);
         btnViewAllCookbooks = view.findViewById(R.id.btnViewAllCookbooks);
         layoutPublicCookbooksHeader = view.findViewById(R.id.layoutPublicCookbooksHeader);
         hsvRecipeSort = view.findViewById(R.id.hsvRecipeSort);
@@ -450,6 +453,12 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
             tvResultsTitle.setVisibility(View.VISIBLE);
             hsvRecipeSort.setVisibility(View.VISIBLE);
             adapter.notifyDataSetChanged();
+            
+            // Scroll the NestedScrollView to the results section
+            nsvDiscover.post(() -> {
+                int targetY = tvResultsTitle.getTop();
+                nsvDiscover.smoothScrollTo(0, targetY);
+            });
         }
 
         if (!publicCookbooks.isEmpty()) {

@@ -73,9 +73,9 @@ public class DayCardAdapter extends RecyclerView.Adapter<DayCardAdapter.DayViewH
         String dayLabel;
         if (duration == 7) {
             String[] dayLabels = holder.itemView.getResources().getStringArray(R.array.week_day_labels);
-            dayLabel = position < dayLabels.length ? dayLabels[position] : (position + 1) + ". Gün";
+            dayLabel = position < dayLabels.length ? dayLabels[position] : holder.itemView.getContext().getString(R.string.day_n, (position + 1));
         } else {
-            dayLabel = (position + 1) + ". Gün";
+            dayLabel = holder.itemView.getContext().getString(R.string.day_n, (position + 1));
         }
         
         List<Recipe> recipes = dayRecipesMap.get(dayKey);

@@ -187,7 +187,9 @@
     <string name="drag_to_reorder">Drag to reorder</string>
     <string name="swipe_to_delete">Swipe to delete</string>
     <string name="error_generic">Something went wrong. Please try again.</string>
-    <string name="permission_required">Permission required</string>
+    <string name="permission_required">Permission Required</string>
+    <string name="mic_permission_rationale">To use voice commands, you need to grant microphone permission.</string>
+    <string name="camera_permission_rationale">To take a profile photo, you need to grant camera permission.</string>
     <string name="per_serving">per serving</string>
     <string name="nutrition_analysis">Nutrition Analysis</string>
     <string name="unit_converter">Unit Converter</string>
@@ -477,4 +479,8 @@
     <string name="shopping_item_count_format">%1$d items</string>
     <string name="shopping_item_status_at_home">At Home</string>
     <string name="shopping_item_status_to_buy">To Buy</string>
+    <string name="day_n">Day %1$d</string>
+    <string name="invitation_sent_by">%1$s invited you</string>
+    <string name="step_finished">Step finished.</string>
+    <string name="recipe_finished">Congratulations, recipe completed.</string>
 </resources>

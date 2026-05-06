@@ -187,8 +187,10 @@
     <string name="drag_to_reorder">Drag to reorder</string>
     <string name="swipe_to_delete">Swipe to delete</string>
     <string name="error_generic">Something went wrong. Please try again.</string>
-    <string name="permission_required">Permission required</string>
-    <string name="per_serving">per serving</string>
+    <string name="permission_required">İzin Gerekli</string>
+    <string name="mic_permission_rationale">Sesli komutları kullanabilmek için mikrofon izni vermeniz gerekmektedir.</string>
+    <string name="camera_permission_rationale">Profil fotoğrafı çekebilmek için kamera izni vermeniz gerekmektedir.</string>
+    <string name="per_serving">porsiyon başı</string>
     <string name="nutrition_analysis">Nutrition Analysis</string>
     <string name="unit_converter">Unit Converter</string>
     <string name="nutrition_info_desc">Estimated values calculated by AI per serving.</string>
@@ -505,5 +507,9 @@
     <string name="invitation_type_cookbook">(Cookbook)</string>
     <string name="meal_plan_new_confirm_title">New Plan</string>
     <string name="meal_plan_new_confirm_msg">Would you like to start a fresh meal plan? Current unsaved changes will be lost.</string>
-    <string name="meal_plan_new_create">Create New</string>
+    <string name="meal_plan_new_create">Yeni Oluştur</string>
+    <string name="day_n">%1$d. Gün</string>
+    <string name="invitation_sent_by">%1$s sizi davet etti</string>
+    <string name="step_finished">Adım bitti.</string>
+    <string name="recipe_finished">Tebrikler, tarif tamamlandı.</string>
 </resources>

@@ -23,8 +23,8 @@
         app:cardElevation="8dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:visibility="visible">
+        app:layout_constraintBottom_toTopOf="@id/cardBottomControls"
+        android:layout_marginBottom="16dp">
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -33,6 +33,14 @@
             android:orientation="horizontal"
             android:paddingHorizontal="24dp"
             android:paddingVertical="12dp">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="24dp"
+                android:layout_marginEnd="8dp"
+                android:src="@drawable/ic_drag_handle"
+                app:tint="?attr/colorOnPrimary"
+                android:alpha="0.6" />
 
             <ImageView
                 android:layout_width="24dp"
@@ -52,69 +60,115 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnBack"
+        style="@style/Widget.Material3.Button.ElevatedButton"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_margin="16dp"
+        android:padding="0dp"
+        app:icon="@drawable/ic_arrow_back"
+        app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        app:iconSize="24dp"
+        app:cornerRadius="12dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:iconTint="?attr/colorOnSurface" />
+
     <!-- Bottom Controls Area -->
-    <LinearLayout
-        android:id="@+id/llBottomControls"
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardBottomControls"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#E6000000"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:padding="16dp"
-        app:layout_constraintBottom_toBottomOf="parent">
-
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/tvVoiceHint"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/voice_command_hint"
-            android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
-            android:textColor="?attr/colorOnSurfaceVariant" />
+        android:layout_marginHorizontal="24dp"
+        app:cardCornerRadius="36dp"
+        app:cardElevation="24dp"
+        app:cardBackgroundColor="#F2FFFFFF"
+        app:strokeWidth="2dp"
+        app:strokeColor="#0D000000"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginBottom="48dp">
 
         <LinearLayout
+            android:id="@+id/llBottomControls"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
             android:gravity="center"
-            android:orientation="horizontal">
+            android:orientation="vertical"
+            android:padding="24dp">
 
-            <ImageButton
-                android:id="@+id/btnTtsToggle"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_volume_up"
-                app:tint="?attr/colorOnSurface" />
-
-            <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/fabMic"
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/tvVoiceHint"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="32dp"
-                android:src="@drawable/ic_mic"
-                app:backgroundTint="?attr/colorPrimary"
-                app:tint="?attr/colorOnPrimary" />
+                android:text="@string/voice_command_hint"
+                android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textAlignment="center"
+                android:alpha="0.8" />
 
-            <ImageButton
-                android:id="@+id/btnExit"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_remove"
-                app:tint="?attr/colorOnSurface" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTtsToggle"
+                    style="@style/Widget.Material3.Button.ElevatedButton"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:padding="0dp"
+                    app:icon="@drawable/ic_volume_up"
+                    app:iconSize="32dp"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:cornerRadius="16dp"
+                    app:iconTint="?attr/colorPrimary"
+                    app:rippleColor="?attr/colorPrimaryContainer" />
+
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                    android:id="@+id/fabMic"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="32dp"
+                    android:src="@drawable/ic_mic"
+                    app:fabCustomSize="80dp"
+                    app:maxImageSize="40dp"
+                    app:backgroundTint="?attr/colorPrimary"
+                    app:tint="?attr/colorOnPrimary"
+                    app:elevation="12dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnExit"
+                    style="@style/Widget.Material3.Button.ElevatedButton"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:padding="0dp"
+                    app:icon="@drawable/ic_close"
+                    app:iconSize="32dp"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:cornerRadius="16dp"
+                    app:iconTint="#D32F2F"
+                    app:rippleColor="#FFEBEE" />
+
+            </LinearLayout>
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/tvMicStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/listening"
+                android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+                android:textColor="?attr/colorPrimary"
+                android:textStyle="bold"
+                android:letterSpacing="0.1" />
 
         </LinearLayout>
-
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/tvMicStatus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/listening"
-            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
-            android:textColor="?attr/colorPrimary"
-            android:textStyle="bold" />
-
-    </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
