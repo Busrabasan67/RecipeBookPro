@@ -186,7 +186,10 @@ public class LoginActivity extends BaseActivity {
                     if (task.isSuccessful() && task.getResult() != null && !task.getResult().exists()) {
                         String email = firebaseUser.getEmail() != null ? firebaseUser.getEmail() : "";
                         String name = firebaseUser.getDisplayName() != null ? firebaseUser.getDisplayName() : "";
+                        String photoUrl = firebaseUser.getPhotoUrl() != null ? firebaseUser.getPhotoUrl().toString() : "";
+                        
                         User user = new User(uid, email, name, System.currentTimeMillis());
+                        user.setProfileImageUrl(photoUrl);
                         db.collection("users").document(uid).set(user);
                     }
                     setLoading(false);

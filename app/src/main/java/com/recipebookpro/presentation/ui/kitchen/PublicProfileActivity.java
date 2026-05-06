@@ -138,40 +138,66 @@ public class PublicProfileActivity extends BaseActivity {
     }
 
     private void loadUserProfile() {
+        if (TextUtils.isEmpty(userId)) return;
+        
         progress.setVisibility(View.VISIBLE);
         if (userProfileListener != null) {
             userProfileListener.remove();
         }
+        
         userProfileListener = db.collection("users").document(userId).addSnapshotListener((doc, e) -> {
-            if (e != null || doc == null || !doc.exists()) return;
-            User user = doc.toObject(User.class);
-            if (user != null) {
-                tvName.setText(user.getDisplayName());
-                toolbar.setTitle(user.getDisplayName());
-                tvFollowerCount.setText(getString(R.string.followers_count, user.getFollowerCount()));
-                tvFollowingCount.setText(getString(R.string.following_count, user.getFollowingCount()));
+            progress.setVisibility(View.GONE);
+            if (e != null) {
+                Toast.makeText(this, R.string.load_failed, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            if (doc == null || !doc.exists()) {
+                Toast.makeText(this, R.string.recipe_owner_unknown, Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-                if (user.getProfileImageUrl() != null && !user.getProfileImageUrl().isEmpty()) {
-                    ImageRequest request = new ImageRequest.Builder(this)
-                            .data(user.getProfileImageUrl())
-                            .target(ivAvatar)
-                            .crossfade(true)
-                            .transformations(new CircleCropTransformation())
-                            .placeholder(R.drawable.ic_nav_profile)
-                            .build();
-                    Coil.imageLoader(this).enqueue(request);
-                }
+            try {
+                User user = doc.toObject(User.class);
+                if (user != null) {
+                    // Update user fields if document ID is different from uid field
+                    if (TextUtils.isEmpty(user.getUid())) user.setUid(doc.getId());
+                    
+                    tvName.setText(user.getDisplayName());
+                    toolbar.setTitle(user.getDisplayName());
+                    
+                    // Safe string formatting for counts
+                    tvFollowerCount.setText(getString(R.string.followers_count, user.getFollowerCount()));
+                    tvFollowingCount.setText(getString(R.string.following_count, user.getFollowingCount()));
 
-                if (currentUser != null && !currentUser.getUid().equals(userId)) {
-                    btnFollowUser.setVisibility(View.VISIBLE);
-                    if (user.getFollowerIds().contains(currentUser.getUid())) {
-                        btnFollowUser.setText(R.string.unfollow);
+                    if (!TextUtils.isEmpty(user.getProfileImageUrl())) {
+                        ImageRequest request = new ImageRequest.Builder(this)
+                                .data(user.getProfileImageUrl())
+                                .target(ivAvatar)
+                                .crossfade(true)
+                                .transformations(new CircleCropTransformation())
+                                .placeholder(R.drawable.ic_nav_profile)
+                                .error(R.drawable.ic_nav_profile)
+                                .build();
+                        Coil.imageLoader(this).enqueue(request);
                     } else {
-                        btnFollowUser.setText(R.string.follow);
+                        ivAvatar.setImageResource(R.drawable.ic_nav_profile);
                     }
-                } else {
-                    btnFollowUser.setVisibility(View.GONE);
+
+                    if (currentUser != null && !currentUser.getUid().equals(userId)) {
+                        btnFollowUser.setVisibility(View.VISIBLE);
+                        if (user.getFollowerIds().contains(currentUser.getUid())) {
+                            btnFollowUser.setText(R.string.unfollow);
+                        } else {
+                            btnFollowUser.setText(R.string.follow);
+                        }
+                    } else {
+                        btnFollowUser.setVisibility(View.GONE);
+                    }
                 }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Toast.makeText(this, R.string.error_generic, Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -183,22 +209,25 @@ public class PublicProfileActivity extends BaseActivity {
         publicCookbooksListener = db.collection("cookbooks")
           .whereEqualTo("userId", userId)
           .addSnapshotListener((value, error) -> {
-              progress.setVisibility(View.GONE);
               if (error != null) return;
-              publicCookbooks.clear();
-              if (value != null) {
-                  for (QueryDocumentSnapshot doc : value) {
-                      Cookbook cookbook = Cookbook.fromDocument(doc);
-                      if (cookbook.isPublic()) {
-                          publicCookbooks.add(cookbook);
+              try {
+                  publicCookbooks.clear();
+                  if (value != null) {
+                      for (QueryDocumentSnapshot doc : value) {
+                          Cookbook cookbook = Cookbook.fromDocument(doc);
+                          if (cookbook != null && cookbook.isPublic()) {
+                              publicCookbooks.add(cookbook);
+                          }
                       }
+                      Collections.sort(publicCookbooks, (b1, b2) -> Long.compare(b2.getCreatedAt(), b1.getCreatedAt()));
                   }
-                  Collections.sort(publicCookbooks, (b1, b2) -> Long.compare(b2.getCreatedAt(), b1.getCreatedAt()));
+                  adapter.notifyDataSetChanged();
+                  tvPublicCookbooksEmpty.setVisibility(publicCookbooks.isEmpty() ? View.VISIBLE : View.GONE);
+                  loadFollowedCookbooks();
+                  loadPublicRecipes();
+              } catch (Exception e) {
+                  e.printStackTrace();
               }
-              adapter.notifyDataSetChanged();
-              tvPublicCookbooksEmpty.setVisibility(publicCookbooks.isEmpty() ? View.VISIBLE : View.GONE);
-              loadFollowedCookbooks();
-              loadPublicRecipes();
           });
     }
 
@@ -210,17 +239,21 @@ public class PublicProfileActivity extends BaseActivity {
           .whereArrayContains("followerIds", userId)
           .addSnapshotListener((value, error) -> {
               if (error != null) return;
-              followedCookbooks.clear();
-              if (value != null) {
-                  for (QueryDocumentSnapshot doc : value) {
-                      Cookbook cookbook = Cookbook.fromDocument(doc);
-                      if (cookbook.isPublic()) {
-                          followedCookbooks.add(cookbook);
+              try {
+                  followedCookbooks.clear();
+                  if (value != null) {
+                      for (QueryDocumentSnapshot doc : value) {
+                          Cookbook cookbook = Cookbook.fromDocument(doc);
+                          if (cookbook != null && cookbook.isPublic()) {
+                              followedCookbooks.add(cookbook);
+                          }
                       }
                   }
+                  followedAdapter.notifyDataSetChanged();
+                  tvFollowedCookbooksEmpty.setVisibility(followedCookbooks.isEmpty() ? View.VISIBLE : View.GONE);
+              } catch (Exception e) {
+                  e.printStackTrace();
               }
-              followedAdapter.notifyDataSetChanged();
-              tvFollowedCookbooksEmpty.setVisibility(followedCookbooks.isEmpty() ? View.VISIBLE : View.GONE);
           });
     }
 
@@ -232,18 +265,22 @@ public class PublicProfileActivity extends BaseActivity {
                 .whereEqualTo("userId", userId)
                 .addSnapshotListener((value, error) -> {
                     if (error != null) return;
-                    publicRecipes.clear();
-                    if (value != null) {
-                        for (QueryDocumentSnapshot doc : value) {
-                            Recipe recipe = Recipe.fromDocument(doc);
-                            if (recipe.isPublic()) {
-                                publicRecipes.add(recipe);
+                    try {
+                        publicRecipes.clear();
+                        if (value != null) {
+                            for (QueryDocumentSnapshot doc : value) {
+                                Recipe recipe = Recipe.fromDocument(doc);
+                                if (recipe != null && recipe.isPublic()) {
+                                    publicRecipes.add(recipe);
+                                }
                             }
+                            Collections.sort(publicRecipes, (r1, r2) -> Long.compare(r2.getCreatedAt(), r1.getCreatedAt()));
                         }
-                        Collections.sort(publicRecipes, (r1, r2) -> Long.compare(r2.getCreatedAt(), r1.getCreatedAt()));
+                        publicRecipeAdapter.setRecipeList(publicRecipes);
+                        tvPublicRecipesEmpty.setVisibility(publicRecipes.isEmpty() ? View.VISIBLE : View.GONE);
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
-                    publicRecipeAdapter.setRecipeList(publicRecipes);
-                    tvPublicRecipesEmpty.setVisibility(publicRecipes.isEmpty() ? View.VISIBLE : View.GONE);
                 });
     }
 

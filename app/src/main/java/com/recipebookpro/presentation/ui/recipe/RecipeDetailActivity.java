@@ -37,6 +37,7 @@ import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 import com.recipebookpro.data.worker.MergeIngredientsWorker;
 import com.recipebookpro.presentation.ui.cooking.CookingModeActivity;
+import com.recipebookpro.presentation.ui.kitchen.PublicProfileActivity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -92,6 +93,7 @@ public class RecipeDetailActivity extends BaseActivity {
         setupToolbar();
         loadUserAllergensAndSetupPager();
         setupFAB();
+        setupOwnerCard();
         
         translationService = new MLKitTranslationService(this);
         translateRecipeUseCase = new TranslateRecipeUseCase(translationService);
@@ -117,6 +119,7 @@ public class RecipeDetailActivity extends BaseActivity {
                 setupToolbar();
                 loadUserAllergensAndSetupPager();
                 setupFAB();
+                setupOwnerCard();
             } else {
                 Toast.makeText(this, R.string.recipe_not_found, Toast.LENGTH_SHORT).show();
                 finish();
@@ -424,6 +427,43 @@ public class RecipeDetailActivity extends BaseActivity {
         if (appBarLayout != null) {
             appBarLayout.setExpanded(true, true);
         }
+    }
+
+    private void setupOwnerCard() {
+        if (recipe == null || TextUtils.isEmpty(recipe.getUserId())) return;
+        
+        View card = findViewById(R.id.cardOwnerInfo);
+        TextView tvOwner = findViewById(R.id.tvOwnerName);
+        ImageView ivAvatar = findViewById(R.id.ivOwnerAvatar);
+        
+        db.collection("users").document(recipe.getUserId()).get()
+          .addOnSuccessListener(doc -> {
+              if (doc.exists()) {
+                  User user = doc.toObject(User.class);
+                  if (user != null) {
+                      tvOwner.setText(user.getDisplayName());
+                      if (!TextUtils.isEmpty(user.getProfileImageUrl())) {
+                          ImageRequest request = new ImageRequest.Builder(this)
+                              .data(user.getProfileImageUrl())
+                              .target(ivAvatar)
+                              .crossfade(true)
+                              .transformations(new coil.transform.CircleCropTransformation())
+                              .placeholder(R.drawable.ic_nav_profile)
+                              .build();
+                          Coil.imageLoader(this).enqueue(request);
+                      }
+                      String uid = user.getUid();
+                      if (TextUtils.isEmpty(uid)) uid = doc.getId();
+                      final String finalUid = uid;
+
+                      card.setOnClickListener(v -> {
+                          Intent intent = new Intent(RecipeDetailActivity.this, PublicProfileActivity.class);
+                          intent.putExtra(PublicProfileActivity.EXTRA_USER_ID, finalUid);
+                          startActivity(intent);
+                      });
+                  }
+              }
+          });
     }
 
     private void revertTranslation() {

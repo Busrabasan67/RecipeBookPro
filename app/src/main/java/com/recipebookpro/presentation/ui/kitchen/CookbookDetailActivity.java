@@ -149,6 +149,7 @@ public class CookbookDetailActivity extends BaseActivity {
             }
             cookbook = Cookbook.fromDocument(doc);
             updateUI();
+            setupOwnerCard();
             loadRecipes();
         });
     }
@@ -224,6 +225,43 @@ public class CookbookDetailActivity extends BaseActivity {
         }
 
         updateCollaborators();
+    }
+
+    private void setupOwnerCard() {
+        if (cookbook == null || TextUtils.isEmpty(cookbook.getUserId())) return;
+
+        View card = findViewById(R.id.cardCookbookOwner);
+        TextView tvOwner = findViewById(R.id.tvCookbookOwnerName);
+        ImageView ivAvatar = findViewById(R.id.ivCookbookOwnerAvatar);
+
+        db.collection("users").document(cookbook.getUserId()).get()
+          .addOnSuccessListener(doc -> {
+              if (doc.exists()) {
+                  User user = doc.toObject(User.class);
+                  if (user != null) {
+                      tvOwner.setText(user.getDisplayName());
+                      if (!TextUtils.isEmpty(user.getProfileImageUrl())) {
+                          ImageRequest request = new ImageRequest.Builder(this)
+                              .data(user.getProfileImageUrl())
+                              .target(ivAvatar)
+                              .crossfade(true)
+                              .transformations(new coil.transform.CircleCropTransformation())
+                              .placeholder(R.drawable.ic_nav_profile)
+                              .build();
+                          Coil.imageLoader(this).enqueue(request);
+                      }
+                      String uid = user.getUid();
+                      if (TextUtils.isEmpty(uid)) uid = doc.getId();
+                      final String finalUid = uid;
+
+                      card.setOnClickListener(v -> {
+                          Intent intent = new Intent(CookbookDetailActivity.this, PublicProfileActivity.class);
+                          intent.putExtra(PublicProfileActivity.EXTRA_USER_ID, finalUid);
+                          startActivity(intent);
+                      });
+                  }
+              }
+          });
     }
 
     private void updateCollaborators() {

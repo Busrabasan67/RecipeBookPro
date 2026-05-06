@@ -493,4 +493,25 @@
     <string name="meal_plan_new_confirm_title">Yeni Plan</string>
     <string name="meal_plan_new_confirm_msg">Yeni bir yemek planı başlatmak istiyor musunuz? Mevcut kaydedilmemiş değişiklikler kaybolacaktır.</string>
     <string name="meal_plan_new_create">Yeni Oluştur</string>
+    <string name="day_n">%1$d. Gün</string>
+    <string name="invitation_sent_by">%1$s sizi davet etti</string>
+    <string name="step_finished">Adım bitti.</string>
+    <string name="recipe_finished">Tebrikler, tarif tamamlandı.</string>
+    <string name="published_by_label">Yayınlayan</string>
+    <string name="view_profile">Profili Gör</string>
+    <string name="invalid_email">Geçersiz e-posta formatı</string>
+    <string name="empty_fields">Lütfen tüm alanları doldurun.</string>
+    <string name="password_too_short">Şifre en az 6 karakter olmalıdır.</string>
+    <string name="passwords_not_match">Şifreler eşleşmiyor.</string>
+    <string name="login_failed">Giriş başarısız. Bilgilerinizi kontrol edin.</string>
+    <string name="register_failed">Kayıt başarısız. Lütfen tekrar deneyin.</string>
+    <string name="no_account">Hesabınız yok mu? Kayıt Ol</string>
+    <string name="already_have_account">Zaten hesabınız var mı? Giriş Yap</string>
+    <string name="sign_up">Kayıt Ol</string>
+    <string name="sign_in">Giriş Yap</string>
+    <string name="sign_in_with_google">Google ile Giriş Yap</string>
+    <string name="google_sign_in_failed">Google girişi başarısız oldu.</string>
+    <string name="mic_permission_rationale">Sesli komutlar için mikrofon izni gereklidir.</string>
+    <string name="camera_permission_rationale">Tarif fotoğrafı çekmek için kamera izni gereklidir.</string>
+    <string name="cookbook_empty">Bu defterde henüz tarif yok.</string>
 </resources>

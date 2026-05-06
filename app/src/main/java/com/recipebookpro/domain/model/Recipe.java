@@ -137,38 +137,6 @@ public class Recipe implements Serializable {
         recipe.setTranslatedInstructions(document.getString("translatedInstructions"));
         recipe.setOriginalLanguage(document.getString("originalLanguage"));
 
-        List<Map<String, Object>> ingredientsMap = (List<Map<String, Object>>) document.get("ingredients");
-        if (ingredientsMap != null) {
-            List<Ingredient> ingredients = new ArrayList<>();
-            for (Map<String, Object> map : ingredientsMap) {
-                Ingredient ing = new Ingredient(
-                    (String) map.get("name"),
-                    (String) map.get("amount"),
-                    (String) map.get("unit")
-                );
-                ing.setTranslatedName((String) map.get("translatedName"));
-                ing.setTranslatedUnit((String) map.get("translatedUnit"));
-                ingredients.add(ing);
-            }
-            recipe.setIngredients(ingredients);
-        }
-
-        List<Map<String, Object>> stepsMap = (List<Map<String, Object>>) document.get("stepList");
-        if (stepsMap != null) {
-            List<Step> steps = new ArrayList<>();
-            for (Map<String, Object> map : stepsMap) {
-                Step step = new Step(
-                    ((Long) map.get("order")).intValue(),
-                    (String) map.get("description"),
-                    ((Long) map.get("timerMinutes")).intValue(),
-                    (String) map.get("imageUrl")
-                );
-                step.setTranslatedDescription((String) map.get("translatedDescription"));
-                steps.add(step);
-            }
-            recipe.setStepList(steps);
-        }
-
         return recipe;
     }
 

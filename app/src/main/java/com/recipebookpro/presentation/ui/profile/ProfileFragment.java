@@ -5,6 +5,7 @@ import android.content.pm.PackageManager;
 import android.Manifest;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.os.Environment;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -202,7 +203,7 @@ public class ProfileFragment extends Fragment {
         final String uid = currentUser.getUid();
         final com.recipebookpro.data.local.AppDatabase localDb = com.recipebookpro.data.local.AppDatabase.getDatabase(requireContext());
 
-        // 1. Load from Room (Local) first
+        // 1. Load from Room (Local) first on a background thread
         new Thread(() -> {
             com.recipebookpro.data.local.entity.UserEntity localUser = localDb.userDao().getUserByUid(uid);
             if (localUser != null && isAdded()) {
@@ -213,23 +214,35 @@ public class ProfileFragment extends Fragment {
             }
             
             // 2. Fetch from Firestore (Remote) and update Room
-            db.collection("users").document(uid).get()
-                .addOnSuccessListener(doc -> {
-                    if (doc.exists()) {
-                        User user = doc.toObject(User.class);
-                        if (user != null) {
-                            userAllergens = new ArrayList<>(user.getAllergens());
-                            populateAllergenChips();
-                            
-                            // Save to Room
-                            new Thread(() -> {
-                                localDb.userDao().insertUser(new com.recipebookpro.data.local.entity.UserEntity(
-                                    uid, user.getEmail(), user.getDisplayName(), user.getProfileImageUrl(), user.getAllergens()
-                                ));
-                            }).start();
+            // We don't need to be in the thread for this as Firestore is async
+            requireActivity().runOnUiThread(() -> {
+                db.collection("users").document(uid).get()
+                    .addOnSuccessListener(doc -> {
+                        if (doc.exists()) {
+                            User user = doc.toObject(User.class);
+                            if (user != null) {
+                                // Sync profile image if missing in Firestore but present in Auth (Google)
+                                if (TextUtils.isEmpty(user.getProfileImageUrl()) && currentUser.getPhotoUrl() != null) {
+                                    String authPhoto = currentUser.getPhotoUrl().toString();
+                                    user.setProfileImageUrl(authPhoto);
+                                    db.collection("users").document(uid).update("profileImageUrl", authPhoto);
+                                }
+
+                                userAllergens = new ArrayList<>(user.getAllergens());
+                                populateAllergenChips();
+                                
+                                // Update Room in background
+                                final User finalUser = user;
+                                new Thread(() -> {
+                                    localDb.userDao().insertUser(new com.recipebookpro.data.local.entity.UserEntity(
+                                        uid, finalUser.getEmail(), finalUser.getDisplayName(), 
+                                        finalUser.getProfileImageUrl(), finalUser.getAllergens()
+                                    ));
+                                }).start();
+                            }
                         }
-                    }
-                });
+                    });
+            });
         }).start();
     }
 
