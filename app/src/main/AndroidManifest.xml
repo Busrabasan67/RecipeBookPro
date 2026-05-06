@@ -137,6 +137,9 @@
             </intent-filter>
         </service>
 
+        <service
+            android:name=".service.NotificationService"
+            android:exported="false" />
     </application>
 
 </manifest>

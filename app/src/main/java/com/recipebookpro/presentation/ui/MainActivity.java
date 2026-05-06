@@ -30,6 +30,8 @@ import com.recipebookpro.data.repository.NotificationRepositoryImpl;
 import com.recipebookpro.domain.repository.NotificationRepository;
 import com.recipebookpro.util.LocaleUtils;
 import com.recipebookpro.util.NotificationHelper;
+import com.recipebookpro.service.NotificationService;
+import android.content.Intent;
 
 public class MainActivity extends BaseActivity {
 
@@ -87,6 +89,12 @@ public class MainActivity extends BaseActivity {
         NotificationHelper.createNotificationChannel(this);
         checkNotificationPermission();
         observeNotifications();
+        startNotificationService();
+    }
+
+    private void startNotificationService() {
+        Intent intent = new Intent(this, NotificationService.class);
+        startService(intent);
     }
 
     private void observeNotifications() {
@@ -97,27 +105,7 @@ public class MainActivity extends BaseActivity {
             if (notifications == null) return;
             int unreadCount = 0;
             for (com.recipebookpro.domain.model.Notification n : notifications) {
-                if (!n.isRead()) {
-                    unreadCount++;
-                    // If it's a NEW notification (timestamp after last check)
-                    if (n.getTimestamp() > lastAlertTimestamp) {
-                        boolean isTr = LocaleUtils.isTurkish(this);
-                        NotificationHelper.showNotification(
-                                this, 
-                                isTr ? n.getTitleTr() : n.getTitle(), 
-                                isTr ? n.getMessageTr() : n.getMessage()
-                        );
-                    }
-                }
-            }
-            // Update lastAlertTimestamp to avoid re-alerting
-            if (!notifications.isEmpty()) {
-                // Find the maximum timestamp in the list
-                long maxTs = 0;
-                for(com.recipebookpro.domain.model.Notification n : notifications) {
-                    maxTs = Math.max(maxTs, n.getTimestamp());
-                }
-                lastAlertTimestamp = Math.max(lastAlertTimestamp, maxTs);
+                if (!n.isRead()) unreadCount++;
             }
             updateNotificationBadge(unreadCount);
         });
