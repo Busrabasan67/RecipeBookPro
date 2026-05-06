@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -34,5 +34,11 @@
         android:name="com.recipebookpro.presentation.ui.profile.ProfileFragment"
         android:label="@string/nav_profile"
         tools:layout="@layout/fragment_profile" />
+
+    <fragment
+        android:id="@+id/notificationFragment"
+        android:name="com.recipebookpro.presentation.ui.notification.NotificationFragment"
+        android:label="@string/notifications"
+        tools:layout="@layout/fragment_notifications" />
 
 </navigation>

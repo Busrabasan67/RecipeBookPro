@@ -50,6 +50,7 @@ import com.google.mlkit.nl.translate.TranslateLanguage;
 import com.recipebookpro.presentation.ui.BaseActivity;
 import com.recipebookpro.presentation.ui.recipe.adapter.EditableIngredientAdapter;
 import com.recipebookpro.presentation.ui.recipe.adapter.EditableStepAdapter;
+import com.recipebookpro.util.NotificationTrigger;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -557,10 +558,18 @@ public class RecipeAddEditActivity extends BaseActivity {
         db.collection("recipes").document(docId)
             .set(currentRecipe)
             .addOnSuccessListener(aVoid -> {
+                if (!isEditMode) {
+                    NotificationTrigger.triggerNewRecipeFromUser(currentRecipe, currentUser.getDisplayName());
+                }
+                
                 if (selectedCookbookId != null) {
+                    String cookbookName = actvCookbook.getText().toString();
                     db.collection("cookbooks").document(selectedCookbookId)
                         .update("recipeIds", com.google.firebase.firestore.FieldValue.arrayUnion(docId))
                         .addOnCompleteListener(t -> {
+                            if (!isEditMode) {
+                                NotificationTrigger.triggerNewRecipeInCookbook(currentRecipe, selectedCookbookId, cookbookName);
+                            }
                             Toast.makeText(this, R.string.recipe_saved, Toast.LENGTH_SHORT).show();
                             finish();
                         });

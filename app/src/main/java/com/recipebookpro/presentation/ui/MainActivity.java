@@ -1,8 +1,16 @@
 package com.recipebookpro.presentation.ui;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -12,12 +20,24 @@ import androidx.navigation.ui.NavigationUI;
 
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.badge.BadgeDrawable;
+import com.google.android.material.badge.BadgeUtils;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.firebase.auth.FirebaseAuth;
 import com.recipebookpro.R;
+import com.recipebookpro.data.repository.NotificationRepositoryImpl;
+import com.recipebookpro.domain.repository.NotificationRepository;
+import com.recipebookpro.util.LocaleUtils;
+import com.recipebookpro.util.NotificationHelper;
 
 public class MainActivity extends BaseActivity {
 
     private NavController navController;
+    private static final int NOTIFICATION_PERMISSION_CODE = 101;
+    private NotificationRepository notificationRepository;
+    private BadgeDrawable badgeDrawable;
+    private long lastAlertTimestamp = System.currentTimeMillis();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,6 +82,102 @@ public class MainActivity extends BaseActivity {
             NavigationUI.setupWithNavController(bottomNav, navController);
             NavigationUI.setupActionBarWithNavController(this, navController);
         }
+
+        notificationRepository = new NotificationRepositoryImpl();
+        NotificationHelper.createNotificationChannel(this);
+        checkNotificationPermission();
+        observeNotifications();
+    }
+
+    private void observeNotifications() {
+        String uid = FirebaseAuth.getInstance().getUid();
+        if (uid == null) return;
+
+        notificationRepository.getNotifications(uid).observe(this, notifications -> {
+            if (notifications == null) return;
+            int unreadCount = 0;
+            for (com.recipebookpro.domain.model.Notification n : notifications) {
+                if (!n.isRead()) {
+                    unreadCount++;
+                    // If it's a NEW notification (timestamp after last check)
+                    if (n.getTimestamp() > lastAlertTimestamp) {
+                        boolean isTr = LocaleUtils.isTurkish(this);
+                        NotificationHelper.showNotification(
+                                this, 
+                                isTr ? n.getTitleTr() : n.getTitle(), 
+                                isTr ? n.getMessageTr() : n.getMessage()
+                        );
+                    }
+                }
+            }
+            // Update lastAlertTimestamp to avoid re-alerting
+            if (!notifications.isEmpty()) {
+                // Find the maximum timestamp in the list
+                long maxTs = 0;
+                for(com.recipebookpro.domain.model.Notification n : notifications) {
+                    maxTs = Math.max(maxTs, n.getTimestamp());
+                }
+                lastAlertTimestamp = Math.max(lastAlertTimestamp, maxTs);
+            }
+            updateNotificationBadge(unreadCount);
+        });
+    }
+
+    private void updateNotificationBadge(int count) {
+        if (badgeDrawable == null) return;
+        if (count > 0) {
+            badgeDrawable.setVisible(true);
+            badgeDrawable.setNumber(count);
+        } else {
+            badgeDrawable.setVisible(false);
+        }
+    }
+
+    private void checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.POST_NOTIFICATIONS)) {
+                    new MaterialAlertDialogBuilder(this)
+                            .setTitle(R.string.permission_required)
+                            .setMessage(R.string.notification_permission_rationale)
+                            .setPositiveButton(R.string.accept, (dialog, which) -> {
+                                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 101);
+                            })
+                            .setNegativeButton(R.string.cancel, null)
+                            .show();
+                } else {
+                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 101);
+                }
+            }
+        }
+    }
+
+    @com.google.android.material.badge.ExperimentalBadgeUtils
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        
+        MenuItem notificationItem = menu.findItem(R.id.action_notifications);
+        if (notificationItem != null) {
+            badgeDrawable = BadgeDrawable.create(this);
+            badgeDrawable.setVisible(false);
+            
+            MaterialToolbar toolbar = findViewById(R.id.topAppBar);
+            toolbar.post(() -> {
+                int count = 0; // Temporary, will be updated by observer
+                BadgeUtils.attachBadgeDrawable(badgeDrawable, toolbar, R.id.action_notifications);
+            });
+        }
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.action_notifications) {
+            navController.navigate(R.id.notificationFragment);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override

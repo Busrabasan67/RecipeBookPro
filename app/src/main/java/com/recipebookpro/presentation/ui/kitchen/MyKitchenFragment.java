@@ -50,9 +50,7 @@ public class MyKitchenFragment extends Fragment {
     private TextView tvEmptyCookbooks;
     private TextView tvEmptyFollowed;
     private TextView tvEmptyLikedRecipes;
-    private MaterialTextView tvInvitationsLabel;
     private MaterialTextView tvCollabLabel;
-    private LinearLayout containerInvitations;
     private ProgressBar progressKitchen;
 
     private CookbookAdapter cookbookAdapter;
@@ -84,9 +82,7 @@ public class MyKitchenFragment extends Fragment {
         rvLikedRecipes = view.findViewById(R.id.rvLikedRecipes);
         tvEmptyFollowed = view.findViewById(R.id.tvEmptyFollowed);
         tvEmptyLikedRecipes = view.findViewById(R.id.tvEmptyLikedRecipes);
-        tvInvitationsLabel = view.findViewById(R.id.tvInvitationsLabel);
         tvCollabLabel = view.findViewById(R.id.tvCollabLabel);
-        containerInvitations = view.findViewById(R.id.containerInvitations);
 
         db = FirebaseFirestore.getInstance();
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -98,7 +94,6 @@ public class MyKitchenFragment extends Fragment {
         });
 
         loadData();
-        loadInvitations();
         
         return view;
     }
@@ -202,90 +197,6 @@ public class MyKitchenFragment extends Fragment {
                 });
     }
 
-    private void loadInvitations() {
-        if (currentUser == null) return;
-
-        db.collection("invitations")
-                .whereEqualTo("toUserId", currentUser.getUid())
-                .whereEqualTo("status", "pending")
-                .addSnapshotListener((value, error) -> {
-                    if (error != null || !isAdded()) return;
-                    containerInvitations.removeAllViews();
-
-                    if (value == null || value.isEmpty()) {
-                        tvInvitationsLabel.setVisibility(View.GONE);
-                        return;
-                    }
-
-                    tvInvitationsLabel.setVisibility(View.VISIBLE);
-
-                    for (QueryDocumentSnapshot doc : value) {
-                        com.recipebookpro.domain.model.Invitation invitation = doc.toObject(com.recipebookpro.domain.model.Invitation.class);
-                        if (invitation == null) continue;
-                        if (invitation.getId() == null) invitation.setId(doc.getId());
-
-                        View card = LayoutInflater.from(getContext())
-                                .inflate(R.layout.item_invitation, containerInvitations, false);
-
-                        MaterialTextView tvTarget = card.findViewById(R.id.tvInvitationCookbook);
-                        MaterialTextView tvFrom = card.findViewById(R.id.tvInvitationFrom);
-                        MaterialButton btnAccept = card.findViewById(R.id.btnAccept);
-                        MaterialButton btnDecline = card.findViewById(R.id.btnDecline);
-
-                        String typeLabel = "";
-                        switch (invitation.getType()) {
-                            case "meal_plan": typeLabel = " " + getString(R.string.invitation_type_plan); break;
-                            case "shopping_list": typeLabel = " " + getString(R.string.invitation_type_list); break;
-                            default: typeLabel = " " + getString(R.string.invitation_type_cookbook); break;
-                        }
-
-                        tvTarget.setText(invitation.getTargetName() + typeLabel);
-                        tvFrom.setText(getString(R.string.invitation_sent_by, invitation.getFromUserName()));
-
-                        btnAccept.setOnClickListener(v -> acceptInvitation(invitation));
-                        btnDecline.setOnClickListener(v -> declineInvitation(invitation.getId()));
-
-                        containerInvitations.addView(card);
-                    }
-                });
-    }
-
-    private void acceptInvitation(com.recipebookpro.domain.model.Invitation invitation) {
-        if (currentUser == null || invitation == null) return;
-
-        db.collection("invitations").document(invitation.getId())
-                .update("status", "accepted")
-                .addOnSuccessListener(aVoid -> {
-                    String collection;
-                    switch (invitation.getType()) {
-                        case "meal_plan": collection = "meal_plans"; break;
-                        case "shopping_list": collection = "shopping_lists"; break;
-                        default: collection = "cookbooks"; break;
-                    }
-
-                    db.collection(collection).document(invitation.getTargetId())
-                            .update("collaboratorIds", FieldValue.arrayUnion(currentUser.getUid()));
-                    
-                    if (isAdded() && getContext() != null) {
-                        Toast.makeText(getContext(), R.string.invitation_accepted, Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    if (isAdded() && getContext() != null) {
-                        Toast.makeText(getContext(), R.string.error_generic, Toast.LENGTH_SHORT).show();
-                    }
-                });
-    }
-
-    private void declineInvitation(String invitationId) {
-        db.collection("invitations").document(invitationId)
-                .update("status", "declined")
-                .addOnSuccessListener(aVoid -> {
-                    if (isAdded() && getContext() != null) {
-                        Toast.makeText(getContext(), R.string.invitation_declined, Toast.LENGTH_SHORT).show();
-                    }
-                });
-    }
 
     private void checkProgress() {
         if (progressKitchen != null) progressKitchen.setVisibility(View.GONE);

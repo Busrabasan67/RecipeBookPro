@@ -32,6 +32,7 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.recipebookpro.R;
 import com.recipebookpro.domain.model.Cookbook;
 import com.recipebookpro.domain.model.User;
+import com.recipebookpro.util.NotificationTrigger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -219,6 +220,13 @@ public class CollaboratorsBottomSheet extends BottomSheetDialogFragment {
 
                     db.collection("invitations").add(invitation)
                             .addOnSuccessListener(ref -> {
+                                NotificationTrigger.triggerInvitation(
+                                        currentUser.getDisplayName(),
+                                        userId,
+                                        targetName,
+                                        ref.getId(),
+                                        targetType
+                                );
                                 Toast.makeText(getContext(), getString(R.string.invitation_sent_to_user, displayName), Toast.LENGTH_SHORT).show();
                                 etSearch.setText("");
                                 containerSearchResults.removeAllViews();
@@ -262,51 +270,41 @@ public class CollaboratorsBottomSheet extends BottomSheetDialogFragment {
                 }
 
                 View row = LayoutInflater.from(getContext())
-                        .inflate(android.R.layout.simple_list_item_2, containerCollaborators, false);
-                TextView tv1 = row.findViewById(android.R.id.text1);
-                TextView tv2 = row.findViewById(android.R.id.text2);
+                        .inflate(R.layout.item_collaborator_row, containerCollaborators, false);
+                TextView tvName = row.findViewById(R.id.tvCollabName);
+                TextView tvEmail = row.findViewById(R.id.tvCollabEmail);
+                MaterialButton btnRemove = row.findViewById(R.id.btnRemoveCollab);
 
-                tv1.setText(user.getDisplayName());
-                tv2.setText(user.getEmail());
+                tvName.setText(user.getDisplayName());
+                tvEmail.setText(user.getEmail());
 
                 final String collabUid = user.getUid();
                 final String collabName = user.getDisplayName();
 
                 boolean isSelf = currentUser != null && currentUser.getUid().equals(collabUid);
 
-                row.setOnLongClickListener(v -> {
-                    if (isOwner) {
+                if (isOwner) {
+                    // Owner can remove anyone (except maybe themselves, but they are not in the collab list usually)
+                    btnRemove.setVisibility(View.VISIBLE);
+                    btnRemove.setOnClickListener(v -> {
                         new MaterialAlertDialogBuilder(requireContext())
                                 .setTitle(collabName)
                                 .setMessage(R.string.remove_collaborator_confirm)
                                 .setPositiveButton(R.string.delete, (d, w) -> removeCollaborator(collabUid))
                                 .setNegativeButton(R.string.cancel, null)
                                 .show();
-                    } else if (isSelf) {
+                    });
+                } else if (isSelf) {
+                    // Collaborator can remove themselves (leave)
+                    btnRemove.setVisibility(View.VISIBLE);
+                    btnRemove.setOnClickListener(v -> {
                         new MaterialAlertDialogBuilder(requireContext())
                                 .setTitle(R.string.leave_collaboration)
                                 .setMessage(R.string.cookbook_leave_confirm)
                                 .setPositiveButton(R.string.leave, (d, w) -> removeCollaborator(collabUid))
                                 .setNegativeButton(R.string.cancel, null)
                                 .show();
-                    }
-                    return true;
-                });
-
-                if (isSelf && !isOwner) {
-                    MaterialButton btnLeave = new MaterialButton(requireContext(), null,
-                            com.google.android.material.R.attr.materialButtonOutlinedStyle);
-                    btnLeave.setText(R.string.leave);
-                    btnLeave.setTextColor(requireContext().getColor(com.google.android.material.R.color.m3_ref_palette_error40));
-                    btnLeave.setOnClickListener(v ->
-                            new MaterialAlertDialogBuilder(requireContext())
-                                    .setTitle(R.string.leave_collaboration)
-                                    .setMessage(R.string.cookbook_leave_confirm)
-                                    .setPositiveButton(R.string.leave, (d, w) -> removeCollaborator(collabUid))
-                                    .setNegativeButton(R.string.cancel, null)
-                                    .show());
-
-                    containerCollaborators.addView(btnLeave);
+                    });
                 }
 
                 containerCollaborators.addView(row);

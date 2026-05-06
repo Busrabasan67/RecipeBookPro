@@ -29,23 +29,6 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Pending Invitations Section -->
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/tvInvitationsLabel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/margin_small"
-                android:paddingHorizontal="@dimen/padding_medium"
-                android:text="@string/kitchen_pending_invitations"
-                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                android:visibility="gone" />
-
-            <LinearLayout
-                android:id="@+id/containerInvitations"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingHorizontal="@dimen/padding_small" />
 
             <!-- Collaborative Cookbooks Section -->
             <com.google.android.material.textview.MaterialTextView
