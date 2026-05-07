@@ -56,11 +56,8 @@ public class StickerAdapter extends RecyclerView.Adapter<StickerAdapter.ViewHold
                 .listener(new ImageRequest.Listener() {
                     @Override
                     public void onError(@NonNull ImageRequest request, @NonNull coil.request.ErrorResult result) {
-                        holder.ivSticker.setVisibility(View.GONE);
-                        ViewGroup.LayoutParams lp = holder.itemView.getLayoutParams();
-                        lp.width = 0;
-                        lp.height = 0;
-                        holder.itemView.setLayoutParams(lp);
+                        // Keep visible and show placeholder instead of disappearing
+                        holder.ivSticker.setImageResource(R.drawable.ic_cook);
                     }
                 })
                 .crossfade(200)
