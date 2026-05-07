@@ -84,9 +84,9 @@
         android:layout_marginHorizontal="24dp"
         app:cardCornerRadius="36dp"
         app:cardElevation="24dp"
-        app:cardBackgroundColor="#F2FFFFFF"
+        app:cardBackgroundColor="?attr/colorSurfaceContainer"
         app:strokeWidth="2dp"
-        app:strokeColor="#0D000000"
+        app:strokeColor="?attr/colorOutlineVariant"
         app:layout_constraintBottom_toBottomOf="parent"
         android:layout_marginBottom="48dp">
 
@@ -152,8 +152,8 @@
                     app:iconGravity="textStart"
                     app:iconPadding="0dp"
                     app:cornerRadius="16dp"
-                    app:iconTint="#D32F2F"
-                    app:rippleColor="#FFEBEE" />
+                    app:iconTint="?attr/colorError"
+                    app:rippleColor="?attr/colorErrorContainer" />
 
             </LinearLayout>
 

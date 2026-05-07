@@ -4,7 +4,7 @@
     android:id="@+id/bookReaderRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#111111"> <!-- Arka plan koyu, defter ortada parlayacak -->
+    android:background="?attr/colorSurface">
 
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/viewPagerBook"
@@ -28,7 +28,7 @@
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_back"
-            app:tint="#444444" />
+            app:tint="?attr/colorOnSurface" />
             
         <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
         
@@ -38,7 +38,7 @@
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_translate"
-            app:tint="#444444"
+            app:tint="?attr/colorOnSurface"
             android:layout_marginEnd="16dp" />
 
         <ImageButton
@@ -47,7 +47,7 @@
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_edit"
-            app:tint="#444444"
+            app:tint="?attr/colorOnSurface"
             android:layout_marginEnd="16dp" />
             
         <ImageButton
@@ -56,7 +56,7 @@
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_list"
-            app:tint="#444444" />
+            app:tint="?attr/colorOnSurface" />
     </LinearLayout>
 
     <!-- Düzenleme Modu Kontrolleri -->
@@ -111,7 +111,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:text="@string/no_recipes"
-        android:textColor="#FFFFFF"
+        android:textColor="?attr/colorOnSurface"
         android:visibility="gone" />
 
 </FrameLayout>

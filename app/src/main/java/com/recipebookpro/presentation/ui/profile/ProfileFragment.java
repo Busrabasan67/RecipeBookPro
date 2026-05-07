@@ -118,7 +118,7 @@ public class ProfileFragment extends Fragment {
         MaterialTextView tvEmail = view.findViewById(R.id.tvProfileEmail);
         MaterialButton btnLogout = view.findViewById(R.id.btnLogout);
         MaterialButton btnSettings = view.findViewById(R.id.btnSettings);
-        MaterialButton btnAdmin = view.findViewById(R.id.btnAdminPanel);
+
         chipGroupAllergens = view.findViewById(R.id.chipGroupAllergens);
         etCustomAllergen = view.findViewById(R.id.etCustomAllergen);
         ivProfileAvatar = view.findViewById(R.id.ivProfileAvatar);
@@ -154,7 +154,7 @@ public class ProfileFragment extends Fragment {
             SettingsBottomSheet bottomSheet = new SettingsBottomSheet();
             bottomSheet.show(getChildFragmentManager(), "SettingsBottomSheet");
         });
-        btnAdmin.setOnClickListener(v -> { });
+
 
         loadUserAllergens();
 
