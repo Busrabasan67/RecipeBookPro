@@ -513,4 +513,7 @@
     <string name="shopping_item_count_format">%1$d items</string>
     <string name="shopping_item_status_at_home">At Home</string>
     <string name="shopping_item_status_to_buy">To Buy</string>
+    <string name="delete_cookbook">Delete the Cookbook</string>
+    <string name="delete_cookbook_confirm">Are you sure you want to delete this cookbook? The book will be deleted, but the recipes inside will not be lost.</string>
+    <string name="cookbook_deleted">The cookbook was successfully deleted.</string>
 </resources>

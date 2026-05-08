@@ -3,6 +3,7 @@ package com.recipebookpro.presentation.ui.kitchen;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -123,7 +124,11 @@ public class CookbookDetailActivity extends BaseActivity {
             } else if (item.getItemId() == R.id.action_leave_cookbook) {
                 leaveCookbook();
                 return true;
+            }else if (item.getItemId() == R.id.action_delete_cookbook) {
+                confirmDeleteCookbook();
+                return true;
             }
+
             return false;
         });
 
@@ -203,12 +208,18 @@ public class CookbookDetailActivity extends BaseActivity {
         if (isOwner) {
             btnFollow.setVisibility(View.GONE);
             toolbar.getMenu().findItem(R.id.action_collaborators).setVisible(true);
+            MenuItem deleteItem = toolbar.getMenu().findItem(R.id.action_delete_cookbook);
+            if (deleteItem != null) {
+                deleteItem.setVisible(true);
+            }
             toolbar.getMenu().findItem(R.id.action_edit_cookbook).setVisible(true);
             toolbar.getMenu().findItem(R.id.action_leave_cookbook).setVisible(false);
             adapter.setOnRecipeRemoveListener(this::removeRecipeFromCookbook);
         } else if (isCollaborator) {
             btnFollow.setVisibility(View.GONE);
             toolbar.getMenu().findItem(R.id.action_collaborators).setVisible(true);
+            MenuItem deleteItem = toolbar.getMenu().findItem(R.id.action_delete_cookbook);
+            if (deleteItem != null) deleteItem.setVisible(false);
             toolbar.getMenu().findItem(R.id.action_edit_cookbook).setVisible(false);
             toolbar.getMenu().findItem(R.id.action_leave_cookbook).setVisible(true);
             adapter.setOnRecipeRemoveListener(this::removeRecipeFromCookbook);
@@ -216,6 +227,8 @@ public class CookbookDetailActivity extends BaseActivity {
             toolbar.getMenu().findItem(R.id.action_collaborators).setVisible(false);
             toolbar.getMenu().findItem(R.id.action_edit_cookbook).setVisible(false);
             toolbar.getMenu().findItem(R.id.action_leave_cookbook).setVisible(false);
+            MenuItem deleteItem = toolbar.getMenu().findItem(R.id.action_delete_cookbook);
+            if (deleteItem != null) deleteItem.setVisible(false);
             adapter.setOnRecipeRemoveListener(null);
             if (cookbook.isPublic()) {
                 btnFollow.setVisibility(View.VISIBLE);
@@ -413,4 +426,34 @@ public class CookbookDetailActivity extends BaseActivity {
         intent.putExtra(Intent.EXTRA_TEXT, shareText);
         startActivity(Intent.createChooser(intent, getString(R.string.share_cookbook)));
     }
+
+    private void confirmDeleteCookbook() {
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.delete_cookbook)
+                .setMessage(R.string.delete_cookbook_confirm)
+                .setPositiveButton(R.string.delete, (dialog, which) -> {
+                    performDelete();
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void performDelete() {
+        progress.setVisibility(View.VISIBLE); // İşlem başlarken loading göster
+
+        db.collection("cookbooks").document(cookbookId)
+                .delete()
+                .addOnSuccessListener(aVoid -> {
+                    // Başarılı: Kullanıcıya bildir ve ekranı kapat
+                    Toast.makeText(this, R.string.cookbook_deleted, Toast.LENGTH_SHORT).show();
+                    finish();
+                })
+                .addOnFailureListener(e -> {
+                    // Hata: Loading'i kapat ve hata mesajı ver
+                    progress.setVisibility(View.GONE);
+                    Toast.makeText(this, R.string.delete_error, Toast.LENGTH_SHORT).show();
+                });
+    }
 }
+
+

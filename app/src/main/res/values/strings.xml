@@ -397,26 +397,30 @@
     <string name="mic_permission_rationale">Microphone permission is required for voice commands.</string>
     <string name="camera_permission_rationale">Camera permission is required to take recipe photos.</string>
     <string name="cookbook_empty">There are no recipes in this cookbook yet.</string>
+    <string name="delete_cookbook">Yemek Kitabını Sil</string>
+    <string name="delete_cookbook_confirm">Bu yemek kitabını silmek istediğinizden emin misiniz? Kitap silinecek ancak içindeki tarifler kaybolmayacaktır.</string>
+    <string name="cookbook_deleted">Yemek kitabı başarıyla silindi.</string>
+    <string name="delete_error">Silme işlemi sırasında bir hata oluştu.</string>
 
     <string-array name="recipe_category_values">
-        <item>Tatli</item>
+        <item>Tatlı</item>
         <item>Ana Yemek</item>
-        <item>Corba</item>
-        <item>Kahvaltilik</item>
-        <item>Atistirmalik</item>
-        <item>Icecek</item>
+        <item>Çorba</item>
+        <item>Kahvaltılık</item>
+        <item>Atıştırmalık</item>
+        <item>İçecek</item>
         <item>Salata</item>
-        <item>Hamur Isi</item>
+        <item>Hamur İşi</item>
     </string-array>
     <string-array name="recipe_categories">
-        <item>Tatli</item>
+        <item>Tatlı</item>
         <item>Ana Yemek</item>
-        <item>Corba</item>
-        <item>Kahvaltilik</item>
-        <item>Atistirmalik</item>
-        <item>Icecek</item>
+        <item>Çorba</item>
+        <item>Kahvaltılık</item>
+        <item>Atıştırmalık</item>
+        <item>İçecek</item>
         <item>Salata</item>
-        <item>Hamur Isi</item>
+        <item>Hamur İşi</item>
     </string-array>
     <string-array name="recipe_category_labels">
         <item>Dessert</item>

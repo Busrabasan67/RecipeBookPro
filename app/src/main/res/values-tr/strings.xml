@@ -355,6 +355,7 @@
     <string name="translation_only_recipes">Çeviri sadece tarif sayfalarında kullanılabilir</string>
 
 
+
     <string-array name="recipe_category_values">
         <item>Tatli</item>
         <item>Ana Yemek</item>
@@ -521,4 +522,7 @@
     <string name="invitation_notification_title">Yeni Davet</string>
     <string name="invitation_notification_message">%1$s sizi %2$s için davet etti</string>
     <string name="notification_permission_rationale">Bildirim izni, yeni tariflerden ve davetlerden haberdar olmanız için gereklidir.</string>
+    <string name="delete_cookbook">Yemek Kitabını Sil</string>
+    <string name="delete_cookbook_confirm">Bu yemek kitabını silmek istediğinizden emin misiniz? Kitap silinecek ancak içindeki tarifler kaybolmayacaktır.</string>
+    <string name="cookbook_deleted">Yemek kitabı başarıyla silindi.</string>
 </resources>

@@ -11,6 +11,10 @@
         android:title="@string/edit"
         app:showAsAction="never" />
     <item
+        android:id="@+id/action_delete_cookbook"
+        android:title="@string/delete_cookbook"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_collaborators"
         android:title="@string/collaborators"
         app:showAsAction="never" />

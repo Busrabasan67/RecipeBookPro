@@ -1,5 +1,7 @@
 package com.recipebookpro.presentation.ui.recipe.adapter;
 
+import android.content.Context;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -75,9 +77,20 @@ public class IngredientAdapter extends RecyclerView.Adapter<IngredientAdapter.Vi
         if (hasAllergy) {
             holder.allergyIndicator.setVisibility(View.VISIBLE);
             holder.itemView.setBackgroundColor(0xFFFFF3E0);
+            holder.tvIngredientName.setTextColor(0xFF000000);
+            holder.tvIngredientAmountUnit.setTextColor(0xFF000000);
         } else {
             holder.allergyIndicator.setVisibility(View.GONE);
             holder.itemView.setBackgroundResource(android.R.color.transparent);
+            
+            Context context = holder.itemView.getContext();
+            TypedValue typedValue = new TypedValue();
+            
+            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurface, typedValue, true);
+            holder.tvIngredientName.setTextColor(typedValue.data);
+            
+            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorPrimary, typedValue, true);
+            holder.tvIngredientAmountUnit.setTextColor(typedValue.data);
         }
     }
 
