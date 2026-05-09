@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.textview.MaterialTextView;
 import com.recipebookpro.R;
 import com.recipebookpro.domain.model.Recipe;
@@ -49,6 +50,20 @@ public class DayRecipeAdapter extends RecyclerView.Adapter<DayRecipeAdapter.View
         String currentLang = java.util.Locale.getDefault().getLanguage();
         holder.tvRecipeName.setText(recipe.getDisplayTitle(currentLang));
 
+        if (recipe.hasCalorieEstimate()) {
+            holder.tvRecipeCalories.setVisibility(View.VISIBLE);
+            holder.tvRecipeCalories.setText(recipe.getCalories() + " kcal");
+            holder.tvRecipeCalories.setAlpha(1f);
+            holder.tvRecipeCalories.setTextColor(
+                    MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorPrimary));
+        } else {
+            holder.tvRecipeCalories.setVisibility(View.VISIBLE);
+            holder.tvRecipeCalories.setText(holder.itemView.getContext().getString(R.string.calories_unknown_short));
+            holder.tvRecipeCalories.setAlpha(0.85f);
+            holder.tvRecipeCalories.setTextColor(
+                    MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorOnSurfaceVariant));
+        }
+
         holder.itemView.setOnClickListener(v -> {
             if (clickListener != null) clickListener.onRecipeClick(recipe);
         });
@@ -75,11 +90,13 @@ public class DayRecipeAdapter extends RecyclerView.Adapter<DayRecipeAdapter.View
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         MaterialTextView tvRecipeName;
+        MaterialTextView tvRecipeCalories;
         View btnRemoveDayRecipe;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvRecipeName = itemView.findViewById(R.id.tvDayRecipeName);
+            tvRecipeCalories = itemView.findViewById(R.id.tvDayRecipeCalories);
             btnRemoveDayRecipe = itemView.findViewById(R.id.btnRemoveDayRecipe);
         }
     }

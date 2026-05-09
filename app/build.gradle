@@ -26,6 +26,14 @@ android {
         versionName "1.0"
         
         buildConfigField "String", "GEMINI_API_KEY", "\"${localProps.getProperty('GEMINI_API_KEY', 'YOUR_GEMINI_API_KEY')}\""
+        buildConfigField "String", "GROQ_API_KEY", "\"${localProps.getProperty('GROQ_API_KEY', 'YOUR_GROQ_API_KEY')}\""
+        def shareHttpsBase = localProps.getProperty('SHARE_HTTPS_REDIRECT_BASE', null)
+        if (shareHttpsBase == null || shareHttpsBase.trim().isEmpty()) {
+            // Firebase Hosting (sharing/open.html) — bir kez: firebase login && firebase deploy --only hosting
+            shareHttpsBase = 'https://recipebookpro-ee941.web.app/open.html'
+        }
+        def shareHttpsEsc = shareHttpsBase.replace('\\', '\\\\').replace('"', '\\"')
+        buildConfigField "String", "SHARE_HTTPS_REDIRECT_BASE", "\"${shareHttpsEsc}\""
     }
 
     compileOptions {

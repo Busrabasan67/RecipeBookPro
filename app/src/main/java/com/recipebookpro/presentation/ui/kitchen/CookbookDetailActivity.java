@@ -31,6 +31,7 @@ import com.recipebookpro.domain.model.Cookbook;
 import com.recipebookpro.domain.model.Recipe;
 import com.recipebookpro.domain.model.User;
 import com.recipebookpro.presentation.ui.BaseActivity;
+import com.recipebookpro.presentation.share.PublicShareIntentHelper;
 import com.recipebookpro.presentation.ui.book.BookReaderActivity;
 import com.recipebookpro.presentation.adapter.RecipeAdapter;
 import com.recipebookpro.presentation.ui.recipe.RecipeDetailActivity;
@@ -419,12 +420,8 @@ public class CookbookDetailActivity extends BaseActivity {
     }
 
     private void shareCookbook() {
-        String deepLink = "recipebook://cookbook/" + cookbook.getId();
-        String shareText = getString(R.string.share_cookbook_text, cookbook.getName(), deepLink);
-        Intent intent = new Intent(Intent.ACTION_SEND);
-        intent.setType("text/plain");
-        intent.putExtra(Intent.EXTRA_TEXT, shareText);
-        startActivity(Intent.createChooser(intent, getString(R.string.share_cookbook)));
+        if (cookbook == null) return;
+        startActivity(PublicShareIntentHelper.createCookbookShareChooserIntent(this, cookbook));
     }
 
     private void confirmDeleteCookbook() {

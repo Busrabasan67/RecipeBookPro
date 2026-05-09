@@ -82,7 +82,8 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnSavePlan"
                         style="@style/Widget.Material3.Button.OutlinedButton.Icon"
@@ -91,6 +92,10 @@
                         android:layout_weight="1"
                         android:layout_marginEnd="8dp"
                         android:text="@string/meal_plan_save"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:paddingHorizontal="16dp"
+                        app:iconPadding="8dp"
                         app:icon="@drawable/ic_bookmark" />
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnLoadPlan"
@@ -98,15 +103,24 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
                         android:text="@string/meal_plan_load"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:paddingHorizontal="16dp"
+                        app:iconPadding="8dp"
                         app:icon="@drawable/ic_book" />
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnSharePlan"
-                        style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        app:icon="@drawable/ic_share" />
+                        app:icon="@drawable/ic_share"
+                        app:iconPadding="0dp"
+                        app:iconGravity="textStart"
+                        android:minWidth="48dp"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp" />
                 </LinearLayout>
             </LinearLayout>
 

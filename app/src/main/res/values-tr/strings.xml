@@ -215,7 +215,9 @@
     <string name="remove_recipe_title">Tarifi Kaldır</string>
     <string name="remove_recipe_from_cookbook_confirm">%1$s tarifini bu defterden çıkarmak istediğinize emin misiniz?</string>
     <string name="recipe_removed_from_cookbook">Tarif çıkarıldı</string>
-    <string name="share_cookbook_text">%1$s defterine göz at!\n%2$s</string>
+    <string name="share_open_link_prompt">► Defteri görmek için en üstteki bağlantıya dokun — tarayıcı kısa süre açılıp RecipeBook’a yönlenir.</string>
+    <string name="share_install_recipebook">Uygulama yüklü değilse: %s</string>
+    <string name="share_cookbook_message">📖 \"%1$s\"\n\nBu RecipeBook defterine göz atmak için uygulamayı kullan.</string>
     <string name="share_cookbook">Defteri Paylaş</string>
     <string name="settings_title">Ayarlar</string>
     <string name="change_password">Şifre Değiştir</string>
@@ -315,7 +317,10 @@
     <string name="password_updated">Şifre başarıyla güncellendi.</string>
     <string name="current_password_incorrect">Mevcut şifre yanlış.</string>
     <string name="forgot_password">Şifremi Unuttum</string>
+
     <string name="reset_password_not_available_for_provider">Bu hesap türü için şifre sıfırlama kullanılamaz. Önce sağlayıcınızla giriş yapıp şifre belirleyin.</string>
+    <string name="send_reset_link_confirm">E-posta adresinize bir şifre sıfırlama bağlantısı gönderilecektir. Devam etmek istiyor musunuz?</string>
+    <string name="send_reset_link">Bağlantı Gönder</string>
     <string name="create_password_title">Şifre Oluştur</string>
     <string name="create_password_message">Bu hesap sosyal giriş sağlayıcısı kullanıyor. Şimdi şifre oluşturup sonrasında e-posta/şifre ile de giriş yapabilirsiniz.</string>
     <string name="create_password_action">Şifre Oluştur</string>
@@ -480,8 +485,18 @@
     <string name="meal_plan_load">Planı Yükle</string>
     <string name="meal_plan_saved">Yemek planı başarıyla kaydedildi.</string>
     <string name="meal_plan_total_calories">Toplam Kalori: %1$d kcal</string>
+    <string name="meal_plan_total_calories_partial">Bilinen toplam: %1$d kcal · %2$d tarif tahmin bekliyor</string>
+    <string name="meal_plan_total_calories_pending">%1$d tarif için kalori henüz hesaplanmadı</string>
+    <string name="calories_unknown_short">—</string>
+    <string name="day_calories_unknown">Gün — kcal bekleniyor</string>
     <string name="meal_plan_daily_calories">Günlük: %1$d kcal</string>
+    <string name="meal_plan_duration_calories">%1$d Günlük - %2$d kcal</string>
     <string name="meal_plan_delete_confirm">Bu yemek planını silmek istediğinize emin misiniz?</string>
+    <string name="meal_plan_deleted">Plan silindi.</string>
+    <string name="meal_plan_delete_failed">Plan silinemedi. Tekrar deneyin.</string>
+    <string name="meal_plan_delete_action_content_desc">Yemek planını sil</string>
+    <string name="meal_plan_list_empty">Henüz kayıtlı plan yok.</string>
+    <string name="meal_plan_sync_failed">Değişiklikler kaydedilemedi. Tekrar deneyin.</string>
     <string name="shopping_list_delete_confirm">Bu alışveriş listesini silmek istediğinize emin misiniz?</string>
     <string name="invite_to_plan">Plana Davet Et</string>
     <string name="invite_to_list">Listeye Davet Et</string>

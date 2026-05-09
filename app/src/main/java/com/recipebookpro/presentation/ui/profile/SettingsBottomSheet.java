@@ -103,65 +103,12 @@ public class SettingsBottomSheet extends BottomSheetDialogFragment {
             return;
         }
 
-        TextInputLayout tilCurrent = new TextInputLayout(requireContext());
-        tilCurrent.setHint(getString(R.string.current_password));
-        TextInputEditText etCurrent = new TextInputEditText(requireContext());
-        etCurrent.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        tilCurrent.addView(etCurrent);
-
-        TextInputLayout tilNew = new TextInputLayout(requireContext());
-        tilNew.setHint(getString(R.string.new_password));
-        TextInputEditText etNew = new TextInputEditText(requireContext());
-        etNew.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        tilNew.addView(etNew);
-
-        TextInputLayout tilConfirm = new TextInputLayout(requireContext());
-        tilConfirm.setHint(getString(R.string.confirm_new_password));
-        TextInputEditText etConfirm = new TextInputEditText(requireContext());
-        etConfirm.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        tilConfirm.addView(etConfirm);
-
-        LinearLayout container = new LinearLayout(requireContext());
-        container.setOrientation(LinearLayout.VERTICAL);
-        int pad = (int) (20 * requireContext().getResources().getDisplayMetrics().density);
-        container.setPadding(pad, pad / 2, pad, 0);
-        container.addView(tilCurrent);
-        container.addView(tilNew);
-        container.addView(tilConfirm);
-
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.change_password)
-                .setView(container)
-                .setPositiveButton(R.string.update, (dialog, which) -> {
-                    String current = etCurrent.getText() != null ? etCurrent.getText().toString() : "";
-                    String newer = etNew.getText() != null ? etNew.getText().toString() : "";
-                    String confirm = etConfirm.getText() != null ? etConfirm.getText().toString() : "";
-                    updatePasswordWithReauth(user, current, newer, confirm);
-                })
-                .setNeutralButton(R.string.forgot_password, (dialog, which) -> sendPasswordResetEmail(user))
+                .setMessage(R.string.send_reset_link_confirm)
+                .setPositiveButton(R.string.send_reset_link, (dialog, which) -> sendPasswordResetEmail(user))
                 .setNegativeButton(R.string.cancel, null)
                 .show();
-    }
-
-    private void updatePasswordWithReauth(FirebaseUser user, String currentPassword, String newPassword, String confirmPassword) {
-        if (currentPassword.trim().isEmpty() || newPassword.trim().isEmpty() || confirmPassword.trim().isEmpty()) {
-            Toast.makeText(requireContext(), R.string.empty_fields, Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (newPassword.length() < 6) {
-            Toast.makeText(requireContext(), R.string.password_too_short, Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (!newPassword.equals(confirmPassword)) {
-            Toast.makeText(requireContext(), R.string.passwords_not_match, Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        user.reauthenticate(EmailAuthProvider.getCredential(user.getEmail(), currentPassword))
-                .addOnSuccessListener(unused -> user.updatePassword(newPassword)
-                        .addOnSuccessListener(v -> Toast.makeText(requireContext(), R.string.password_updated, Toast.LENGTH_SHORT).show())
-                        .addOnFailureListener(e -> Toast.makeText(requireContext(), getString(R.string.error_with_reason, e.getMessage()), Toast.LENGTH_SHORT).show()))
-                .addOnFailureListener(e -> Toast.makeText(requireContext(), R.string.current_password_incorrect, Toast.LENGTH_SHORT).show());
     }
 
     private void sendPasswordResetEmail(FirebaseUser user) {
@@ -169,21 +116,23 @@ public class SettingsBottomSheet extends BottomSheetDialogFragment {
             Toast.makeText(requireContext(), R.string.error_generic, Toast.LENGTH_SHORT).show();
             return;
         }
-        String email = user.getEmail().trim();
-        FirebaseAuth auth = FirebaseAuth.getInstance();
-        auth.fetchSignInMethodsForEmail(email)
-                .addOnSuccessListener(result -> {
-                    java.util.List<String> methods = result.getSignInMethods();
-                    if (methods == null || !methods.contains(EmailAuthProvider.EMAIL_PASSWORD_SIGN_IN_METHOD)) {
-                        showCreatePasswordDialogForProviderUser(user);
-                        return;
-                    }
-                    auth.sendPasswordResetEmail(email)
-                            .addOnSuccessListener(unused ->
-                                    Toast.makeText(requireContext(), R.string.reset_password_email_sent, Toast.LENGTH_LONG).show())
-                            .addOnFailureListener(e ->
-                                    Toast.makeText(requireContext(), getString(R.string.error_with_reason, e.getMessage()), Toast.LENGTH_SHORT).show());
-                })
+
+        boolean hasPasswordProvider = false;
+        for (com.google.firebase.auth.UserInfo info : user.getProviderData()) {
+            if (EmailAuthProvider.PROVIDER_ID.equals(info.getProviderId())) {
+                hasPasswordProvider = true;
+                break;
+            }
+        }
+
+        if (!hasPasswordProvider) {
+            showCreatePasswordDialogForProviderUser(user);
+            return;
+        }
+
+        FirebaseAuth.getInstance().sendPasswordResetEmail(user.getEmail().trim())
+                .addOnSuccessListener(unused ->
+                        Toast.makeText(requireContext(), R.string.reset_password_email_sent, Toast.LENGTH_LONG).show())
                 .addOnFailureListener(e ->
                         Toast.makeText(requireContext(), getString(R.string.error_with_reason, e.getMessage()), Toast.LENGTH_SHORT).show());
     }

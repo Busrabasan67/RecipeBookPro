@@ -31,6 +31,7 @@ import com.recipebookpro.R;
 import com.recipebookpro.domain.model.Recipe;
 import com.recipebookpro.domain.model.User;
 import com.recipebookpro.presentation.ui.BaseActivity;
+import com.recipebookpro.presentation.share.PublicShareIntentHelper;
 import com.recipebookpro.presentation.ui.recipe.adapter.RecipeDetailPagerAdapter;
 import androidx.work.Data;
 import androidx.work.OneTimeWorkRequest;
@@ -237,10 +238,29 @@ public class RecipeDetailActivity extends BaseActivity {
         if (userAllergens.isEmpty() || recipe.getAllergens().isEmpty()) return;
 
         List<String> matchingAllergens = new ArrayList<>();
+        String currentLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
+        List<String> displayAllergens = recipe.getDisplayAllergens(currentLang);
+        List<String> originalAllergens = recipe.getAllergens();
+
         for (String userAllergen : userAllergens) {
-            for (String recipeAllergen : recipe.getAllergens()) {
+            boolean matched = false;
+            // Check original allergens
+            for (String recipeAllergen : originalAllergens) {
                 if (userAllergen.equalsIgnoreCase(recipeAllergen)) {
                     matchingAllergens.add(recipeAllergen);
+                    matched = true;
+                    break;
+                }
+            }
+            // If not matched, check translated allergens
+            if (!matched && displayAllergens != null) {
+                for (String translatedAllergen : displayAllergens) {
+                    if (userAllergen.equalsIgnoreCase(translatedAllergen) || 
+                        translatedAllergen.toLowerCase().contains(userAllergen.toLowerCase()) || 
+                        userAllergen.toLowerCase().contains(translatedAllergen.toLowerCase())) {
+                        matchingAllergens.add(translatedAllergen);
+                        break;
+                    }
                 }
             }
         }
@@ -293,17 +313,8 @@ public class RecipeDetailActivity extends BaseActivity {
     }
 
     private void shareRecipe() {
-        String deepLink = "recipebook://recipe/" + recipe.getId();
-        StringBuilder sb = new StringBuilder();
-        sb.append(recipe.getTitle());
-        if (!recipe.getDescription().isEmpty()) {
-            sb.append("\n").append(recipe.getDescription());
-        }
-        sb.append("\n\n").append(deepLink);
-        Intent intent = new Intent(Intent.ACTION_SEND);
-        intent.setType("text/plain");
-        intent.putExtra(Intent.EXTRA_TEXT, sb.toString());
-        startActivity(Intent.createChooser(intent, getString(R.string.share_recipe)));
+        if (recipe == null) return;
+        startActivity(PublicShareIntentHelper.createRecipeShareChooserIntent(this, recipe));
     }
 
     private void toggleLike(MenuItem item) {

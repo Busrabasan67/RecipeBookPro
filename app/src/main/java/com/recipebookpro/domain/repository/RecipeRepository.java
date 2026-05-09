@@ -10,4 +10,5 @@ public interface RecipeRepository {
     }
 
     void getRecipesByUserId(String userId, OnRecipesLoadedListener listener);
+    void updateRecipeCalories(String recipeId, int calories);
 }

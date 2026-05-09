@@ -27,6 +27,15 @@
             android:ellipsize="end"
             tools:text="Mercimek Çorbası" />
 
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/tvDayRecipeCalories"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="8dp"
+            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+            android:textColor="?attr/colorPrimary"
+            tools:text="350 kcal" />
+
         <ImageButton
             android:id="@+id/btnRemoveDayRecipe"
             android:layout_width="wrap_content"

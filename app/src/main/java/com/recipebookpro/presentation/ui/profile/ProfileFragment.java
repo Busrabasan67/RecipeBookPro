@@ -209,7 +209,7 @@ public class ProfileFragment extends Fragment {
             if (localUser != null && isAdded()) {
                 requireActivity().runOnUiThread(() -> {
                     userAllergens = new ArrayList<>(localUser.getAllergens());
-                    populateAllergenChips();
+                    translateAndPopulateAllergenChips();
                 });
             }
             
@@ -229,7 +229,7 @@ public class ProfileFragment extends Fragment {
                                 }
 
                                 userAllergens = new ArrayList<>(user.getAllergens());
-                                populateAllergenChips();
+                                translateAndPopulateAllergenChips();
                                 
                                 // Update Room in background
                                 final User finalUser = user;
@@ -244,6 +244,69 @@ public class ProfileFragment extends Fragment {
                     });
             });
         }).start();
+    }
+
+    private void translateAndPopulateAllergenChips() {
+        if (userAllergens == null || userAllergens.isEmpty() || !isAdded()) {
+            populateAllergenChips();
+            return;
+        }
+
+        // Draw immediately so the screen is not empty while ML Kit downloads models or translates
+        populateAllergenChips();
+
+        String targetLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(requireContext());
+        String joinedText = TextUtils.join(" ", userAllergens).toLowerCase();
+        
+        com.google.mlkit.nl.languageid.LanguageIdentifier identifier = com.google.mlkit.nl.languageid.LanguageIdentification.getClient();
+        identifier.identifyLanguage(joinedText)
+                .addOnSuccessListener(sourceLang -> {
+                    String finalSource = sourceLang;
+                    if (sourceLang.equals("und")) {
+                        int enCount = 0;
+                        int trCount = 0;
+                        if (joinedText.matches(".*\\b(dairy|gluten|egg|peanut|soy|fish)\\b.*")) enCount++;
+                        if (joinedText.matches(".*\\b(süt|glüten|yumurta|fıstık|soya|balık)\\b.*")) trCount++;
+                        if (enCount > trCount) finalSource = "en";
+                        else if (trCount > enCount) finalSource = "tr";
+                        else finalSource = "tr"; // default to tr
+                    }
+                    
+                    if (!finalSource.equalsIgnoreCase(targetLang)) {
+                        performAllergenTranslation(finalSource, targetLang);
+                    }
+                });
+    }
+
+    private void performAllergenTranslation(String sourceLang, String targetLang) {
+        if (!isAdded()) return;
+        com.recipebookpro.data.remote.MLKitTranslationService translationService = new com.recipebookpro.data.remote.MLKitTranslationService(requireContext());
+        translationService.prepareModel(sourceLang, targetLang)
+                .addOnSuccessListener(unused -> {
+                    java.util.List<com.google.android.gms.tasks.Task<String>> tasks = new java.util.ArrayList<>();
+                    for (String allergen : userAllergens) {
+                        tasks.add(translationService.translateSingleField(allergen, sourceLang, targetLang));
+                    }
+                    com.google.android.gms.tasks.Tasks.whenAllComplete(tasks).addOnCompleteListener(allTasks -> {
+                        if (allTasks.isSuccessful() && isAdded()) {
+                            java.util.List<String> translatedList = new java.util.ArrayList<>();
+                            for (com.google.android.gms.tasks.Task<String> task : tasks) {
+                                if (task.isSuccessful() && task.getResult() != null) {
+                                    translatedList.add(task.getResult().trim());
+                                }
+                            }
+                            if (translatedList.size() == userAllergens.size()) {
+                                userAllergens = translatedList;
+                                updateAllergensInDatabase(userAllergens);
+                            }
+                            populateAllergenChips();
+                        }
+                        translationService.close();
+                    });
+                })
+                .addOnFailureListener(e -> {
+                    translationService.close();
+                });
     }
 
     private void populateAllergenChips() {
@@ -340,12 +403,18 @@ public class ProfileFragment extends Fragment {
         }
 
         userAllergens = selected;
+        updateAllergensInDatabase(selected);
+    }
+
+    private void updateAllergensInDatabase(List<String> selected) {
+        if (currentUser == null) return;
+        
         db.collection("users").document(currentUser.getUid())
                 .update("allergens", selected);
 
         // Update Room
         final String uid = currentUser.getUid();
-        final List<String> finalSelected = selected;
+        final List<String> finalSelected = new ArrayList<>(selected);
         new Thread(() -> {
             com.recipebookpro.data.local.AppDatabase localDb = com.recipebookpro.data.local.AppDatabase.getDatabase(requireContext());
             com.recipebookpro.data.local.entity.UserEntity entity = localDb.userDao().getUserByUid(uid);

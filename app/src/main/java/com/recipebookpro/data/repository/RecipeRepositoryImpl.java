@@ -41,4 +41,9 @@ public class RecipeRepositoryImpl implements RecipeRepository {
                 listener.onLoaded(allRecipes);
             });
     }
+
+    @Override
+    public void updateRecipeCalories(String recipeId, int calories) {
+        db.collection("recipes").document(recipeId).update("calories", calories);
+    }
 }

@@ -22,7 +22,6 @@ import com.google.android.material.textview.MaterialTextView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.firebase.firestore.ListenerRegistration;
@@ -34,11 +33,16 @@ import com.recipebookpro.domain.model.Recipe;
 import com.recipebookpro.domain.model.ShoppingList;
 import com.recipebookpro.domain.model.MealPlan;
 import com.recipebookpro.domain.repository.MealPlanRepository;
+import com.recipebookpro.data.remote.GroqAiNutritionService;
 import com.recipebookpro.data.repository.MealPlanRepositoryImpl;
+import com.recipebookpro.domain.model.PlannerCalorieSummary;
 import com.recipebookpro.presentation.ui.planner.adapter.DayCardAdapter;
 import com.recipebookpro.presentation.ui.recipe.RecipeDetailActivity;
 import com.recipebookpro.presentation.ui.shopping.ShoppingListDetailActivity;
 import com.recipebookpro.presentation.ui.shopping.adapter.ShoppingListAdapter;
+import com.recipebookpro.domain.repository.RecipeRepository;
+import com.recipebookpro.data.repository.RecipeRepositoryImpl;
+import com.recipebookpro.domain.usecase.AnalyzeRecipeCaloriesUseCase;
 
 import androidx.work.Data;
 import androidx.work.OneTimeWorkRequest;
@@ -57,6 +61,7 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
     private FirebaseUser currentUser;
     private MealPlan currentPlan;
     private MealPlanRepository planRepository;
+    private AnalyzeRecipeCaloriesUseCase analyzeCaloriesUseCase;
 
     private RecyclerView rvDayCards;
     private RecyclerView rvShoppingListsInline;
@@ -88,6 +93,8 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
         db = FirebaseFirestore.getInstance();
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
         planRepository = new MealPlanRepositoryImpl();
+        RecipeRepository recipeRepository = new RecipeRepositoryImpl();
+        analyzeCaloriesUseCase = new AnalyzeRecipeCaloriesUseCase(recipeRepository, new GroqAiNutritionService());
 
         rvDayCards = view.findViewById(R.id.rvDayCards);
         rvShoppingListsInline = view.findViewById(R.id.rvShoppingListsInline);
@@ -168,6 +175,31 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
                 .show();
     }
 
+    /**
+     * Gün/satır düzenlemelerini Firestore'a yazar (tarif ekle/kaldır). Tam ekran progress göstermez.
+     */
+    private void persistCurrentPlanAfterEdit() {
+        if (currentPlan == null || currentUser == null) return;
+
+        calculateTotalCalories();
+
+        planRepository.saveMealPlan(currentPlan, new MealPlanRepository.OnMealPlanActionCompleteListener() {
+            @Override
+            public void onSuccess() {
+                if (!isAdded() || currentPlan == null) return;
+                if (currentPlanListener == null && currentPlan.getId() != null) {
+                    attachPlanListener(currentPlan.getId());
+                }
+            }
+
+            @Override
+            public void onError(Exception e) {
+                if (!isAdded() || getContext() == null) return;
+                Toast.makeText(getContext(), R.string.meal_plan_sync_failed, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     private void savePlan() {
         progressPlanner.setVisibility(View.VISIBLE);
         planRepository.saveMealPlan(currentPlan, new MealPlanRepository.OnMealPlanActionCompleteListener() {
@@ -192,6 +224,15 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
         SavedPlansBottomSheet sheet = new SavedPlansBottomSheet();
         sheet.setOnPlanSelectedListener(plan -> {
             attachPlanListener(plan.getId());
+        });
+        sheet.setOnMealPlanDeletedListener(deletedId -> {
+            if (deletedId != null && currentPlan != null && deletedId.equals(currentPlan.getId())) {
+                if (currentPlanListener != null) {
+                    currentPlanListener.remove();
+                    currentPlanListener = null;
+                }
+                loadCurrentOrDefaultPlan();
+            }
         });
         sheet.show(getChildFragmentManager(), "SavedPlans");
     }
@@ -242,7 +283,21 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
 
         currentPlanListener = db.collection("meal_plans").document(planId)
                 .addSnapshotListener((value, error) -> {
-                    if (error != null || value == null || !value.exists()) return;
+                    if (error != null) {
+                        progressPlanner.setVisibility(View.GONE);
+                        return;
+                    }
+                    if (value == null || !value.exists()) {
+                        progressPlanner.setVisibility(View.GONE);
+                        if (currentPlan != null && planId.equals(currentPlan.getId())) {
+                            if (currentPlanListener != null) {
+                                currentPlanListener.remove();
+                                currentPlanListener = null;
+                            }
+                            loadCurrentOrDefaultPlan();
+                        }
+                        return;
+                    }
 
                     MealPlan updatedPlan = MealPlan.fromDocument(value);
                     
@@ -366,22 +421,27 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
     }
 
     private void calculateTotalCalories() {
-        int total = 0;
-        for (List<Recipe> recipes : resolvedRecipes.values()) {
-            for (Recipe r : recipes) {
-                total += r.getCalories();
-            }
-        }
-        
+        PlannerCalorieSummary summary = PlannerCalorieSummary.from(resolvedRecipes);
+
         if (currentPlan != null) {
-            currentPlan.setTotalCalories(total);
+            currentPlan.setTotalCalories(summary.getTotalKnownCalories());
         }
 
-        if (total > 0) {
-            cardCalorieSummary.setVisibility(View.VISIBLE);
-            tvTotalCalories.setText(getString(R.string.meal_plan_total_calories, total));
-        } else {
+        if (!summary.shouldShowBanner()) {
             cardCalorieSummary.setVisibility(View.GONE);
+            return;
+        }
+
+        cardCalorieSummary.setVisibility(View.VISIBLE);
+        PlannerCalorieSummary.Coverage coverage = summary.getCoverage();
+        if (coverage == PlannerCalorieSummary.Coverage.ALL_KNOWN) {
+            tvTotalCalories.setText(getString(R.string.meal_plan_total_calories, summary.getTotalKnownCalories()));
+        } else if (coverage == PlannerCalorieSummary.Coverage.PARTIAL) {
+            tvTotalCalories.setText(getString(R.string.meal_plan_total_calories_partial,
+                    summary.getTotalKnownCalories(), summary.getUnknownRecipeCount()));
+        } else {
+            tvTotalCalories.setText(getString(R.string.meal_plan_total_calories_pending,
+                    summary.getUnknownRecipeCount()));
         }
     }
 
@@ -398,6 +458,7 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
             }
             dayIds.add(recipe.getId());
             addRecipeToDayLocally(key, recipe);
+            persistCurrentPlanAfterEdit();
         });
         sheet.show(getChildFragmentManager(), "RecipeSearch");
     }
@@ -413,6 +474,7 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
                     if (dayIds != null) {
                         dayIds.remove(recipe.getId());
                         removeRecipeFromDayLocally(dayKey, recipe.getId());
+                        persistCurrentPlanAfterEdit();
                     }
                 })
                 .setNegativeButton(R.string.cancel, null)
@@ -476,6 +538,24 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
         dayCardAdapter.setDayRecipes(dayKey, dayRecipes);
         updatePlannerEmptyState();
         calculateTotalCalories();
+
+        if (!recipe.hasCalorieEstimate()) {
+            analyzeCaloriesUseCase.execute(recipe, new AnalyzeRecipeCaloriesUseCase.AnalyzeCallback() {
+                @Override
+                public void onSuccess(int calories) {
+                    if (getActivity() == null || !isAdded()) return;
+                    getActivity().runOnUiThread(() -> {
+                        dayCardAdapter.notifyDataSetChanged();
+                        calculateTotalCalories();
+                    });
+                }
+
+                @Override
+                public void onError(String error) {
+                    android.util.Log.w("PlannerFragment", "Kalori analizi başarısız: " + error);
+                }
+            });
+        }
     }
 
     private void removeRecipeFromDayLocally(String dayKey, String recipeId) {

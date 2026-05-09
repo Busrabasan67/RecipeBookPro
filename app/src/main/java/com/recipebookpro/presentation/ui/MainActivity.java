@@ -83,6 +83,15 @@ public class MainActivity extends BaseActivity {
             navController = navHostFragment.getNavController();
             NavigationUI.setupWithNavController(bottomNav, navController);
             NavigationUI.setupActionBarWithNavController(this, navController);
+            
+            bottomNav.setOnItemSelectedListener(item -> {
+                // If we are on NotificationFragment, pop it so it isn't saved in the tab's backstack
+                if (navController.getCurrentDestination() != null && 
+                    navController.getCurrentDestination().getId() == R.id.notificationFragment) {
+                    navController.popBackStack();
+                }
+                return NavigationUI.onNavDestinationSelected(item, navController);
+            });
         }
 
         notificationRepository = new NotificationRepositoryImpl();

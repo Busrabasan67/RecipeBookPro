@@ -118,6 +118,12 @@ public class TranslateRecipeUseCase {
             }
         }
 
+        if (recipe.getAllergens() != null) {
+            for (String allergen : recipe.getAllergens()) {
+                tasks.add(translationService.translateSingleField(allergen, source, target));
+            }
+        }
+
         Tasks.whenAllComplete(tasks).addOnCompleteListener(allTasks -> {
             if (allTasks.isSuccessful()) {
                 applyResults(recipe, tasks, target);
@@ -158,6 +164,14 @@ public class TranslateRecipeUseCase {
             }
         }
         recipe.setTranslatedInstructions(sb.toString().trim());
+
+        List<String> translatedAllergens = new ArrayList<>();
+        if (recipe.getAllergens() != null) {
+            for (String allergen : recipe.getAllergens()) {
+                translatedAllergens.add(getTaskResult(tasks.get(index++), allergen, targetLang));
+            }
+        }
+        recipe.setTranslatedAllergens(translatedAllergens);
     }
 
     private String getTaskResult(Task<String> task, String originalText, String targetLang) {

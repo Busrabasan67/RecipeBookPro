@@ -33,6 +33,7 @@ public class Recipe implements Serializable {
     private String translatedTitle;
     private String translatedDescription;
     private String translatedInstructions;
+    private List<String> translatedAllergens;
     private String originalLanguage; // e.g., "tr", "en"
 
     public Recipe() {
@@ -41,6 +42,7 @@ public class Recipe implements Serializable {
         allergens = new ArrayList<>();
         ingredientNames = new ArrayList<>();
         stickers = new ArrayList<>();
+        translatedAllergens = new ArrayList<>();
     }
 
     public Recipe(String id,
@@ -62,6 +64,7 @@ public class Recipe implements Serializable {
         this.stepList = new ArrayList<>();
         this.allergens = new ArrayList<>();
         this.ingredientNames = new ArrayList<>();
+        this.translatedAllergens = new ArrayList<>();
     }
 
     // ========================== Firestore Parsing ==========================
@@ -135,6 +138,7 @@ public class Recipe implements Serializable {
         recipe.setTranslatedTitle(document.getString("translatedTitle"));
         recipe.setTranslatedDescription(document.getString("translatedDescription"));
         recipe.setTranslatedInstructions(document.getString("translatedInstructions"));
+        recipe.setTranslatedAllergens(parseStringList(document.get("translatedAllergens")));
         recipe.setOriginalLanguage(document.getString("originalLanguage"));
 
         return recipe;
@@ -418,6 +422,11 @@ public class Recipe implements Serializable {
         this.calories = calories;
     }
 
+    /** Firestore / AI ile pozitif kalori yazıldıysa true (planner özeti için). */
+    public boolean hasCalorieEstimate() {
+        return calories > 0;
+    }
+
     public List<String> getAllergens() {
         return allergens == null ? new ArrayList<>() : allergens;
     }
@@ -474,6 +483,14 @@ public class Recipe implements Serializable {
         this.translatedInstructions = translatedInstructions;
     }
 
+    public List<String> getTranslatedAllergens() {
+        return translatedAllergens == null ? new ArrayList<>() : translatedAllergens;
+    }
+
+    public void setTranslatedAllergens(List<String> translatedAllergens) {
+        this.translatedAllergens = translatedAllergens != null ? translatedAllergens : new ArrayList<>();
+    }
+
     public String getOriginalLanguage() { return originalLanguage == null ? "" : originalLanguage; }
     public void setOriginalLanguage(String originalLanguage) { this.originalLanguage = originalLanguage; }
 
@@ -490,6 +507,11 @@ public class Recipe implements Serializable {
     public String getDisplayInstructions(String currentLang) {
         if (translatedInstructions != null && !translatedInstructions.isEmpty()) return translatedInstructions;
         return getSteps();
+    }
+
+    public List<String> getDisplayAllergens(String currentLang) {
+        if (translatedAllergens != null && !translatedAllergens.isEmpty()) return translatedAllergens;
+        return getAllergens();
     }
 
     public boolean hasTranslation() {
@@ -615,6 +637,7 @@ public class Recipe implements Serializable {
         this.translatedTitle = null;
         this.translatedDescription = null;
         this.translatedInstructions = null;
+        this.translatedAllergens = null;
         if (ingredients != null) {
             for (Ingredient ing : ingredients) ing.clearTranslation();
         }

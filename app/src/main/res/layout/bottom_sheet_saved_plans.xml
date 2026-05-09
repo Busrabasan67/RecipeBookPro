@@ -34,7 +34,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:text="No saved plans"
+            android:text="@string/meal_plan_list_empty"
             android:visibility="gone" />
     </FrameLayout>
 

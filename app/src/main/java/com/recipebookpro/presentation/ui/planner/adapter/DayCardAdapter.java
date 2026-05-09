@@ -8,10 +8,11 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.textview.MaterialTextView;
 import com.recipebookpro.R;
+import com.recipebookpro.domain.model.DayPlannerCalorieSummary;
 import com.recipebookpro.domain.model.Recipe;
-import com.recipebookpro.domain.model.WeeklyMenu;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -83,16 +84,21 @@ public class DayCardAdapter extends RecyclerView.Adapter<DayCardAdapter.DayViewH
 
         holder.tvDayName.setText(dayLabel);
         
-        int dailyCalories = 0;
-        for (Recipe r : recipes) {
-            dailyCalories += r.getCalories();
-        }
-        
-        if (dailyCalories > 0) {
-            holder.tvDayCalories.setVisibility(View.VISIBLE);
-            holder.tvDayCalories.setText(dailyCalories + " kcal");
-        } else {
+        DayPlannerCalorieSummary daySummary = DayPlannerCalorieSummary.from(recipes);
+
+        if (daySummary.shouldHideRow()) {
             holder.tvDayCalories.setVisibility(View.GONE);
+        } else if (daySummary.isAllPending()) {
+            holder.tvDayCalories.setVisibility(View.VISIBLE);
+            holder.tvDayCalories.setAlpha(0.85f);
+            holder.tvDayCalories.setTextColor(
+                    MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorOnSurfaceVariant));
+            holder.tvDayCalories.setText(holder.itemView.getContext().getString(R.string.day_calories_unknown));
+        } else {
+            holder.tvDayCalories.setVisibility(View.VISIBLE);
+            holder.tvDayCalories.setAlpha(1f);
+            holder.tvDayCalories.setTextColor(MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorTertiary));
+            holder.tvDayCalories.setText(daySummary.getKnownDayTotal() + " kcal");
         }
         holder.tvDayEmpty.setVisibility(recipes.isEmpty() ? View.VISIBLE : View.GONE);
         holder.rvDayRecipes.setVisibility(recipes.isEmpty() ? View.GONE : View.VISIBLE);

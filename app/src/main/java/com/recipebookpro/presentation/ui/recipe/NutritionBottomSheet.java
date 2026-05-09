@@ -3,6 +3,7 @@ package com.recipebookpro.presentation.ui.recipe;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,16 +16,20 @@ import androidx.annotation.Nullable;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.recipebookpro.R;
-import com.recipebookpro.data.remote.GeminiService;
+import com.recipebookpro.data.remote.GroqAiNutritionService;
+import com.recipebookpro.domain.usecase.AnalyzeIngredientNutritionUseCase;
 
 public class NutritionBottomSheet extends BottomSheetDialogFragment {
 
+    private static final String TAG = "NutritionBottomSheet";
     private static final String ARG_INGREDIENTS = "ingredients_text";
     private String ingredientsText;
 
     private LinearProgressIndicator progressNutrition;
     private View cardNutritionResult;
     private TextView tvNutritionResult;
+
+    private AnalyzeIngredientNutritionUseCase analyzeIngredientNutritionUseCase;
 
     public static NutritionBottomSheet newInstance(String ingredients) {
         NutritionBottomSheet fragment = new NutritionBottomSheet();
@@ -40,6 +45,7 @@ public class NutritionBottomSheet extends BottomSheetDialogFragment {
         if (getArguments() != null) {
             ingredientsText = getArguments().getString(ARG_INGREDIENTS);
         }
+        analyzeIngredientNutritionUseCase = new AnalyzeIngredientNutritionUseCase(new GroqAiNutritionService());
     }
 
     @Nullable
@@ -68,18 +74,19 @@ public class NutritionBottomSheet extends BottomSheetDialogFragment {
         progressNutrition.setVisibility(View.VISIBLE);
         cardNutritionResult.setVisibility(View.GONE);
 
-        GeminiService.analyzeNutrition(ingredientsText, new GeminiService.GeminiCallback() {
+        analyzeIngredientNutritionUseCase.execute(ingredientsText, new AnalyzeIngredientNutritionUseCase.Callback() {
             @Override
-            public void onSuccess(String result) {
+            public void onSuccess(String nutritionText) {
                 new Handler(Looper.getMainLooper()).post(() -> {
                     progressNutrition.setVisibility(View.GONE);
                     cardNutritionResult.setVisibility(View.VISIBLE);
-                    tvNutritionResult.setText(result);
+                    tvNutritionResult.setText(nutritionText);
                 });
             }
 
             @Override
             public void onError(String error) {
+                Log.e(TAG, "Besin analizi hatası: " + error);
                 new Handler(Looper.getMainLooper()).post(() -> {
                     progressNutrition.setVisibility(View.GONE);
                     Toast.makeText(getContext(), getString(R.string.error_with_reason, error), Toast.LENGTH_LONG).show();

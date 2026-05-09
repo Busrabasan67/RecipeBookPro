@@ -215,7 +215,9 @@
     <string name="remove_recipe_title">Remove Recipe</string>
     <string name="remove_recipe_from_cookbook_confirm">Are you sure you want to remove %1$s from this cookbook?</string>
     <string name="recipe_removed_from_cookbook">Recipe removed</string>
-    <string name="share_cookbook_text">Check out %1$s cookbook!\n%2$s</string>
+    <string name="share_open_link_prompt">► Tap the link above to open this in RecipeBook (browser may open briefly first).</string>
+    <string name="share_install_recipebook">If you don\'t have the app yet: %s</string>
+    <string name="share_cookbook_message">📖 \"%1$s\"\n\nBrowse this cookbook in RecipeBook.</string>
     <string name="share_cookbook">Share Cookbook</string>
     <string name="settings_title">Settings</string>
     <string name="change_password">Change Password</string>
@@ -315,7 +317,10 @@
     <string name="password_updated">Password updated successfully.</string>
     <string name="current_password_incorrect">Current password is incorrect.</string>
     <string name="forgot_password">Forgot Password</string>
+
     <string name="reset_password_not_available_for_provider">Password reset is not available for this account type. Please sign in with your provider and set a password first.</string>
+    <string name="send_reset_link_confirm">A password reset link will be sent to your email address. Do you want to proceed?</string>
+    <string name="send_reset_link">Send Link</string>
     <string name="create_password_title">Create Password</string>
     <string name="create_password_message">This account uses a social sign-in provider. You can create a password now and use email/password login afterwards.</string>
     <string name="create_password_action">Create Password</string>
@@ -362,8 +367,18 @@
     <string name="meal_plan_load">Load Plan</string>
     <string name="meal_plan_saved">Meal plan saved successfully.</string>
     <string name="meal_plan_total_calories">Total Calories: %1$d kcal</string>
+    <string name="meal_plan_total_calories_partial">Known total: %1$d kcal · %2$d recipe(s) still estimating</string>
+    <string name="meal_plan_total_calories_pending">Calories not yet calculated for %1$d recipe(s)</string>
+    <string name="calories_unknown_short">—</string>
+    <string name="day_calories_unknown">Day — kcal pending</string>
     <string name="meal_plan_daily_calories">Daily: %1$d kcal</string>
+    <string name="meal_plan_duration_calories">%1$d Days - %2$d kcal</string>
     <string name="meal_plan_delete_confirm">Are you sure you want to delete this meal plan?</string>
+    <string name="meal_plan_deleted">Plan deleted.</string>
+    <string name="meal_plan_delete_failed">Could not delete plan. Try again.</string>
+    <string name="meal_plan_delete_action_content_desc">Delete meal plan</string>
+    <string name="meal_plan_list_empty">No saved plans yet.</string>
+    <string name="meal_plan_sync_failed">Changes could not be saved. Try again.</string>
     <string name="shopping_list_delete_confirm">Are you sure you want to delete this shopping list?</string>
     <string name="invite_to_plan">Invite to Plan</string>
     <string name="invite_to_list">Invite to List</string>
