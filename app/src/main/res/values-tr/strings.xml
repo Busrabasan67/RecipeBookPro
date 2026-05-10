@@ -6,6 +6,7 @@
     <string name="welcome">RecipeBook Pro\'ya Hoş Geldiniz</string>
     <string name="loading">Yükleniyor...</string>
     <string name="email">E-posta</string>
+    <string name="email_placeholder">ornek@mail.com</string>
     <string name="password">Şifre</string>
     <string name="confirm_password">Şifreyi Onayla</string>
     <string name="display_name">Görüntülenen Ad</string>
@@ -516,6 +517,7 @@
     <string name="published_by_label">Yayınlayan</string>
     <string name="view_profile">Profili Gör</string>
     <string name="invalid_email">Geçersiz e-posta formatı</string>
+    <string name="invalid_name_format">İsim sadece harflerden oluşmalıdır</string>
     <string name="empty_fields">Lütfen tüm alanları doldurun.</string>
     <string name="password_too_short">Şifre en az 6 karakter olmalıdır.</string>
     <string name="passwords_not_match">Şifreler eşleşmiyor.</string>

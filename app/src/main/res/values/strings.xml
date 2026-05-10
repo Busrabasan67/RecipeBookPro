@@ -6,6 +6,7 @@
     <string name="welcome">Welcome to RecipeBook Pro</string>
     <string name="loading">Loading...</string>
     <string name="email">Email</string>
+    <string name="email_placeholder">example@mail.com</string>
     <string name="password">Password</string>
     <string name="confirm_password">Confirm Password</string>
     <string name="display_name">Display Name</string>
@@ -398,6 +399,7 @@
     <string name="published_by_label">Published by</string>
     <string name="view_profile">View Profile</string>
     <string name="invalid_email">Invalid email format</string>
+    <string name="invalid_name_format">Name should only contain letters</string>
     <string name="empty_fields">Please fill in all fields.</string>
     <string name="password_too_short">Password must be at least 6 characters.</string>
     <string name="passwords_not_match">Passwords do not match.</string>

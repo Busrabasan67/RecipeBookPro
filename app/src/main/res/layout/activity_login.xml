@@ -30,6 +30,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/margin_small"
         android:hint="@string/email"
+        app:placeholderText="@string/email_placeholder"
         app:layout_constraintBottom_toTopOf="@+id/tilPassword"
         app:layout_constraintTop_toBottomOf="@+id/tvTitle">
 
@@ -37,6 +38,8 @@
             android:id="@+id/etEmail"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:importantForAutofill="yes"
+            android:autofillHints="emailAddress"
             android:inputType="textEmailAddress" />
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -55,6 +58,8 @@
             android:id="@+id/etPassword"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:importantForAutofill="yes"
+            android:autofillHints="password"
             android:inputType="textPassword" />
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -62,11 +67,25 @@
         android:id="@+id/btnLogin"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="@dimen/margin_medium"
+        android:layout_marginBottom="@dimen/margin_small"
         android:padding="@dimen/padding_small"
         android:text="@string/sign_in"
-        app:layout_constraintBottom_toTopOf="@+id/tvRegisterLink"
+        app:layout_constraintBottom_toTopOf="@+id/tvForgotPassword"
         app:layout_constraintTop_toBottomOf="@+id/tilPassword" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/tvForgotPassword"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/margin_medium"
+        android:padding="@dimen/padding_small"
+        android:text="@string/forgot_password"
+        android:textColor="?attr/colorPrimary"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/tvRegisterLink"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btnLogin" />
 
     <com.google.android.material.progressindicator.CircularProgressIndicator
         android:id="@+id/progressLogin"
