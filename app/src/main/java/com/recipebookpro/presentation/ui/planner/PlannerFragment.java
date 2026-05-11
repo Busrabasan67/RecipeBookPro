@@ -465,9 +465,10 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
 
     @Override
     public void onRecipeLongPress(String dayKey, Recipe recipe) {
+        String dayLabel = getDayLabel(dayKey);
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(recipe.getTitle())
-                .setMessage(getString(R.string.planner_remove_recipe_confirm, dayKey))
+                .setMessage(getString(R.string.planner_remove_recipe_confirm, dayLabel))
                 .setPositiveButton(R.string.delete, (d, w) -> {
                     if (currentPlan == null) return;
                     List<String> dayIds = currentPlan.getDays().get(dayKey);
@@ -486,6 +487,16 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
         Intent intent = new Intent(getContext(), RecipeDetailActivity.class);
         intent.putExtra(RecipeDetailActivity.EXTRA_RECIPE, recipe);
         startActivity(intent);
+    }
+
+    private String getDayLabel(String dayKey) {
+        try {
+            int index = Integer.parseInt(dayKey.replace("day_", ""));
+            // 0 -> 1, 1 -> 2 vb.
+            return getString(R.string.day_n, (index + 1));
+        } catch (Exception e) {
+            return dayKey;
+        }
     }
 
     private void generateShoppingList() {

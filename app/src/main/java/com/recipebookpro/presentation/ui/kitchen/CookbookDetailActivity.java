@@ -101,6 +101,16 @@ public class CookbookDetailActivity extends BaseActivity {
         toolbar.setNavigationOnClickListener(v -> finish());
         
         toolbar.inflateMenu(R.menu.menu_cookbook_detail);
+        
+        // Sağdaki ikonları beyaz yapalım
+        android.view.Menu menu = toolbar.getMenu();
+        for (int i = 0; i < menu.size(); i++) {
+            android.graphics.drawable.Drawable icon = menu.getItem(i).getIcon();
+            if (icon != null) {
+                androidx.core.graphics.drawable.DrawableCompat.setTint(icon, android.graphics.Color.WHITE);
+            }
+        }
+        
         toolbar.setOnMenuItemClickListener(item -> {
             if (item.getItemId() == R.id.action_edit_cookbook) {
                 Intent editIntent = new Intent(this, CookbookAddEditActivity.class);

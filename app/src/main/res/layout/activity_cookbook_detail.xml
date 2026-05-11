@@ -20,7 +20,9 @@
             app:layout_scrollFlags="scroll|exitUntilCollapsed"
             app:toolbarId="@+id/toolbarCookbookDetail"
             app:collapsedTitleTextAppearance="@style/TextAppearance.Material3.TitleMedium"
-            app:expandedTitleTextAppearance="@style/TextAppearance.Material3.HeadlineMedium">
+            app:expandedTitleTextAppearance="@style/TextAppearance.Material3.HeadlineMedium"
+            app:collapsedTitleTextColor="@android:color/white"
+            app:expandedTitleTextColor="@android:color/white">
 
             <ImageView
                 android:id="@+id/ivCookbookCover"
@@ -36,16 +38,18 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="#40000000" />
+                android:background="#66000000" />
 
             <com.google.android.material.appbar.MaterialToolbar
                 android:id="@+id/toolbarCookbookDetail"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
+                android:theme="@style/ThemeOverlay.Material3.Dark.ActionBar"
+                app:popupTheme="@style/ThemeOverlay.Material3.Light"
                 app:layout_collapseMode="pin"
                 app:navigationIcon="@drawable/ic_arrow_back"
-                app:navigationIconTint="?attr/colorOnSurface"
-                app:titleTextColor="?attr/colorOnSurface" />
+                app:navigationIconTint="@android:color/white"
+                app:titleTextColor="@android:color/white" />
 
         </com.google.android.material.appbar.CollapsingToolbarLayout>
 

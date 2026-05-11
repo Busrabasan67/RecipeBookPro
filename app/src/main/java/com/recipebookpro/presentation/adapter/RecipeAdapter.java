@@ -117,8 +117,6 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.RecipeView
         void bind(Recipe recipe) {
             String currentLang = Locale.getDefault().getLanguage();
             tvTitle.setText(recipe.getDisplayTitle(currentLang));
-            tvDescription.setText(recipe.getDisplayDescription(currentLang));
-            tvIngredientsPreview.setText(recipe.getFormattedIngredients());
 
             // Determine data to load: URL or placeholder resource
             Object imageData = (recipe.getImageUrl() != null && !recipe.getImageUrl().isEmpty()) 
