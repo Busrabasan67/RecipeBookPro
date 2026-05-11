@@ -3,8 +3,15 @@
 
     <!-- Required for Firebase Authentication and Firestore network access. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
+        android:name=".RecipeBookProApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -13,7 +20,7 @@
         android:theme="@style/Theme.RecipeBookPro">
 
         <activity
-            android:name=".ui.SplashActivity"
+            android:name=".presentation.ui.SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar">
             <intent-filter>
@@ -23,36 +30,117 @@
         </activity>
 
         <activity
-            android:name=".ui.auth.LoginActivity"
+            android:name=".presentation.ui.auth.LoginActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
 
         <activity
-            android:name=".ui.auth.RegisterActivity"
+            android:name=".presentation.ui.auth.RegisterActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
 
         <activity
-            android:name=".ui.MainActivity"
+            android:name=".presentation.ui.MainActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
 
         <activity
-            android:name=".ui.recipe.AddRecipeActivity"
+            android:name=".presentation.ui.recipe.AddRecipeActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar"
             android:windowSoftInputMode="adjustResize|stateHidden" />
 
         <activity
-            android:name=".ui.recipe.RecipeDetailActivity"
+            android:name=".presentation.ui.discover.PublicCookbooksActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.RecipeBookPro.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".presentation.ui.recipe.RecipeDetailActivity"
+            android:exported="true"
+            android:theme="@style/Theme.RecipeBookPro.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="recipebook" android:host="recipe" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".presentation.ui.book.BookReaderActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
 
         <activity
-            android:name=".ui.book.BookReaderActivity"
+            android:name=".presentation.ui.cooking.CookingModeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.RecipeBookPro.NoActionBar"
+            android:screenOrientation="portrait"
+            android:keepScreenOn="true" />
+
+        <activity
+            android:name=".presentation.ui.recipe.RecipeAddEditActivity"
+            android:exported="false"
+            android:theme="@style/Theme.RecipeBookPro.NoActionBar"
+            android:windowSoftInputMode="adjustResize|stateHidden" />
+
+        <activity
+            android:name=".presentation.ui.kitchen.CookbookDetailActivity"
+            android:exported="true"
+            android:theme="@style/Theme.RecipeBookPro.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="recipebook" android:host="cookbook" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".presentation.ui.kitchen.CookbookAddEditActivity"
+            android:exported="false"
+            android:theme="@style/Theme.RecipeBookPro.NoActionBar"
+            android:windowSoftInputMode="adjustResize|stateHidden" />
+
+        <activity
+            android:name=".presentation.ui.kitchen.PublicProfileActivity"
             android:exported="false"
             android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
 
+        <activity
+            android:name=".presentation.ui.kitchen.CollectionDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
+
+        <activity
+            android:name=".presentation.ui.shopping.ShoppingListDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.RecipeBookPro.NoActionBar" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <service
+            android:name=".service.MyFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".service.NotificationService"
+            android:exported="false" />
     </application>
 
 </manifest>

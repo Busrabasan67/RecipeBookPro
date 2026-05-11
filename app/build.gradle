@@ -1,18 +1,39 @@
 plugins {
     id 'com.android.application'
     id 'com.google.gms.google-services'
+
+}
+
+def localProps = new Properties()
+def localPropsFile = rootProject.file('local.properties')
+if (localPropsFile.exists()) {
+    localProps.load(new FileInputStream(localPropsFile))
 }
 
 android {
     namespace 'com.recipebookpro'
-    compileSdk 36
+    compileSdk 34
+
+    buildFeatures {
+        buildConfig true
+    }
 
     defaultConfig {
         applicationId "com.recipebookpro"
         minSdk 33
-        targetSdk 36
+        targetSdk 34
         versionCode 1
         versionName "1.0"
+        
+        buildConfigField "String", "GEMINI_API_KEY", "\"${localProps.getProperty('GEMINI_API_KEY', 'YOUR_GEMINI_API_KEY')}\""
+        buildConfigField "String", "GROQ_API_KEY", "\"${localProps.getProperty('GROQ_API_KEY', 'YOUR_GROQ_API_KEY')}\""
+        def shareHttpsBase = localProps.getProperty('SHARE_HTTPS_REDIRECT_BASE', null)
+        if (shareHttpsBase == null || shareHttpsBase.trim().isEmpty()) {
+            // Firebase Hosting (sharing/open.html) — bir kez: firebase login && firebase deploy --only hosting
+            shareHttpsBase = 'https://recipebookpro-ee941.web.app/open.html'
+        }
+        def shareHttpsEsc = shareHttpsBase.replace('\\', '\\\\').replace('"', '\\"')
+        buildConfigField "String", "SHARE_HTTPS_REDIRECT_BASE", "\"${shareHttpsEsc}\""
     }
 
     compileOptions {
@@ -27,13 +48,49 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.viewpager2:viewpager2:1.0.0'
 
+    // Navigation Component
+    implementation 'androidx.navigation:navigation-fragment:2.7.7'
+    implementation 'androidx.navigation:navigation-ui:2.7.7'
+
     // Firebase
     implementation platform('com.google.firebase:firebase-bom:33.1.0')
     implementation 'com.google.firebase:firebase-auth'
     implementation 'com.google.firebase:firebase-firestore'
+    implementation 'com.google.firebase:firebase-storage'
+    implementation 'com.google.firebase:firebase-messaging'
+
 
     // Google Sign-In - Credential Manager (modern yaklaşım, play-services-auth gerektirmez)
     implementation 'androidx.credentials:credentials:1.3.0'
     implementation 'androidx.credentials:credentials-play-services-auth:1.3.0'
     implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
+
+    // Gemini AI (nutrition analysis)
+    implementation 'com.google.ai.client.generativeai:generativeai:0.9.0'
+
+    // CameraX (recipe photo capture)
+    implementation 'androidx.camera:camera-core:1.3.4'
+    implementation 'androidx.camera:camera-camera2:1.3.4'
+    implementation 'androidx.camera:camera-lifecycle:1.3.4'
+    implementation 'androidx.camera:camera-view:1.3.4'
+
+    // Coil (image loading)
+    implementation 'io.coil-kt:coil:2.6.0'
+
+    // WorkManager (shopping list generation, background tasks)
+    implementation 'androidx.work:work-runtime:2.9.0'
+    implementation 'com.google.guava:guava:31.1-android'
+
+    // ML Kit Translate & Language ID
+    implementation 'com.google.mlkit:translate:17.0.2'
+    implementation 'com.google.mlkit:language-id:17.0.6'
+
+    // Room Database
+    implementation 'androidx.room:room-runtime:2.6.1'
+    implementation 'androidx.room:room-ktx:2.6.1'
+    annotationProcessor 'androidx.room:room-compiler:2.6.1'
+    implementation 'com.google.code.gson:gson:2.10.1'
+
+    // Google Play Services Tasks (Tasks.whenAllSuccess for parallel queries)
+    implementation 'com.google.android.gms:play-services-tasks:18.1.0'
 }
