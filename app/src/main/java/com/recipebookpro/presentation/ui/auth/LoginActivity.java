@@ -82,6 +82,8 @@ public class LoginActivity extends BaseActivity {
         tilEmail = findViewById(R.id.tilEmail);
         tilPassword = findViewById(R.id.tilPassword);
 
+        AuthLanguageSelector.setup(this);
+
         etEmail.addTextChangedListener(new android.text.TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
