@@ -64,6 +64,8 @@ public class RegisterActivity extends BaseActivity {
         tilPassword = findViewById(R.id.tilPassword);
         tilConfirmPassword = findViewById(R.id.tilConfirmPassword);
 
+        AuthLanguageSelector.setup(this);
+
         setupRealTimeValidation();
 
         btnRegister.setOnClickListener(v -> registerUser());
