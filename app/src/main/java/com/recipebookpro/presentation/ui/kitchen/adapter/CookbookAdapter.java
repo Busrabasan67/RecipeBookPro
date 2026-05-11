@@ -1,5 +1,6 @@
 package com.recipebookpro.presentation.ui.kitchen.adapter;
 
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -55,7 +56,14 @@ public class CookbookAdapter extends RecyclerView.Adapter<CookbookAdapter.ViewHo
         holder.tvRecipeCount.setText(holder.itemView.getContext().getString(R.string.recipe_count, count));
         
         if (isHorizontal) {
-            if (holder.tvCookbookDesc != null) holder.tvCookbookDesc.setText(book.getDescription());
+            if (holder.tvCookbookDesc != null) {
+                if (!TextUtils.isEmpty(book.getDescription())) {
+                    holder.tvCookbookDesc.setText(book.getDescription());
+                    holder.tvCookbookDesc.setVisibility(View.VISIBLE);
+                } else {
+                    holder.tvCookbookDesc.setVisibility(View.GONE);
+                }
+            }
             if (holder.chipFollowers != null) {
                 holder.chipFollowers.setText(String.valueOf(book.getFollowerCount()));
             }

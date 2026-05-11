@@ -318,6 +318,7 @@
     <string name="password_updated">Şifre başarıyla güncellendi.</string>
     <string name="current_password_incorrect">Mevcut şifre yanlış.</string>
     <string name="forgot_password">Şifremi Unuttum</string>
+    <string name="unit_minute_short">%1$d dk</string>
 
     <string name="reset_password_not_available_for_provider">Bu hesap türü için şifre sıfırlama kullanılamaz. Önce sağlayıcınızla giriş yapıp şifre belirleyin.</string>
     <string name="send_reset_link_confirm">E-posta adresinize bir şifre sıfırlama bağlantısı gönderilecektir. Devam etmek istiyor musunuz?</string>

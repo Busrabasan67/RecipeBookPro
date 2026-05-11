@@ -166,6 +166,8 @@ public class CookbookDetailActivity extends BaseActivity {
         if (!TextUtils.isEmpty(cookbook.getDescription())) {
             tvDescription.setText(cookbook.getDescription());
             tvDescription.setVisibility(View.VISIBLE);
+        } else {
+            tvDescription.setVisibility(View.GONE);
         }
 
         // Default placeholder state

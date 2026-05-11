@@ -318,6 +318,7 @@
     <string name="password_updated">Password updated successfully.</string>
     <string name="current_password_incorrect">Current password is incorrect.</string>
     <string name="forgot_password">Forgot Password</string>
+    <string name="unit_minute_short">%1$d min</string>
 
     <string name="reset_password_not_available_for_provider">Password reset is not available for this account type. Please sign in with your provider and set a password first.</string>
     <string name="send_reset_link_confirm">A password reset link will be sent to your email address. Do you want to proceed?</string>

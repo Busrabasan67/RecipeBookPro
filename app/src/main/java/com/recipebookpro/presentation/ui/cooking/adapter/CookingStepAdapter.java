@@ -46,7 +46,7 @@ public class CookingStepAdapter extends RecyclerView.Adapter<CookingStepAdapter.
 
         if (step.hasTimer()) {
             holder.cardTimerInfo.setVisibility(View.VISIBLE);
-            holder.tvTimerMinutesBig.setText(step.getTimerMinutes() + " dk");
+            holder.tvTimerMinutesBig.setText(holder.itemView.getContext().getString(R.string.unit_minute_short, step.getTimerMinutes()));
             holder.btnStartTimerManual.setOnClickListener(v -> timerListener.onStartTimer(step.getTimerMinutes()));
         } else {
             holder.cardTimerInfo.setVisibility(View.GONE);

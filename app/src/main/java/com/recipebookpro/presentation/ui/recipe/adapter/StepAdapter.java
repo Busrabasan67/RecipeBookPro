@@ -40,7 +40,7 @@ public class StepAdapter extends RecyclerView.Adapter<StepAdapter.ViewHolder> {
         
         if (step.hasTimer()) {
             holder.chipTimer.setVisibility(View.VISIBLE);
-            holder.chipTimer.setText(step.getTimerMinutes() + " dk");
+            holder.chipTimer.setText(holder.itemView.getContext().getString(R.string.unit_minute_short, step.getTimerMinutes()));
         } else {
             holder.chipTimer.setVisibility(View.GONE);
         }
