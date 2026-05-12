@@ -56,10 +56,26 @@ public class ProfileFragment extends Fragment {
     private FirebaseUser currentUser;
     private ChipGroup chipGroupAllergens;
     private TextInputEditText etCustomAllergen;
+    private ChipGroup chipGroupHealthConditions;
+    private ChipGroup chipGroupCustomHealthConditions;
+    private TextInputEditText etCustomHealthCondition;
     private ImageView ivProfileAvatar;
     private List<String> userAllergens = new ArrayList<>();
+    private List<String> userHealthConditions = new ArrayList<>();
+    private List<String> userCustomHealthConditions = new ArrayList<>();
+    private java.util.Map<String, String> customAllergenTranslations = new java.util.HashMap<>();
     private boolean isLoading = true;
     private Uri cameraImageUri;
+
+    private static final java.util.Map<Integer, String> CHIP_CONDITION_MAP = new java.util.LinkedHashMap<>();
+    static {
+        CHIP_CONDITION_MAP.put(R.id.chipDiabetes, "diabetes");
+        CHIP_CONDITION_MAP.put(R.id.chipKidney, "kidney_disease");
+        CHIP_CONDITION_MAP.put(R.id.chipCardiovascular, "cardiovascular");
+        CHIP_CONDITION_MAP.put(R.id.chipHypertension, "hypertension");
+        CHIP_CONDITION_MAP.put(R.id.chipCeliac, "celiac");
+        CHIP_CONDITION_MAP.put(R.id.chipIbs, "ibs");
+    }
 
     private final ActivityResultLauncher<String[]> permissionLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestMultiplePermissions(),
@@ -121,21 +137,66 @@ public class ProfileFragment extends Fragment {
 
         chipGroupAllergens = view.findViewById(R.id.chipGroupAllergens);
         etCustomAllergen = view.findViewById(R.id.etCustomAllergen);
+        chipGroupHealthConditions = view.findViewById(R.id.chipGroupHealthConditions);
+        chipGroupCustomHealthConditions = view.findViewById(R.id.chipGroupCustomHealthConditions);
+        etCustomHealthCondition = view.findViewById(R.id.etCustomHealthCondition);
         ivProfileAvatar = view.findViewById(R.id.ivProfileAvatar);
 
         etCustomAllergen.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_DONE ||
-                (event != null && event.getAction() == KeyEvent.ACTION_DOWN && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+            boolean isDone = actionId == EditorInfo.IME_ACTION_DONE
+                    || actionId == EditorInfo.IME_ACTION_GO
+                    || actionId == EditorInfo.IME_NULL;
+            boolean isEnterDown = event != null
+                    && event.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                    && event.getAction() == KeyEvent.ACTION_DOWN;
+            boolean isEnterUp = event != null
+                    && event.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                    && event.getAction() == KeyEvent.ACTION_UP;
+
+            if (isDone || isEnterDown) {
                 String custom = etCustomAllergen.getText() != null
                         ? etCustomAllergen.getText().toString().trim() : "";
                 if (!custom.isEmpty()) {
                     addCustomAllergenChip(custom);
                     etCustomAllergen.setText("");
                 }
+                // Hide keyboard and clear focus so it doesn't jump to next field
+                etCustomAllergen.clearFocus();
+                android.view.inputmethod.InputMethodManager imm =
+                        (android.view.inputmethod.InputMethodManager)
+                                requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+                if (imm != null) imm.hideSoftInputFromWindow(etCustomAllergen.getWindowToken(), 0);
+                return true;
+            }
+            // Consume UP event for Enter key too, to avoid double-trigger
+            return isEnterUp;
+        });
+
+
+        etCustomHealthCondition.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE ||
+                (event != null && event.getAction() == KeyEvent.ACTION_DOWN && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                String custom = etCustomHealthCondition.getText() != null
+                        ? etCustomHealthCondition.getText().toString().trim() : "";
+                if (!custom.isEmpty()) {
+                    addCustomHealthConditionChip(custom);
+                    etCustomHealthCondition.setText("");
+                }
                 return true;
             }
             return false;
         });
+
+        for (java.util.Map.Entry<Integer, String> entry : CHIP_CONDITION_MAP.entrySet()) {
+            Chip chip = view.findViewById(entry.getKey());
+            if (chip != null) {
+                chip.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                    if (!isLoading) {
+                        onHealthConditionChanged();
+                    }
+                });
+            }
+        }
 
         if (currentUser != null) {
             tvEmail.setText(currentUser.getEmail());
@@ -209,7 +270,10 @@ public class ProfileFragment extends Fragment {
             if (localUser != null && isAdded()) {
                 requireActivity().runOnUiThread(() -> {
                     userAllergens = new ArrayList<>(localUser.getAllergens());
+                    userHealthConditions = localUser.getHealthConditions() != null ? new ArrayList<>(localUser.getHealthConditions()) : new ArrayList<>();
+                    userCustomHealthConditions = localUser.getCustomHealthConditions() != null ? new ArrayList<>(localUser.getCustomHealthConditions()) : new ArrayList<>();
                     translateAndPopulateAllergenChips();
+                    populateHealthConditionChips();
                 });
             }
             
@@ -229,14 +293,29 @@ public class ProfileFragment extends Fragment {
                                 }
 
                                 userAllergens = new ArrayList<>(user.getAllergens());
+                                userHealthConditions = user.getHealthConditions() != null ? new ArrayList<>(user.getHealthConditions()) : new ArrayList<>();
+                                userCustomHealthConditions = user.getCustomHealthConditions() != null ? new ArrayList<>(user.getCustomHealthConditions()) : new ArrayList<>();
+
+                                // Load saved custom allergen translations
+                                Object transObj = doc.get("customAllergenTranslations");
+                                if (transObj instanceof java.util.Map<?, ?>) {
+                                    for (java.util.Map.Entry<?, ?> e : ((java.util.Map<?, ?>) transObj).entrySet()) {
+                                        if (e.getKey() instanceof String && e.getValue() instanceof String) {
+                                            customAllergenTranslations.put((String) e.getKey(), (String) e.getValue());
+                                        }
+                                    }
+                                }
+
                                 translateAndPopulateAllergenChips();
+                                populateHealthConditionChips();
                                 
                                 // Update Room in background
                                 final User finalUser = user;
                                 new Thread(() -> {
                                     localDb.userDao().insertUser(new com.recipebookpro.data.local.entity.UserEntity(
                                         uid, finalUser.getEmail(), finalUser.getDisplayName(), 
-                                        finalUser.getProfileImageUrl(), finalUser.getAllergens()
+                                        finalUser.getProfileImageUrl(), finalUser.getAllergens(),
+                                        finalUser.getHealthConditions(), finalUser.getCustomHealthConditions()
                                     ));
                                 }).start();
                             }
@@ -389,6 +468,45 @@ public class ProfileFragment extends Fragment {
         chipGroupAllergens.addView(chip);
         isLoading = false;
         onAllergenChanged();
+        // Detect the language of this custom allergen and save a cross-language translation
+        saveCustomAllergenTranslation(text);
+    }
+
+    /**
+     * Uses ML Kit to detect the language of a custom allergen and translate it to the
+     * opposite language (TR⇔EN). Both the original and the translation are persisted in
+     * Firestore so that allergen matching works across language switches.
+     */
+    private void saveCustomAllergenTranslation(String original) {
+        if (currentUser == null || !isAdded()) return;
+        com.google.mlkit.nl.languageid.LanguageIdentifier identifier =
+                com.google.mlkit.nl.languageid.LanguageIdentification.getClient();
+        identifier.identifyLanguage(original.toLowerCase())
+                .addOnSuccessListener(sourceLang -> {
+                    String detectedLang = sourceLang.equals("und") ? "tr" : sourceLang;
+                    String targetLang = detectedLang.equals("tr") ? "en" : "tr";
+
+                    com.recipebookpro.data.remote.MLKitTranslationService svc =
+                            new com.recipebookpro.data.remote.MLKitTranslationService(requireContext());
+                    svc.prepareModel(detectedLang, targetLang)
+                            .addOnSuccessListener(unused -> {
+                                svc.translateSingleField(original, detectedLang, targetLang)
+                                        .addOnSuccessListener(translated -> {
+                                            if (translated == null || translated.trim().isEmpty()) return;
+                                            String translatedClean = translated.trim();
+                                            customAllergenTranslations.put(original, translatedClean);
+                                            // Also store reverse so it's bidirectional
+                                            customAllergenTranslations.put(translatedClean, original);
+                                            // Persist to Firestore
+                                            db.collection("users").document(currentUser.getUid())
+                                                    .update("customAllergenTranslations",
+                                                            customAllergenTranslations);
+                                            svc.close();
+                                        })
+                                        .addOnFailureListener(e -> svc.close());
+                            })
+                            .addOnFailureListener(e -> svc.close());
+                });
     }
 
     private void onAllergenChanged() {
@@ -534,5 +652,109 @@ public class ProfileFragment extends Fragment {
         } catch (Exception e) {
             Toast.makeText(requireContext(), R.string.camera_error, Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void populateHealthConditionChips() {
+        isLoading = true;
+        
+        if (getView() != null) {
+            for (java.util.Map.Entry<Integer, String> entry : CHIP_CONDITION_MAP.entrySet()) {
+                Chip chip = getView().findViewById(entry.getKey());
+                if (chip != null) {
+                    chip.setChecked(userHealthConditions.contains(entry.getValue()));
+                }
+            }
+        }
+
+        if (chipGroupCustomHealthConditions != null) {
+            chipGroupCustomHealthConditions.removeAllViews();
+            for (String condition : userCustomHealthConditions) {
+                addCustomHealthConditionChipInternal(condition);
+            }
+        }
+        
+        isLoading = false;
+    }
+
+    private void addCustomHealthConditionChipInternal(String text) {
+        Chip chip = new Chip(requireContext());
+        chip.setText(text);
+        chip.setCheckable(false);
+        chip.setCloseIconVisible(true);
+        chip.setOnCloseIconClickListener(v -> {
+            chipGroupCustomHealthConditions.removeView(chip);
+            onHealthConditionChanged();
+        });
+        chipGroupCustomHealthConditions.addView(chip);
+    }
+
+    private void addCustomHealthConditionChip(String text) {
+        for (int i = 0; i < chipGroupCustomHealthConditions.getChildCount(); i++) {
+            Chip existing = (Chip) chipGroupCustomHealthConditions.getChildAt(i);
+            if (existing.getText().toString().equalsIgnoreCase(text)) return;
+        }
+
+        isLoading = true;
+        addCustomHealthConditionChipInternal(text);
+        isLoading = false;
+        onHealthConditionChanged();
+    }
+
+    private void onHealthConditionChanged() {
+        if (currentUser == null) return;
+
+        List<String> conditions = collectHealthConditions();
+        List<String> customConditions = collectCustomHealthConditions();
+
+        userHealthConditions = conditions;
+        userCustomHealthConditions = customConditions;
+
+        updateHealthConditionsInDatabase(conditions, customConditions);
+    }
+
+    private List<String> collectHealthConditions() {
+        List<String> result = new ArrayList<>();
+        if (getView() == null) return result;
+        for (java.util.Map.Entry<Integer, String> entry : CHIP_CONDITION_MAP.entrySet()) {
+            Chip chip = getView().findViewById(entry.getKey());
+            if (chip != null && chip.isChecked()) {
+                result.add(entry.getValue());
+            }
+        }
+        return result;
+    }
+
+    private List<String> collectCustomHealthConditions() {
+        List<String> result = new ArrayList<>();
+        if (chipGroupCustomHealthConditions == null) return result;
+        for (int i = 0; i < chipGroupCustomHealthConditions.getChildCount(); i++) {
+            Chip c = (Chip) chipGroupCustomHealthConditions.getChildAt(i);
+            result.add(c.getText().toString());
+        }
+        return result;
+    }
+
+    private void updateHealthConditionsInDatabase(List<String> conditions, List<String> customConditions) {
+        if (currentUser == null) return;
+
+        java.util.Map<String, Object> updates = new java.util.HashMap<>();
+        updates.put("healthConditions", conditions);
+        updates.put("customHealthConditions", customConditions);
+
+        db.collection("users").document(currentUser.getUid()).update(updates);
+
+        final String uid = currentUser.getUid();
+        final List<String> finalConditions = new ArrayList<>(conditions);
+        final List<String> finalCustomConditions = new ArrayList<>(customConditions);
+        new Thread(() -> {
+            com.recipebookpro.data.local.AppDatabase localDb = com.recipebookpro.data.local.AppDatabase.getDatabase(requireContext());
+            com.recipebookpro.data.local.entity.UserEntity entity = localDb.userDao().getUserByUid(uid);
+            if (entity != null) {
+                entity.setHealthConditions(finalConditions);
+                entity.setCustomHealthConditions(finalCustomConditions);
+                entity.setLastUpdated(System.currentTimeMillis());
+                localDb.userDao().insertUser(entity);
+            }
+        }).start();
     }
 }

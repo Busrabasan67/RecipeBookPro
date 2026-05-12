@@ -542,4 +542,24 @@
     <string name="invitation_notification_title">New Invitation</string>
     <string name="invitation_notification_message">%1$s invited you to %2$s</string>
     <string name="notification_permission_rationale">Notification permission is required to keep you updated about new recipes and invitations.</string>
+
+    <!-- Health conditions section -->
+    <string name="health_conditions_title">Health Conditions</string>
+    <string name="health_conditions_subtitle">We\'ll warn you if a recipe may not suit your needs</string>
+    <string name="health_condition_diabetes">Diabetes / High Blood Sugar</string>
+    <string name="health_condition_kidney">Kidney Disease</string>
+    <string name="health_condition_cardiovascular">Heart Disease / High Cholesterol</string>
+    <string name="health_condition_hypertension">Hypertension / High Blood Pressure</string>
+    <string name="health_condition_celiac">Celiac / Gluten Intolerance</string>
+    <string name="health_condition_ibs">Irritable Bowel Syndrome (IBS)</string>
+    <string name="health_condition_custom_hint">Add another condition…</string>
+    <string name="health_condition_custom_add">Add</string>
+
+    <!-- Recipe detail warning banner -->
+    <string name="health_warning_checking">Checking recipe safety…</string>
+    <string name="health_warning_safe">✓ This recipe appears suitable for your health profile</string>
+    <string name="health_warning_unsafe">⚠ Caution: This recipe may not be suitable for you</string>
+    <string name="health_warning_disclaimer">This is not medical advice. Always consult your doctor.</string>
+    <string name="health_warning_error">Could not check recipe safety. Please try again.</string>
+    <string name="health_warning_no_conditions">Set your health conditions in your profile to get personalised warnings.</string>
 </resources>
