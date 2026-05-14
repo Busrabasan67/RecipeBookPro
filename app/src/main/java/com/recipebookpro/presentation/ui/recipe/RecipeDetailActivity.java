@@ -59,7 +59,11 @@ public class RecipeDetailActivity extends BaseActivity {
     private FirebaseUser currentUser;
     
     private ArrayList<String> userAllergens = new ArrayList<>();
+    private List<String> userHealthConditions = new ArrayList<>();
+    private List<String> userCustomHealthConditions = new ArrayList<>();
+    private java.util.Map<String, String> customAllergenTranslations = new java.util.HashMap<>();
     private boolean isLiked = false;
+    private boolean healthWarningExpanded = false;
     private MenuItem likeMenuItem;
     private ListenerRegistration likeStateListener;
     private TranslationService translationService;
@@ -237,6 +241,7 @@ public class RecipeDetailActivity extends BaseActivity {
 
     private void loadUserAllergensAndSetupPager() {
         if (currentUser == null) {
+            checkHealthConditions();
             setupViewPagerAndTabs();
             return;
         }
@@ -245,14 +250,35 @@ public class RecipeDetailActivity extends BaseActivity {
           .addOnSuccessListener(documentSnapshot -> {
               if (documentSnapshot.exists()) {
                   User user = documentSnapshot.toObject(User.class);
-                  if (user != null && user.getAllergens() != null) {
-                      userAllergens.addAll(user.getAllergens());
+                  if (user != null) {
+                      if (user.getAllergens() != null) {
+                          userAllergens.addAll(user.getAllergens());
+                      }
+                      if (user.getHealthConditions() != null) {
+                          userHealthConditions.addAll(user.getHealthConditions());
+                      }
+                      if (user.getCustomHealthConditions() != null) {
+                          userCustomHealthConditions.addAll(user.getCustomHealthConditions());
+                      }
+                      // Load saved cross-language translations for custom allergens
+                      Object transObj = documentSnapshot.get("customAllergenTranslations");
+                      if (transObj instanceof java.util.Map<?, ?>) {
+                          for (java.util.Map.Entry<?, ?> e : ((java.util.Map<?, ?>) transObj).entrySet()) {
+                              if (e.getKey() instanceof String && e.getValue() instanceof String) {
+                                  customAllergenTranslations.put(
+                                      ((String) e.getKey()).toLowerCase(java.util.Locale.ROOT),
+                                      ((String) e.getValue()).toLowerCase(java.util.Locale.ROOT));
+                              }
+                          }
+                      }
                   }
               }
               checkAllergens();
+              checkHealthConditions();
               setupViewPagerAndTabs();
           })
           .addOnFailureListener(e -> {
+              checkHealthConditions();
               setupViewPagerAndTabs(); // setup anyway
           });
     }
@@ -260,30 +286,87 @@ public class RecipeDetailActivity extends BaseActivity {
     private void checkAllergens() {
         if (userAllergens.isEmpty() || recipe.getAllergens().isEmpty()) return;
 
+        // Canonical alias map: any TR or EN label → lowercase EN key used for matching
+        java.util.Map<String, String> canonicalMap = new java.util.HashMap<>();
+        canonicalMap.put("gluten",        "gluten");
+        canonicalMap.put("glüten",        "gluten");
+        canonicalMap.put("dairy",         "dairy");
+        canonicalMap.put("süt ürünleri",  "dairy");
+        canonicalMap.put("milk",          "dairy");
+        canonicalMap.put("süt",           "dairy");
+        canonicalMap.put("egg",           "egg");
+        canonicalMap.put("yumurta",       "egg");
+        canonicalMap.put("nuts",          "nuts");
+        canonicalMap.put("kuruyemiş",     "nuts");
+        canonicalMap.put("nut",           "nuts");
+        canonicalMap.put("fıstık",        "nuts");
+        canonicalMap.put("peanut",        "nuts");
+        canonicalMap.put("soy",           "soy");
+        canonicalMap.put("soya",          "soy");
+        canonicalMap.put("seafood",       "seafood");
+        canonicalMap.put("deniz ürünleri","seafood");
+        canonicalMap.put("fish",          "seafood");
+        canonicalMap.put("balık",         "seafood");
+        canonicalMap.put("sesame",        "sesame");
+        canonicalMap.put("susam",         "sesame");
+        canonicalMap.put("celery",        "celery");
+        canonicalMap.put("kereviz",       "celery");
+
+        // Merge saved ML-Kit translations for custom allergens into the canonical map
+        // e.g. {"fıstık" → "pistachio"} means both map to the same canonical key "fıstık"
+        for (java.util.Map.Entry<String, String> entry : customAllergenTranslations.entrySet()) {
+            String orig = entry.getKey();        // e.g. "fıstık"
+            String trans = entry.getValue();     // e.g. "pistachio"
+            // Both the original and its translation should resolve to the same key
+            canonicalMap.putIfAbsent(orig,  orig);
+            canonicalMap.putIfAbsent(trans, orig); // translation maps back to original as key
+        }
+
         List<String> matchingAllergens = new ArrayList<>();
         String currentLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
         List<String> displayAllergens = recipe.getDisplayAllergens(currentLang);
         List<String> originalAllergens = recipe.getAllergens();
 
+        // Layer 3 preparation: full ingredient text for custom allergen searches
+        String ingredientsText = recipe.getFormattedIngredients() != null
+                ? recipe.getFormattedIngredients().toLowerCase(java.util.Locale.ROOT) : "";
+
         for (String userAllergen : userAllergens) {
+            String userAllergenLower = userAllergen.toLowerCase(java.util.Locale.ROOT).trim();
+            String userKey = canonicalMap.getOrDefault(userAllergenLower, userAllergenLower);
             boolean matched = false;
-            // Check original allergens
+
+            // Layer 1: canonical map + original allergen tags
             for (String recipeAllergen : originalAllergens) {
-                if (userAllergen.equalsIgnoreCase(recipeAllergen)) {
+                String recipeKey = canonicalMap.getOrDefault(recipeAllergen.toLowerCase().trim(), recipeAllergen.toLowerCase().trim());
+                if (userKey.equals(recipeKey) || userAllergen.equalsIgnoreCase(recipeAllergen)) {
                     matchingAllergens.add(recipeAllergen);
                     matched = true;
                     break;
                 }
             }
-            // If not matched, check translated allergens
+
+            // Layer 2: translated/display allergen tags
             if (!matched && displayAllergens != null) {
                 for (String translatedAllergen : displayAllergens) {
-                    if (userAllergen.equalsIgnoreCase(translatedAllergen) || 
-                        translatedAllergen.toLowerCase().contains(userAllergen.toLowerCase()) || 
-                        userAllergen.toLowerCase().contains(translatedAllergen.toLowerCase())) {
+                    String transKey = canonicalMap.getOrDefault(translatedAllergen.toLowerCase().trim(), translatedAllergen.toLowerCase().trim());
+                    if (userKey.equals(transKey)
+                            || userAllergen.equalsIgnoreCase(translatedAllergen)
+                            || translatedAllergen.toLowerCase().contains(userAllergenLower)
+                            || userAllergenLower.contains(translatedAllergen.toLowerCase())) {
                         matchingAllergens.add(translatedAllergen);
+                        matched = true;
                         break;
                     }
+                }
+            }
+
+            // Layer 3: custom allergen — search directly in recipe ingredient text.
+            // Catches user-typed words like "fıstık" or "pistachio" that appear in
+            // ingredient names but not in the recipe's allergen tag list.
+            if (!matched && !ingredientsText.isEmpty() && userAllergenLower.length() >= 3) {
+                if (ingredientsText.contains(userAllergenLower)) {
+                    matchingAllergens.add(userAllergen);
                 }
             }
         }
@@ -599,5 +682,174 @@ public class RecipeDetailActivity extends BaseActivity {
             translationService.close();
         }
         super.onDestroy();
+    }
+
+    private void checkHealthConditions() {
+        MaterialCardView cardHealth = findViewById(R.id.cardHealthWarning);
+        TextView tvHealthText = findViewById(R.id.tvHealthWarningText);
+        ImageView ivIcon = findViewById(R.id.ivHealthWarningIcon);
+        android.view.View llHeader = findViewById(R.id.llHealthWarningHeader);
+
+        if (cardHealth == null || tvHealthText == null) return;
+
+        if (currentUser == null) {
+            cardHealth.setVisibility(View.GONE);
+            return;
+        }
+
+        cardHealth.setVisibility(View.VISIBLE);
+
+        boolean hasConditions = (userHealthConditions != null && !userHealthConditions.isEmpty()) ||
+                                (userCustomHealthConditions != null && !userCustomHealthConditions.isEmpty());
+
+        if (!hasConditions) {
+            applyBannerSurface();
+            tvHealthText.setText(R.string.health_warning_no_conditions);
+            if (ivIcon != null) ivIcon.setImageResource(R.drawable.ic_cook);
+            return;
+        }
+
+        // Setup expand toggle
+        if (llHeader != null) {
+            llHeader.setOnClickListener(v -> toggleHealthWarningExpand());
+        }
+
+        com.recipebookpro.util.HealthWarningCache cache = new com.recipebookpro.util.HealthWarningCache(this);
+        com.recipebookpro.util.HealthWarningCache.CachedWarning cached = cache.getCachedWarning(recipe.getId());
+
+        if (cached != null) {
+            applyHealthWarningState(cached.isSafe, cached.rationale);
+            return;
+        }
+
+        applyBannerSurface();
+        tvHealthText.setText(R.string.health_warning_checking);
+        if (ivIcon != null) ivIcon.setImageResource(R.drawable.ic_cook);
+
+        com.recipebookpro.data.remote.HealthCheckService service = new com.recipebookpro.data.remote.HealthCheckService();
+        service.checkRecipeSafety(recipe, userHealthConditions, userCustomHealthConditions, new com.recipebookpro.data.remote.HealthCheckService.HealthCheckCallback() {
+            @Override
+            public void onResult(boolean isSafe, String rationale) {
+                if (isDestroyed() || isFinishing()) return;
+                cache.saveWarningToCache(recipe.getId(), isSafe, rationale);
+                applyHealthWarningState(isSafe, rationale);
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                if (isDestroyed() || isFinishing()) return;
+                applyBannerError();
+                TextView tv = findViewById(R.id.tvHealthWarningText);
+                if (tv != null) tv.setText(getString(R.string.health_warning_error));
+                ImageView iv = findViewById(R.id.ivHealthWarningIcon);
+                if (iv != null) iv.setImageResource(R.drawable.ic_remove);
+            }
+        });
+    }
+
+    private void toggleHealthWarningExpand() {
+        android.view.View expanded = findViewById(R.id.llHealthWarningExpanded);
+        ImageView chevron = findViewById(R.id.ivHealthWarningChevron);
+        if (expanded == null) return;
+        healthWarningExpanded = !healthWarningExpanded;
+        expanded.setVisibility(healthWarningExpanded ? View.VISIBLE : View.GONE);
+        if (chevron != null) {
+            chevron.animate().rotation(healthWarningExpanded ? 180f : 0f).setDuration(200).start();
+        }
+    }
+
+    private void applyHealthWarningState(boolean isSafe, String rationale) {
+        TextView tvSummary = findViewById(R.id.tvHealthWarningText);
+        TextView tvRationale = findViewById(R.id.tvHealthWarningRationale);
+        TextView tvDisclaimer = findViewById(R.id.tvHealthWarningDisclaimer);
+        ImageView ivIcon = findViewById(R.id.ivHealthWarningIcon);
+        ImageView ivChevron = findViewById(R.id.ivHealthWarningChevron);
+        MaterialCardView card = findViewById(R.id.cardHealthWarning);
+        if (tvSummary == null || card == null) return;
+
+        // --- Pick colors ---
+        int bgAttr, fgAttr;
+        if (isSafe) {
+            // Green: use a custom green background
+            bgAttr = -1;  // handled manually below
+            fgAttr = -1;
+        } else {
+            bgAttr = com.google.android.material.R.attr.colorErrorContainer;
+            fgAttr = com.google.android.material.R.attr.colorOnErrorContainer;
+        }
+
+        android.util.TypedValue tv = new android.util.TypedValue();
+        int fgColor;
+        if (isSafe) {
+            // Soft green card background
+            card.setCardBackgroundColor(android.graphics.Color.parseColor("#D0F0C0"));
+            fgColor = android.graphics.Color.parseColor("#1B5E20");
+        } else {
+            getTheme().resolveAttribute(com.google.android.material.R.attr.colorErrorContainer, tv, true);
+            card.setCardBackgroundColor(tv.data);
+            getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnErrorContainer, tv, true);
+            fgColor = tv.data;
+        }
+
+        // Apply label color
+        tvSummary.setTextColor(fgColor);
+        if (tvDisclaimer != null) tvDisclaimer.setTextColor(fgColor);
+        if (tvRationale != null) tvRationale.setTextColor(fgColor);
+
+        // --- Summary label (always visible, locale-aware) ---
+        tvSummary.setText(isSafe ? getString(R.string.health_warning_safe) : getString(R.string.health_warning_unsafe));
+
+        // --- Icon ---
+        if (ivIcon != null) {
+            ivIcon.setImageResource(isSafe ? R.drawable.ic_cook : R.drawable.ic_remove);
+            ivIcon.setColorFilter(fgColor);
+        }
+
+        // --- Rationale in the expanded view ---
+        if (tvRationale != null) {
+            if (!TextUtils.isEmpty(rationale)) {
+                tvRationale.setText(rationale);
+                // Show chevron to indicate expandability
+                if (ivChevron != null) {
+                    ivChevron.setVisibility(View.VISIBLE);
+                    ivChevron.setColorFilter(fgColor);
+                }
+            } else {
+                tvRationale.setText("");
+                if (ivChevron != null) ivChevron.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    private void applyBannerSurface() {
+        MaterialCardView card = findViewById(R.id.cardHealthWarning);
+        if (card == null) return;
+        android.util.TypedValue tv = new android.util.TypedValue();
+        getTheme().resolveAttribute(com.google.android.material.R.attr.colorSurfaceVariant, tv, true);
+        card.setCardBackgroundColor(tv.data);
+        getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurfaceVariant, tv, true);
+        int fg = tv.data;
+        TextView tvText = findViewById(R.id.tvHealthWarningText);
+        TextView tvDisc = findViewById(R.id.tvHealthWarningDisclaimer);
+        ImageView ivIcon = findViewById(R.id.ivHealthWarningIcon);
+        if (tvText != null) tvText.setTextColor(fg);
+        if (tvDisc != null) tvDisc.setTextColor(fg);
+        if (ivIcon != null) ivIcon.setColorFilter(fg);
+    }
+
+    private void applyBannerError() {
+        MaterialCardView card = findViewById(R.id.cardHealthWarning);
+        if (card == null) return;
+        android.util.TypedValue tv = new android.util.TypedValue();
+        getTheme().resolveAttribute(com.google.android.material.R.attr.colorErrorContainer, tv, true);
+        card.setCardBackgroundColor(tv.data);
+        getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnErrorContainer, tv, true);
+        int fg = tv.data;
+        TextView tvText = findViewById(R.id.tvHealthWarningText);
+        TextView tvDisc = findViewById(R.id.tvHealthWarningDisclaimer);
+        ImageView ivIcon = findViewById(R.id.ivHealthWarningIcon);
+        if (tvText != null) tvText.setTextColor(fg);
+        if (tvDisc != null) tvDisc.setTextColor(fg);
+        if (ivIcon != null) ivIcon.setColorFilter(fg);
     }
 }

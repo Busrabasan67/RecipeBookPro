@@ -11,6 +11,8 @@ public class User {
 
     // --- New fields ---
     private List<String> allergens;       // user allergens for warnings
+    private List<String> healthConditions;
+    private List<String> customHealthConditions;
     private String profileImageUrl;
     private String role;                  // "user" | "admin"
     
@@ -23,6 +25,8 @@ public class User {
     public User() {
         // Firestore requires an empty constructor
         allergens = new ArrayList<>();
+        healthConditions = new ArrayList<>();
+        customHealthConditions = new ArrayList<>();
         followerIds = new ArrayList<>();
         followingIds = new ArrayList<>();
     }
@@ -33,6 +37,8 @@ public class User {
         this.displayName = displayName;
         this.createdAt = createdAt;
         this.allergens = new ArrayList<>();
+        this.healthConditions = new ArrayList<>();
+        this.customHealthConditions = new ArrayList<>();
         this.followerIds = new ArrayList<>();
         this.followingIds = new ArrayList<>();
         this.role = "user";
@@ -107,5 +113,19 @@ public class User {
 
     public void setFollowingCount(int followingCount) {
         this.followingCount = followingCount;
+    }
+
+    public List<String> getHealthConditions() {
+        return healthConditions == null ? new ArrayList<>() : healthConditions;
+    }
+    public void setHealthConditions(List<String> healthConditions) {
+        this.healthConditions = healthConditions != null ? healthConditions : new ArrayList<>();
+    }
+
+    public List<String> getCustomHealthConditions() {
+        return customHealthConditions == null ? new ArrayList<>() : customHealthConditions;
+    }
+    public void setCustomHealthConditions(List<String> customHealthConditions) {
+        this.customHealthConditions = customHealthConditions != null ? customHealthConditions : new ArrayList<>();
     }
 }

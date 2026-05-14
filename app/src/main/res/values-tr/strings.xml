@@ -556,4 +556,22 @@
     <string name="delete_cookbook">Yemek Kitabını Sil</string>
     <string name="delete_cookbook_confirm">Bu yemek kitabını silmek istediğinizden emin misiniz? Kitap silinecek ancak içindeki tarifler kaybolmayacaktır.</string>
     <string name="cookbook_deleted">Yemek kitabı başarıyla silindi.</string>
+
+    <!-- Sağlık durumları bölümü -->
+    <string name="health_conditions_title">Sağlık Durumlarım</string>
+    <string name="health_conditions_subtitle">Tarife uygun olmayan içerikler için sizi uyaracağız</string>
+    <string name="health_condition_diabetes">Diyabet / Yüksek Kan Şekeri</string>
+    <string name="health_condition_kidney">Böbrek Hastalığı</string>
+    <string name="health_condition_cardiovascular">Kalp Hastalığı / Yüksek Kolesterol</string>
+    <string name="health_condition_hypertension">Hipertansiyon / Yüksek Tansiyon</string>
+    <string name="health_condition_celiac">Çölyak / Gluten İntoleransı</string>
+    <string name="health_condition_ibs">İrritabl Bağırsak Sendromu (İBS)</string>
+    <string name="health_condition_custom_hint">Başka bir durum ekle…</string>
+    <string name="health_condition_custom_add">Ekle</string>
+    <string name="health_warning_checking">Tarif güvenliği kontrol ediliyor…</string>
+    <string name="health_warning_safe">✓ Bu tarif sağlık profilinize uygun görünüyor</string>
+    <string name="health_warning_unsafe">⚠ Dikkat: Bu tarif sizin için uygun olmayabilir</string>
+    <string name="health_warning_disclaimer">Bu tıbbi tavsiye değildir. Lütfen doktorunuza danışın.</string>
+    <string name="health_warning_error">Tarif güvenliği kontrol edilemedi. Lütfen tekrar deneyin.</string>
+    <string name="health_warning_no_conditions">Kişiselleştirilmiş uyarılar için profilinizdeki sağlık durumlarınızı belirtin.</string>
 </resources>

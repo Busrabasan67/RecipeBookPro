@@ -42,24 +42,26 @@ public class IngredientAdapter extends RecyclerView.Adapter<IngredientAdapter.Vi
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Recipe.Ingredient ingredient = ingredients.get(position);
-        
+
         // Use scaled display text if a numeric amount exists
         String amountUnit = "";
         if (ingredient.getNumericAmount() > 0) {
-             amountUnit = ingredient.getScaledDisplayText(currentScaleRatio);
-             // Since scaled display text includes the name, we just show that in the name field and hide amount if we want,
-             // or we can separate them. ScaledDisplayText returns everything. Let's just put it in tvIngredientName.
-             holder.tvIngredientName.setText(ingredient.getScaledDisplayText(currentScaleRatio));
-             holder.tvIngredientAmountUnit.setVisibility(View.GONE);
+            amountUnit = ingredient.getScaledDisplayText(currentScaleRatio);
+            // Since scaled display text includes the name, we just show that in the name
+            // field and hide amount if we want,
+            // or we can separate them. ScaledDisplayText returns everything. Let's just put
+            // it in tvIngredientName.
+            holder.tvIngredientName.setText(ingredient.getScaledDisplayText(currentScaleRatio));
+            holder.tvIngredientAmountUnit.setVisibility(View.GONE);
         } else {
-             holder.tvIngredientName.setText(ingredient.getDisplayName());
-             String au = (ingredient.getAmount() + " " + ingredient.getUnit()).trim();
-             if (!au.isEmpty()) {
-                 holder.tvIngredientAmountUnit.setText(au);
-                 holder.tvIngredientAmountUnit.setVisibility(View.VISIBLE);
-             } else {
-                 holder.tvIngredientAmountUnit.setVisibility(View.GONE);
-             }
+            holder.tvIngredientName.setText(ingredient.getDisplayName());
+            String au = (ingredient.getAmount() + " " + ingredient.getUnit()).trim();
+            if (!au.isEmpty()) {
+                holder.tvIngredientAmountUnit.setText(au);
+                holder.tvIngredientAmountUnit.setVisibility(View.VISIBLE);
+            } else {
+                holder.tvIngredientAmountUnit.setVisibility(View.GONE);
+            }
         }
 
         // Allergy check â€” yellow background on the entire row
@@ -82,13 +84,13 @@ public class IngredientAdapter extends RecyclerView.Adapter<IngredientAdapter.Vi
         } else {
             holder.allergyIndicator.setVisibility(View.GONE);
             holder.itemView.setBackgroundResource(android.R.color.transparent);
-            
+
             Context context = holder.itemView.getContext();
             TypedValue typedValue = new TypedValue();
-            
+
             context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurface, typedValue, true);
             holder.tvIngredientName.setTextColor(typedValue.data);
-            
+
             context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorPrimary, typedValue, true);
             holder.tvIngredientAmountUnit.setTextColor(typedValue.data);
         }
