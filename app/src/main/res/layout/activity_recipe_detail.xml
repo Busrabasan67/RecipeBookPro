@@ -21,7 +21,9 @@
             app:layout_scrollFlags="scroll|exitUntilCollapsed"
             app:toolbarId="@+id/toolbarDetail"
             app:collapsedTitleTextAppearance="@style/TextAppearance.Material3.TitleMedium"
-            app:expandedTitleTextAppearance="@style/TextAppearance.Material3.HeadlineMedium">
+            app:expandedTitleTextAppearance="@style/TextAppearance.Material3.HeadlineMedium"
+            app:collapsedTitleTextColor="@android:color/white"
+            app:expandedTitleTextColor="@android:color/white">
 
             <ImageView
                 android:id="@+id/ivRecipeCover"
@@ -40,9 +42,11 @@
                 android:id="@+id/toolbarDetail"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
+                android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+                app:popupTheme="@style/ThemeOverlay.Material3.Light"
                 app:layout_collapseMode="pin"
                 app:navigationIcon="@drawable/ic_arrow_back"
-                app:navigationIconTint="?attr/colorOnSurface"
+                app:navigationIconTint="@android:color/white"
                 app:titleTextColor="?attr/colorOnSurface"
                 app:menu="@menu/menu_recipe_detail"/>
 
