@@ -42,9 +42,11 @@ public class MLKitTranslationService implements TranslationService {
         }
 
         return getTranslator(sourceLang, targetLang).onSuccessTask(translator -> {
-            return translator.translate(text).addOnFailureListener(e -> {
-                Log.e(TAG, "Translation failed for text: " + text, e);
-            });
+            return translator.downloadModelIfNeeded(new DownloadConditions.Builder().build())
+                    .onSuccessTask(unused -> translator.translate(text))
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Translation failed for text: " + text, e);
+                    });
         });
     }
 
