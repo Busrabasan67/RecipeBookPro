@@ -557,7 +557,7 @@
     <string name="notification_permission_rationale">Notification permission is required to keep you updated about new recipes and invitations.</string>
 
     <!-- Health conditions section -->
-    <string name="health_conditions_title">Health Conditions</string>
+    <string name="health_conditions_title">Health Conditions &amp; Allergies</string>
     <string name="health_conditions_subtitle">We\'ll warn you if a recipe may not suit your needs</string>
     <string name="health_condition_diabetes">Diabetes / High Blood Sugar</string>
     <string name="health_condition_kidney">Kidney Disease</string>
@@ -575,4 +575,10 @@
     <string name="health_warning_disclaimer">This is not medical advice. Always consult your doctor.</string>
     <string name="health_warning_error">Could not check recipe safety. Please try again.</string>
     <string name="health_warning_no_conditions">Set your health conditions in your profile to get personalised warnings.</string>
+
+    <!-- Health profile AI analysis -->
+    <string name="analyzing_health_input">Analyzing your health condition…</string>
+    <string name="health_analysis_failed">Could not analyze the input. Saved as-is.</string>
+    <string name="health_analysis_success">Standardized as: %1$s</string>
+    <string name="risky_ingredients_label">Risky ingredients: %1$s</string>
 </resources>

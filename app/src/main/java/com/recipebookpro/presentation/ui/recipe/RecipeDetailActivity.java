@@ -61,6 +61,7 @@ public class RecipeDetailActivity extends BaseActivity {
     private ArrayList<String> userAllergens = new ArrayList<>();
     private List<String> userHealthConditions = new ArrayList<>();
     private List<String> userCustomHealthConditions = new ArrayList<>();
+    private java.util.Map<String, java.util.List<String>> userHealthTriggers = new java.util.HashMap<>();
     private java.util.Map<String, String> customAllergenTranslations = new java.util.HashMap<>();
     private boolean isLiked = false;
     private boolean healthWarningExpanded = false;
@@ -70,6 +71,16 @@ public class RecipeDetailActivity extends BaseActivity {
     private TranslateRecipeUseCase translateRecipeUseCase;
     private TabLayoutMediator recipeTabLayoutMediator;
     private boolean firstResume = true;
+    private List<String> currentRiskyIngredients = new ArrayList<>();
+    private List<String> currentRiskyMatchTerms = new ArrayList<>();
+
+    public List<String> getRiskyIngredients() {
+        return currentRiskyIngredients;
+    }
+
+    public List<String> getRiskyMatchTerms() {
+        return currentRiskyMatchTerms;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -257,9 +268,13 @@ public class RecipeDetailActivity extends BaseActivity {
                       if (user.getHealthConditions() != null) {
                           userHealthConditions.addAll(user.getHealthConditions());
                       }
-                      if (user.getCustomHealthConditions() != null) {
-                          userCustomHealthConditions.addAll(user.getCustomHealthConditions());
+                      if (user.getCustomHealthConditionsForLang(
+                              com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(RecipeDetailActivity.this)) != null) {
+                          userCustomHealthConditions.addAll(user.getCustomHealthConditionsForLang(
+                                  com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(RecipeDetailActivity.this)));
                       }
+                      // Load health triggers from Groq profile analysis
+                      userHealthTriggers.putAll(user.getActiveHealthTriggers());
                       // Load saved cross-language translations for custom allergens
                       Object transObj = documentSnapshot.get("customAllergenTranslations");
                       if (transObj instanceof java.util.Map<?, ?>) {
@@ -684,6 +699,22 @@ public class RecipeDetailActivity extends BaseActivity {
         super.onDestroy();
     }
 
+    private String generateUserProfileHash() {
+        List<String> all = new ArrayList<>();
+        if (userHealthConditions != null) all.addAll(userHealthConditions);
+        if (userCustomHealthConditions != null) all.addAll(userCustomHealthConditions);
+        if (userAllergens != null) all.addAll(userAllergens);
+        if (userHealthTriggers != null) {
+            for (java.util.Map.Entry<String, java.util.List<String>> entry : userHealthTriggers.entrySet()) {
+                if (entry.getValue() != null) {
+                    all.add(entry.getKey() + ":" + TextUtils.join(",", entry.getValue()));
+                }
+            }
+        }
+        java.util.Collections.sort(all);
+        return String.valueOf(all.hashCode());
+    }
+
     private void checkHealthConditions() {
         MaterialCardView cardHealth = findViewById(R.id.cardHealthWarning);
         TextView tvHealthText = findViewById(R.id.tvHealthWarningText);
@@ -700,7 +731,8 @@ public class RecipeDetailActivity extends BaseActivity {
         cardHealth.setVisibility(View.VISIBLE);
 
         boolean hasConditions = (userHealthConditions != null && !userHealthConditions.isEmpty()) ||
-                                (userCustomHealthConditions != null && !userCustomHealthConditions.isEmpty());
+                                (userCustomHealthConditions != null && !userCustomHealthConditions.isEmpty()) ||
+                                (userAllergens != null && !userAllergens.isEmpty());
 
         if (!hasConditions) {
             applyBannerSurface();
@@ -715,10 +747,11 @@ public class RecipeDetailActivity extends BaseActivity {
         }
 
         com.recipebookpro.util.HealthWarningCache cache = new com.recipebookpro.util.HealthWarningCache(this);
-        com.recipebookpro.util.HealthWarningCache.CachedWarning cached = cache.getCachedWarning(recipe.getId());
+        String profileHash = generateUserProfileHash();
+        com.recipebookpro.util.HealthWarningCache.CachedWarning cached = cache.getCachedWarning(recipe.getId(), profileHash);
 
         if (cached != null) {
-            applyHealthWarningState(cached.isSafe, cached.rationale);
+            deliverHealthCheckResult(cached.isSafe, cached.rationale, cached.riskyIngredients, cache, profileHash);
             return;
         }
 
@@ -727,12 +760,13 @@ public class RecipeDetailActivity extends BaseActivity {
         if (ivIcon != null) ivIcon.setImageResource(R.drawable.ic_cook);
 
         com.recipebookpro.data.remote.HealthCheckService service = new com.recipebookpro.data.remote.HealthCheckService();
-        service.checkRecipeSafety(recipe, userHealthConditions, userCustomHealthConditions, new com.recipebookpro.data.remote.HealthCheckService.HealthCheckCallback() {
+        String uiLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
+        service.checkRecipeSafety(recipe, userHealthConditions, userCustomHealthConditions, userAllergens,
+                userHealthTriggers, uiLang, new com.recipebookpro.data.remote.HealthCheckService.HealthCheckCallback() {
             @Override
-            public void onResult(boolean isSafe, String rationale) {
+            public void onResult(boolean isSafe, String rationale, List<String> riskyIngredients) {
                 if (isDestroyed() || isFinishing()) return;
-                cache.saveWarningToCache(recipe.getId(), isSafe, rationale);
-                applyHealthWarningState(isSafe, rationale);
+                deliverHealthCheckResult(isSafe, rationale, riskyIngredients, cache, profileHash);
             }
 
             @Override
@@ -747,6 +781,46 @@ public class RecipeDetailActivity extends BaseActivity {
         });
     }
 
+    private void deliverHealthCheckResult(boolean isSafe, String rationale, List<String> riskyIngredients,
+                                          com.recipebookpro.util.HealthWarningCache cache, String profileHash) {
+        if ((riskyIngredients == null || riskyIngredients.isEmpty()) && !isSafe) {
+            String uiLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
+            riskyIngredients = com.recipebookpro.util.RiskyIngredientResolver.resolveFromRecipe(
+                    recipe, userHealthConditions, userCustomHealthConditions, userHealthTriggers,
+                    rationale, uiLang);
+        }
+        if (riskyIngredients == null || riskyIngredients.isEmpty()) {
+            currentRiskyIngredients = new ArrayList<>();
+            currentRiskyMatchTerms = new ArrayList<>();
+            finalizeHealthCheck(isSafe, rationale, currentRiskyIngredients, cache, profileHash);
+            return;
+        }
+        final List<String> originalLabels = new ArrayList<>(riskyIngredients);
+        com.recipebookpro.util.RiskyIngredientLocaleHelper.ensureUiLanguage(this, originalLabels, uiLabels -> {
+            if (isDestroyed() || isFinishing()) return;
+            currentRiskyIngredients = uiLabels;
+            List<String> allLabels = new ArrayList<>(originalLabels);
+            for (String label : uiLabels) {
+                if (!allLabels.contains(label)) {
+                    allLabels.add(label);
+                }
+            }
+            currentRiskyMatchTerms = com.recipebookpro.util.RiskyIngredientMatcher.buildMatchTerms(recipe, allLabels);
+            finalizeHealthCheck(isSafe, rationale, currentRiskyIngredients, cache, profileHash);
+        });
+    }
+
+    private void finalizeHealthCheck(boolean isSafe, String rationale, List<String> riskyIngredients, com.recipebookpro.util.HealthWarningCache cache, String profileHash) {
+        cache.saveWarningToCache(recipe.getId(), profileHash, isSafe, rationale, riskyIngredients);
+        applyHealthWarningState(isSafe, rationale, riskyIngredients);
+
+        // Notify IngredientsTabFragment to highlight risky ingredients
+        androidx.fragment.app.Fragment f = getSupportFragmentManager().findFragmentByTag("f0");
+        if (f instanceof com.recipebookpro.presentation.ui.recipe.IngredientsTabFragment) {
+            ((com.recipebookpro.presentation.ui.recipe.IngredientsTabFragment) f).refreshIngredientsHighlight();
+        }
+    }
+
     private void toggleHealthWarningExpand() {
         android.view.View expanded = findViewById(R.id.llHealthWarningExpanded);
         ImageView chevron = findViewById(R.id.ivHealthWarningChevron);
@@ -758,7 +832,7 @@ public class RecipeDetailActivity extends BaseActivity {
         }
     }
 
-    private void applyHealthWarningState(boolean isSafe, String rationale) {
+    private void applyHealthWarningState(boolean isSafe, String rationale, List<String> riskyIngredients) {
         TextView tvSummary = findViewById(R.id.tvHealthWarningText);
         TextView tvRationale = findViewById(R.id.tvHealthWarningRationale);
         TextView tvDisclaimer = findViewById(R.id.tvHealthWarningDisclaimer);
@@ -807,8 +881,18 @@ public class RecipeDetailActivity extends BaseActivity {
 
         // --- Rationale in the expanded view ---
         if (tvRationale != null) {
+            StringBuilder rationaleBuilder = new StringBuilder();
             if (!TextUtils.isEmpty(rationale)) {
-                tvRationale.setText(rationale);
+                rationaleBuilder.append(rationale);
+            }
+            // Append risky ingredients if available
+            if (riskyIngredients != null && !riskyIngredients.isEmpty()) {
+                if (rationaleBuilder.length() > 0) rationaleBuilder.append("\n\n");
+                rationaleBuilder.append(getString(R.string.risky_ingredients_label,
+                        TextUtils.join(", ", riskyIngredients)));
+            }
+            if (rationaleBuilder.length() > 0) {
+                tvRationale.setText(rationaleBuilder.toString());
                 // Show chevron to indicate expandability
                 if (ivChevron != null) {
                     ivChevron.setVisibility(View.VISIBLE);

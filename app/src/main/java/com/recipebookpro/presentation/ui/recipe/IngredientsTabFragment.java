@@ -68,7 +68,12 @@ public class IngredientsTabFragment extends Fragment {
         }
         
         rvIngredients.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new IngredientAdapter(recipe.getIngredients(), userAllergens);
+        
+        java.util.List<String> initialMatchTerms = new ArrayList<>();
+        if (getActivity() instanceof RecipeDetailActivity) {
+            initialMatchTerms = ((RecipeDetailActivity) getActivity()).getRiskyMatchTerms();
+        }
+        adapter = new IngredientAdapter(recipe.getIngredients(), initialMatchTerms);
         rvIngredients.setAdapter(adapter);
         
         view.findViewById(R.id.chipNutrition).setOnClickListener(v -> {
@@ -103,5 +108,14 @@ public class IngredientsTabFragment extends Fragment {
         tvServingsCount.setText(getString(R.string.servings_format, currentServings));
         double ratio = (double) currentServings / recipe.getServings();
         adapter.setScaleRatio(ratio);
+    }
+
+    public void refreshIngredientsHighlight() {
+        if (getActivity() instanceof RecipeDetailActivity) {
+            java.util.List<String> matchTerms = ((RecipeDetailActivity) getActivity()).getRiskyMatchTerms();
+            if (adapter != null) {
+                adapter.setRiskyMatchTerms(matchTerms);
+            }
+        }
     }
 }
