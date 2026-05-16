@@ -540,4 +540,26 @@
     <string name="delete_cookbook">Delete the Cookbook</string>
     <string name="delete_cookbook_confirm">Are you sure you want to delete this cookbook? The book will be deleted, but the recipes inside will not be lost.</string>
     <string name="cookbook_deleted">The cookbook was successfully deleted.</string>
+
+    <!-- Health conditions section -->
+    <string name="health_conditions_title">Health Conditions &amp; Allergies</string>
+    <string name="health_conditions_subtitle">We\'ll warn you if a recipe may not suit your needs</string>
+    <string name="health_condition_diabetes">Diabetes / High Blood Sugar</string>
+    <string name="health_condition_kidney">Kidney Disease</string>
+    <string name="health_condition_cardiovascular">Heart Disease / High Cholesterol</string>
+    <string name="health_condition_hypertension">Hypertension / High Blood Pressure</string>
+    <string name="health_condition_celiac">Celiac / Gluten Intolerance</string>
+    <string name="health_condition_ibs">Irritable Bowel Syndrome (IBS)</string>
+    <string name="health_condition_custom_hint">Add another condition…</string>
+    <string name="health_condition_custom_add">Add</string>
+    <string name="health_warning_checking">Checking recipe safety…</string>
+    <string name="health_warning_safe">✓ This recipe appears suitable for your health profile</string>
+    <string name="health_warning_unsafe">⚠ Caution: This recipe may not be suitable for you</string>
+    <string name="health_warning_disclaimer">This is not medical advice. Always consult your doctor.</string>
+    <string name="health_warning_error">Could not check recipe safety. Please try again.</string>
+    <string name="health_warning_no_conditions">Set your health conditions in your profile to get personalised warnings.</string>
+    <string name="analyzing_health_input">Analyzing your health condition…</string>
+    <string name="health_analysis_success">Added: %1$s</string>
+    <string name="health_analysis_failed">Could not analyze; saved as entered.</string>
+    <string name="risky_ingredients_label">Risky ingredients: %1$s</string>
 </resources>

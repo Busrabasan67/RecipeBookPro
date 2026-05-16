@@ -558,7 +558,7 @@
     <string name="cookbook_deleted">Yemek kitabı başarıyla silindi.</string>
 
     <!-- Sağlık durumları bölümü -->
-    <string name="health_conditions_title">Sağlık Durumlarım</string>
+    <string name="health_conditions_title">Hastalıklar ve Alerjiler</string>
     <string name="health_conditions_subtitle">Tarife uygun olmayan içerikler için sizi uyaracağız</string>
     <string name="health_condition_diabetes">Diyabet / Yüksek Kan Şekeri</string>
     <string name="health_condition_kidney">Böbrek Hastalığı</string>
@@ -574,4 +574,10 @@
     <string name="health_warning_disclaimer">Bu tıbbi tavsiye değildir. Lütfen doktorunuza danışın.</string>
     <string name="health_warning_error">Tarif güvenliği kontrol edilemedi. Lütfen tekrar deneyin.</string>
     <string name="health_warning_no_conditions">Kişiselleştirilmiş uyarılar için profilinizdeki sağlık durumlarınızı belirtin.</string>
+
+    <!-- Sağlık profili AI analizi -->
+    <string name="analyzing_health_input">Sağlık durumunuz analiz ediliyor…</string>
+    <string name="health_analysis_failed">Girdi analiz edilemedi. Olduğu gibi kaydedildi.</string>
+    <string name="health_analysis_success">Standartlaştırıldı: %1$s</string>
+    <string name="risky_ingredients_label">Riskli malzemeler: %1$s</string>
 </resources>

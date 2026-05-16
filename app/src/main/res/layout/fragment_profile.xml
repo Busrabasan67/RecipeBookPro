@@ -47,65 +47,7 @@
             android:text="@string/loading"
             android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
 
-        <!-- Allergen Editor Section -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/margin_large"
-            app:cardCornerRadius="@dimen/padding_medium"
-            app:cardElevation="0dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="?attr/colorOutlineVariant"
-            app:cardBackgroundColor="?attr/colorSurfaceContainerLow">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/padding_medium">
-
-                <com.google.android.material.textview.MaterialTextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/allergens_label"
-                    android:textAppearance="@style/TextAppearance.Material3.TitleSmall"
-                    android:drawablePadding="@dimen/padding_small" />
-
-                <com.google.android.material.textview.MaterialTextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/margin_small"
-                    android:text="@string/profile_allergen_description"
-                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
-
-                <com.google.android.material.chip.ChipGroup
-                    android:id="@+id/chipGroupAllergens"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/margin_small"
-                    app:singleSelection="false" />
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/margin_small"
-                    android:hint="@string/profile_custom_allergen_hint">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etCustomAllergen"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="text"
-                        android:imeOptions="actionDone|flagNoExtractUi"
-                        android:maxLines="1"
-                        android:nextFocusDown="@id/etCustomAllergen"
-                        android:nextFocusForward="@id/etCustomAllergen" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
         <!-- Health Conditions Section -->
         <com.google.android.material.card.MaterialCardView
