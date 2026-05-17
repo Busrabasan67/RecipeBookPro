@@ -18,7 +18,8 @@ public class BuiltInHealthTriggers {
 
         TRIGGERS.put("celiac", Arrays.asList(
             "un", "buğday", "gluten", "arpa", "çavdar", "irmik", "bulgur",
-            "wheat", "flour", "gluten", "barley", "rye", "semolina"
+            "wheat", "flour", "gluten", "barley", "rye", "semolina",
+            "bazlama", "yufka", "erişte", "makarna", "börek", "poğaça", "simit", "pide", "lavaş", "galeta"
         ));
         TRIGGERS.put("çölyak", TRIGGERS.get("celiac"));
 

@@ -127,7 +127,6 @@ public class RecipeDetailActivity extends BaseActivity {
             });
 
             findViewById(R.id.btnRevertTranslation).setOnClickListener(v -> revertTranslation());
-            translateRecipe();
         };
 
         String recipeId = recipe.getId();
@@ -165,7 +164,6 @@ public class RecipeDetailActivity extends BaseActivity {
                     findViewById(R.id.cardTranslation).setVisibility(View.GONE);
                 });
                 findViewById(R.id.btnRevertTranslation).setOnClickListener(v -> revertTranslation());
-                translateRecipe();
             } else {
                 Toast.makeText(this, R.string.recipe_not_found, Toast.LENGTH_SHORT).show();
                 finish();
@@ -204,7 +202,7 @@ public class RecipeDetailActivity extends BaseActivity {
                 addToShoppingList();
                 return true;
             } else if (itemId == R.id.action_translate) {
-                translateRecipe();
+                translateRecipe(() -> checkHealthConditions());
                 return true;
             }
             return false;
@@ -290,8 +288,16 @@ public class RecipeDetailActivity extends BaseActivity {
             }
 
             checkAllergens();
-            checkHealthConditions();
             setupViewPagerAndTabs();
+
+            String uiLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(RecipeDetailActivity.this);
+            String recipeLang = detectRecipeLanguage(recipe);
+
+            if (!uiLang.equals(recipeLang)) {
+                translateRecipe(() -> checkHealthConditions());
+            } else {
+                checkHealthConditions();
+            }
 
             // Detect and fix Firestore dirty state if Room has 0 active chips (optimized with SharedPreferences)
             if (currentUser != null && userHealthConditions.isEmpty() && activeCustomHealthConditionsI18n.isEmpty()) {
@@ -331,7 +337,13 @@ public class RecipeDetailActivity extends BaseActivity {
                                             activeCustomHealthConditionsI18n.clear();
                                             userHealthTriggers.clear();
                                             checkAllergens();
-                                            checkHealthConditions();
+                                            String uiLangInner = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(RecipeDetailActivity.this);
+                                            String recipeLangInner = detectRecipeLanguage(recipe);
+                                            if (!uiLangInner.equals(recipeLangInner)) {
+                                                translateRecipe(() -> checkHealthConditions());
+                                            } else {
+                                                checkHealthConditions();
+                                            }
                                         });
                                 } else {
                                     // Already clean, mark true to prevent subsequent checks
@@ -574,7 +586,14 @@ public class RecipeDetailActivity extends BaseActivity {
     }
 
     private void translateRecipe() {
-        if (recipe == null) return;
+        translateRecipe(null);
+    }
+
+    private void translateRecipe(final Runnable onComplete) {
+        if (recipe == null) {
+            if (onComplete != null) onComplete.run();
+            return;
+        }
         
         findViewById(R.id.pbTranslation).setVisibility(View.VISIBLE);
         ((android.widget.TextView) findViewById(R.id.tvTranslatedContent)).setText(R.string.downloading_model);
@@ -594,12 +613,19 @@ public class RecipeDetailActivity extends BaseActivity {
                 // Update original language in Firestore for future persistence
                 FirebaseFirestore.getInstance().collection("recipes").document(recipe.getId())
                         .update("originalLanguage", recipe.getOriginalLanguage());
+
+                if (onComplete != null) {
+                    onComplete.run();
+                }
             }
 
             @Override
             public void onFailure(Exception e) {
                 findViewById(R.id.pbTranslation).setVisibility(View.GONE);
                 Toast.makeText(RecipeDetailActivity.this, getString(R.string.error_with_reason, e.getMessage()), Toast.LENGTH_LONG).show();
+                if (onComplete != null) {
+                    onComplete.run();
+                }
             }
 
             @Override
@@ -716,6 +742,13 @@ public class RecipeDetailActivity extends BaseActivity {
                     setupViewPagerAndTabs();
                     checkAllergens();
                     setupFAB();
+                    String uiLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(RecipeDetailActivity.this);
+                    String recipeLang = detectRecipeLanguage(recipe);
+                    if (!uiLang.equals(recipeLang)) {
+                        translateRecipe(() -> checkHealthConditions());
+                    } else {
+                        checkHealthConditions();
+                    }
                 });
     }
 
@@ -823,6 +856,10 @@ public class RecipeDetailActivity extends BaseActivity {
         });
     }
 
+    private String detectRecipeLanguage(Recipe recipe) {
+        return com.recipebookpro.util.RecipeLanguageDetector.detectFromRecipe(recipe);
+    }
+
     private void deliverHealthCheckResult(boolean isSafe, String rationale, List<String> riskyIngredients) {
         if ((riskyIngredients == null || riskyIngredients.isEmpty()) && !isSafe) {
             String uiLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
@@ -837,17 +874,31 @@ public class RecipeDetailActivity extends BaseActivity {
             return;
         }
         final List<String> originalLabels = new ArrayList<>(riskyIngredients);
-        com.recipebookpro.util.RiskyIngredientLocaleHelper.ensureUiLanguage(this, originalLabels, uiLabels -> {
+        String uiLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
+        String recipeLang = detectRecipeLanguage(recipe);
+
+        com.recipebookpro.util.RiskyIngredientLocaleHelper.ensureLanguage(this, originalLabels, uiLang, uiLabels -> {
             if (isDestroyed() || isFinishing()) return;
             currentRiskyIngredients = uiLabels;
-            List<String> allLabels = new ArrayList<>(originalLabels);
-            for (String label : uiLabels) {
-                if (!allLabels.contains(label)) {
-                    allLabels.add(label);
+
+            com.recipebookpro.util.RiskyIngredientLocaleHelper.ensureLanguage(RecipeDetailActivity.this, originalLabels, recipeLang, recipeLabels -> {
+                if (isDestroyed() || isFinishing()) return;
+
+                List<String> allLabels = new ArrayList<>(originalLabels);
+                for (String label : uiLabels) {
+                    if (!allLabels.contains(label)) {
+                        allLabels.add(label);
+                    }
                 }
-            }
-            currentRiskyMatchTerms = com.recipebookpro.util.RiskyIngredientMatcher.buildMatchTerms(recipe, allLabels);
-            finalizeHealthCheck(isSafe, rationale, currentRiskyIngredients);
+                for (String label : recipeLabels) {
+                    if (!allLabels.contains(label)) {
+                        allLabels.add(label);
+                    }
+                }
+
+                currentRiskyMatchTerms = com.recipebookpro.util.RiskyIngredientMatcher.buildMatchTerms(recipe, allLabels);
+                finalizeHealthCheck(isSafe, rationale, currentRiskyIngredients);
+            });
         });
     }
 

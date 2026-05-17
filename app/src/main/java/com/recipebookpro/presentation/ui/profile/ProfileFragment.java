@@ -544,9 +544,6 @@ public class ProfileFragment extends Fragment {
 
         migrateTriggerMapsToKey(condition);
 
-        if (tetikleyiciler != null && !tetikleyiciler.isEmpty()) {
-            userHealthTriggers.put(condition.getKey(), tetikleyiciler);
-        }
         if (kisaUyariSablonu != null && !TextUtils.isEmpty(kisaUyariSablonu.getTr())) {
             userHealthWarningTemplates.put(condition.getKey(), kisaUyariSablonu.getTr());
         }
@@ -554,10 +551,27 @@ public class ProfileFragment extends Fragment {
             userHealthWarningTemplates.put(condition.getKey() + "_en", kisaUyariSablonu.getEn());
         }
 
-        onHealthConditionChanged();
         Toast.makeText(requireContext(),
                 getString(R.string.health_analysis_success, condition.getForLang(LocaleHelper.getLanguage(requireContext()))),
                 Toast.LENGTH_LONG).show();
+
+        if (tetikleyiciler != null && !tetikleyiciler.isEmpty()) {
+            String currentLang = LocaleHelper.getLanguage(requireContext());
+            String oppositeLang = currentLang.equalsIgnoreCase("tr") ? "en" : "tr";
+            com.recipebookpro.util.RiskyIngredientLocaleHelper.ensureLanguage(requireContext(), tetikleyiciler, oppositeLang, translated -> {
+                if (!isAdded()) return;
+                List<String> combinedTriggers = new ArrayList<>(tetikleyiciler);
+                for (String t : translated) {
+                    if (!combinedTriggers.contains(t)) {
+                        combinedTriggers.add(t);
+                    }
+                }
+                userHealthTriggers.put(condition.getKey(), combinedTriggers);
+                onHealthConditionChanged();
+            });
+        } else {
+            onHealthConditionChanged();
+        }
     }
 
     private void removeCustomConditionByKey(String key) {

@@ -245,8 +245,9 @@ public class HealthCheckRepositoryImpl implements HealthCheckRepository {
             "  \"uyari_mesaji\": \"Kullanıcıya yönelik, samimi ve net açıklama. Hangi profil maddesi + hangi tarif malzemesi riski neden yaratıyor, açıkla.\",\n" +
             "  \"tavsiye\": \"Bu bir tıbbi tavsiye değildir. Gerekirse doktorunuza danışın.\"\n" +
             "}\n\n" +
-            "KURAL: 'uyari_mesaji' ve 'tespit_edilen_riskli_malzemeler' içindeki tüm metinler "
-                + targetLang + " dilinde yazılmalıdır.\n" +
+            "KURAL: 'uyari_mesaji' " + targetLang + " dilinde yazılmalıdır.\n" +
+            "KURAL: Return 'tespit_edilen_riskli_malzemeler' list in the SAME LANGUAGE as the recipe ingredients — not the user's condition language.\n" +
+            "KURAL: In tespit_edilen_riskli_malzemeler list, return ONLY the EXACT ingredient names as they appear in the recipe. Never return abstract nutritional terms like 'saturated fat', 'sodium', 'refined sugar', 'gluten'. Instead, if sucuk is risky return 'sucuk', if kaşar is risky return 'kaşar', if bal is risky return 'bal', if bazlama is risky return 'bazlama'.\n" +
             "KURAL: 'uygun_mu' false ise 'tespit_edilen_riskli_malzemeler' BOŞ OLAMAZ.\n" +
             "KURAL: 'uygun_mu' true ise 'tespit_edilen_riskli_malzemeler' boş liste olmalı ve 'uyari_mesaji' olumlu olmalı.\n" +
             "KURAL: JSON dışında hiçbir açıklama, selamlama veya markdown ekleme.";
