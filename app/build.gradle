@@ -27,8 +27,6 @@ android {
         
         buildConfigField "String", "GEMINI_API_KEY", "\"${localProps.getProperty('GEMINI_API_KEY', 'YOUR_GEMINI_API_KEY')}\""
         buildConfigField "String", "GROQ_API_KEY", "\"${localProps.getProperty('GROQ_API_KEY', 'YOUR_GROQ_API_KEY')}\""
-        buildConfigField "String", "EDAMAM_APP_ID", "\"${localProps.getProperty('EDAMAM_APP_ID', '')}\""
-        buildConfigField "String", "EDAMAM_APP_KEY", "\"${localProps.getProperty('EDAMAM_APP_KEY', '')}\""
         def shareHttpsBase = localProps.getProperty('SHARE_HTTPS_REDIRECT_BASE', null)
         if (shareHttpsBase == null || shareHttpsBase.trim().isEmpty()) {
             // Firebase Hosting (sharing/open.html) — bir kez: firebase login && firebase deploy --only hosting

@@ -13,6 +13,7 @@ import java.util.Locale;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.appbar.MaterialToolbar;
@@ -61,8 +62,12 @@ public class RecipeDetailActivity extends BaseActivity {
     private ArrayList<String> userAllergens = new ArrayList<>();
     private List<String> userHealthConditions = new ArrayList<>();
     private List<String> userCustomHealthConditions = new ArrayList<>();
+    private List<com.recipebookpro.domain.model.LocalizedText> activeCustomHealthConditionsI18n = new ArrayList<>();
     private java.util.Map<String, java.util.List<String>> userHealthTriggers = new java.util.HashMap<>();
     private java.util.Map<String, String> customAllergenTranslations = new java.util.HashMap<>();
+    
+    private RecipeDetailViewModel viewModel;
+    
     private boolean isLiked = false;
     private boolean healthWarningExpanded = false;
     private MenuItem likeMenuItem;
@@ -106,6 +111,8 @@ public class RecipeDetailActivity extends BaseActivity {
         db = FirebaseFirestore.getInstance();
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
+        
+        viewModel = new ViewModelProvider(this).get(RecipeDetailViewModel.class);
 
         Runnable afterRecipeReady = () -> {
             setupToolbar();
@@ -251,51 +258,95 @@ public class RecipeDetailActivity extends BaseActivity {
     }
 
     private void loadUserAllergensAndSetupPager() {
-        if (currentUser == null) {
+        viewModel.getUserData(currentUser).observe(this, userData -> {
+            userAllergens.clear();
+            userHealthConditions.clear();
+            userCustomHealthConditions.clear();
+            activeCustomHealthConditionsI18n.clear();
+            userHealthTriggers.clear();
+            customAllergenTranslations.clear();
+
+            if (userData != null) {
+                if (userData.getHealthConditions() != null) userHealthConditions.addAll(userData.getHealthConditions());
+                if (userData.getCustomHealthConditionsForLang(
+                        com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(RecipeDetailActivity.this)) != null) {
+                    userCustomHealthConditions.addAll(userData.getCustomHealthConditionsForLang(
+                            com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(RecipeDetailActivity.this)));
+                }
+                if (userData.resolveActiveCustomHealthConditionsI18n() != null) {
+                    activeCustomHealthConditionsI18n.addAll(userData.resolveActiveCustomHealthConditionsI18n());
+                }
+                userHealthTriggers.putAll(userData.getActiveHealthTriggers());
+
+                // Merge built-in triggers for static health conditions
+                for (String condition : userHealthConditions) {
+                    List<String> builtIn = com.recipebookpro.domain.model.BuiltInHealthTriggers.getTriggersFor(condition);
+                    if (builtIn != null) {
+                        userHealthTriggers.put(condition, builtIn);
+                    }
+                }
+
+                userAllergens.addAll(userCustomHealthConditions);
+            }
+
+            checkAllergens();
             checkHealthConditions();
             setupViewPagerAndTabs();
-            return;
-        }
 
-        db.collection("users").document(currentUser.getUid()).get()
-          .addOnSuccessListener(documentSnapshot -> {
-              if (documentSnapshot.exists()) {
-                  User user = documentSnapshot.toObject(User.class);
-                  if (user != null) {
-                      if (user.getAllergens() != null) {
-                          userAllergens.addAll(user.getAllergens());
-                      }
-                      if (user.getHealthConditions() != null) {
-                          userHealthConditions.addAll(user.getHealthConditions());
-                      }
-                      if (user.getCustomHealthConditionsForLang(
-                              com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(RecipeDetailActivity.this)) != null) {
-                          userCustomHealthConditions.addAll(user.getCustomHealthConditionsForLang(
-                                  com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(RecipeDetailActivity.this)));
-                      }
-                      // Load health triggers from Groq profile analysis
-                      userHealthTriggers.putAll(user.getActiveHealthTriggers());
-                      // Load saved cross-language translations for custom allergens
-                      Object transObj = documentSnapshot.get("customAllergenTranslations");
-                      if (transObj instanceof java.util.Map<?, ?>) {
-                          for (java.util.Map.Entry<?, ?> e : ((java.util.Map<?, ?>) transObj).entrySet()) {
-                              if (e.getKey() instanceof String && e.getValue() instanceof String) {
-                                  customAllergenTranslations.put(
-                                      ((String) e.getKey()).toLowerCase(java.util.Locale.ROOT),
-                                      ((String) e.getValue()).toLowerCase(java.util.Locale.ROOT));
-                              }
-                          }
-                      }
-                  }
-              }
-              checkAllergens();
-              checkHealthConditions();
-              setupViewPagerAndTabs();
-          })
-          .addOnFailureListener(e -> {
-              checkHealthConditions();
-              setupViewPagerAndTabs(); // setup anyway
-          });
+            // Detect and fix Firestore dirty state if Room has 0 active chips (optimized with SharedPreferences)
+            if (currentUser != null && userHealthConditions.isEmpty() && activeCustomHealthConditionsI18n.isEmpty()) {
+                android.content.SharedPreferences prefs = getSharedPreferences("HealthCheckPrefs", MODE_PRIVATE);
+                boolean isSanitized = prefs.getBoolean("firestore_sanitized_v1", false);
+                if (!isSanitized) {
+                    final String uid = currentUser.getUid();
+                    com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        .collection("users").document(uid).get()
+                        .addOnSuccessListener(doc -> {
+                            if (doc.exists()) {
+                                java.util.List<?> firestoreHealth = (java.util.List<?>) doc.get("healthConditions");
+                                java.util.List<?> firestoreActiveKeys = (java.util.List<?>) doc.get("activeCustomHealthConditionKeys");
+                                
+                                boolean firestoreIsDirty = (firestoreHealth != null && !firestoreHealth.isEmpty()) || 
+                                                           (firestoreActiveKeys != null && !firestoreActiveKeys.isEmpty());
+                                
+                                if (firestoreIsDirty) {
+                                    // Firestore has dirty data but Room has 0 active chips!
+                                    // Force overwrite Firestore with empty values to sanitize it
+                                    java.util.Map<String, Object> forceCleanUpdates = new java.util.HashMap<>();
+                                    forceCleanUpdates.put("healthConditions", new java.util.ArrayList<>());
+                                    forceCleanUpdates.put("customHealthConditions", new java.util.ArrayList<>());
+                                    forceCleanUpdates.put("customHealthConditionsI18n", new java.util.ArrayList<>());
+                                    forceCleanUpdates.put("activeCustomHealthConditionKeys", new java.util.ArrayList<>());
+                                    forceCleanUpdates.put("healthTriggers", new java.util.HashMap<>());
+                                    forceCleanUpdates.put("healthWarningTemplates", new java.util.HashMap<>());
+                                    
+                                    com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                        .collection("users").document(uid).update(forceCleanUpdates)
+                                        .addOnSuccessListener(aVoid -> {
+                                            prefs.edit().putBoolean("firestore_sanitized_v1", true).apply();
+                                            // Re-run health check with clean empty profile
+                                            userAllergens.clear();
+                                            userHealthConditions.clear();
+                                            userCustomHealthConditions.clear();
+                                            activeCustomHealthConditionsI18n.clear();
+                                            userHealthTriggers.clear();
+                                            checkAllergens();
+                                            checkHealthConditions();
+                                        });
+                                } else {
+                                    // Already clean, mark true to prevent subsequent checks
+                                    prefs.edit().putBoolean("firestore_sanitized_v1", true).apply();
+                                }
+                            } else {
+                                prefs.edit().putBoolean("firestore_sanitized_v1", true).apply();
+                            }
+                        })
+                        .addOnFailureListener(e -> {
+                            // Don't mark true, so we can retry on next connection
+                        });
+                }
+            }
+        });
     }
 
     private void checkAllergens() {
@@ -327,14 +378,27 @@ public class RecipeDetailActivity extends BaseActivity {
         canonicalMap.put("celery",        "celery");
         canonicalMap.put("kereviz",       "celery");
 
-        // Merge saved ML-Kit translations for custom allergens into the canonical map
-        // e.g. {"fıstık" → "pistachio"} means both map to the same canonical key "fıstık"
-        for (java.util.Map.Entry<String, String> entry : customAllergenTranslations.entrySet()) {
-            String orig = entry.getKey();        // e.g. "fıstık"
-            String trans = entry.getValue();     // e.g. "pistachio"
-            // Both the original and its translation should resolve to the same key
-            canonicalMap.putIfAbsent(orig,  orig);
-            canonicalMap.putIfAbsent(trans, orig); // translation maps back to original as key
+        // Merge saved translations for custom allergens into the canonical map
+        // e.g. {"fıstık" → "pistachio"} means both map to the same canonical key
+        for (com.recipebookpro.domain.model.LocalizedText lt : activeCustomHealthConditionsI18n) {
+            String tr = lt.getTr() != null ? lt.getTr().toLowerCase(java.util.Locale.ROOT).trim() : "";
+            String en = lt.getEn() != null ? lt.getEn().toLowerCase(java.util.Locale.ROOT).trim() : "";
+            String key = lt.getKey().toLowerCase(java.util.Locale.ROOT).trim();
+            if (!tr.isEmpty()) {
+                canonicalMap.putIfAbsent(tr, key);
+            }
+            if (!en.isEmpty()) {
+                canonicalMap.putIfAbsent(en, key);
+            }
+        }
+
+        List<String> combinedAllergySearches = new ArrayList<>(userAllergens);
+        for (String cond : userHealthConditions) {
+            String condLower = cond.toLowerCase(java.util.Locale.ROOT).trim();
+            if (condLower.contains("celiac") || condLower.contains("çölyak")) {
+                if (!combinedAllergySearches.contains("gluten")) combinedAllergySearches.add("gluten");
+                if (!combinedAllergySearches.contains("glüten")) combinedAllergySearches.add("glüten");
+            }
         }
 
         List<String> matchingAllergens = new ArrayList<>();
@@ -346,7 +410,7 @@ public class RecipeDetailActivity extends BaseActivity {
         String ingredientsText = recipe.getFormattedIngredients() != null
                 ? recipe.getFormattedIngredients().toLowerCase(java.util.Locale.ROOT) : "";
 
-        for (String userAllergen : userAllergens) {
+        for (String userAllergen : combinedAllergySearches) {
             String userAllergenLower = userAllergen.toLowerCase(java.util.Locale.ROOT).trim();
             String userKey = canonicalMap.getOrDefault(userAllergenLower, userAllergenLower);
             boolean matched = false;
@@ -699,21 +763,7 @@ public class RecipeDetailActivity extends BaseActivity {
         super.onDestroy();
     }
 
-    private String generateUserProfileHash() {
-        List<String> all = new ArrayList<>();
-        if (userHealthConditions != null) all.addAll(userHealthConditions);
-        if (userCustomHealthConditions != null) all.addAll(userCustomHealthConditions);
-        if (userAllergens != null) all.addAll(userAllergens);
-        if (userHealthTriggers != null) {
-            for (java.util.Map.Entry<String, java.util.List<String>> entry : userHealthTriggers.entrySet()) {
-                if (entry.getValue() != null) {
-                    all.add(entry.getKey() + ":" + TextUtils.join(",", entry.getValue()));
-                }
-            }
-        }
-        java.util.Collections.sort(all);
-        return String.valueOf(all.hashCode());
-    }
+
 
     private void checkHealthConditions() {
         MaterialCardView cardHealth = findViewById(R.id.cardHealthWarning);
@@ -730,9 +780,9 @@ public class RecipeDetailActivity extends BaseActivity {
 
         cardHealth.setVisibility(View.VISIBLE);
 
-        boolean hasConditions = (userHealthConditions != null && !userHealthConditions.isEmpty()) ||
-                                (userCustomHealthConditions != null && !userCustomHealthConditions.isEmpty()) ||
-                                (userAllergens != null && !userAllergens.isEmpty());
+        boolean hasConditions = !userHealthConditions.isEmpty() 
+                               || !userCustomHealthConditions.isEmpty()
+                               || !userHealthTriggers.isEmpty();
 
         if (!hasConditions) {
             applyBannerSurface();
@@ -746,32 +796,24 @@ public class RecipeDetailActivity extends BaseActivity {
             llHeader.setOnClickListener(v -> toggleHealthWarningExpand());
         }
 
-        com.recipebookpro.util.HealthWarningCache cache = new com.recipebookpro.util.HealthWarningCache(this);
-        String profileHash = generateUserProfileHash();
-        com.recipebookpro.util.HealthWarningCache.CachedWarning cached = cache.getCachedWarning(recipe.getId(), profileHash);
-
-        if (cached != null) {
-            deliverHealthCheckResult(cached.isSafe, cached.rationale, cached.riskyIngredients, cache, profileHash);
-            return;
-        }
-
         applyBannerSurface();
         tvHealthText.setText(R.string.health_warning_checking);
         if (ivIcon != null) ivIcon.setImageResource(R.drawable.ic_cook);
 
-        com.recipebookpro.data.remote.HealthCheckService service = new com.recipebookpro.data.remote.HealthCheckService();
+        com.recipebookpro.domain.repository.HealthCheckRepository repository = new com.recipebookpro.data.repository.HealthCheckRepositoryImpl();
+        com.recipebookpro.domain.usecase.CheckRecipeSafetyUseCase useCase = new com.recipebookpro.domain.usecase.CheckRecipeSafetyUseCase(repository);
         String uiLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
-        service.checkRecipeSafety(recipe, userHealthConditions, userCustomHealthConditions, userAllergens,
-                userHealthTriggers, uiLang, new com.recipebookpro.data.remote.HealthCheckService.HealthCheckCallback() {
+        useCase.execute(recipe, userHealthConditions, userCustomHealthConditions, new ArrayList<>(),
+                userHealthTriggers, uiLang, new com.recipebookpro.domain.repository.HealthCheckRepository.HealthCheckCallback() {
             @Override
-            public void onResult(boolean isSafe, String rationale, List<String> riskyIngredients) {
-                if (isDestroyed() || isFinishing()) return;
-                deliverHealthCheckResult(isSafe, rationale, riskyIngredients, cache, profileHash);
+            public void onResult(String resultRecipeId, boolean isSafe, String rationale, List<String> riskyIngredients) {
+                if (isDestroyed() || isFinishing() || !recipe.getId().equals(resultRecipeId)) return;
+                deliverHealthCheckResult(isSafe, rationale, riskyIngredients);
             }
 
             @Override
-            public void onError(String errorMessage) {
-                if (isDestroyed() || isFinishing()) return;
+            public void onError(String resultRecipeId, String errorMessage) {
+                if (isDestroyed() || isFinishing() || !recipe.getId().equals(resultRecipeId)) return;
                 applyBannerError();
                 TextView tv = findViewById(R.id.tvHealthWarningText);
                 if (tv != null) tv.setText(getString(R.string.health_warning_error));
@@ -781,8 +823,7 @@ public class RecipeDetailActivity extends BaseActivity {
         });
     }
 
-    private void deliverHealthCheckResult(boolean isSafe, String rationale, List<String> riskyIngredients,
-                                          com.recipebookpro.util.HealthWarningCache cache, String profileHash) {
+    private void deliverHealthCheckResult(boolean isSafe, String rationale, List<String> riskyIngredients) {
         if ((riskyIngredients == null || riskyIngredients.isEmpty()) && !isSafe) {
             String uiLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
             riskyIngredients = com.recipebookpro.util.RiskyIngredientResolver.resolveFromRecipe(
@@ -792,7 +833,7 @@ public class RecipeDetailActivity extends BaseActivity {
         if (riskyIngredients == null || riskyIngredients.isEmpty()) {
             currentRiskyIngredients = new ArrayList<>();
             currentRiskyMatchTerms = new ArrayList<>();
-            finalizeHealthCheck(isSafe, rationale, currentRiskyIngredients, cache, profileHash);
+            finalizeHealthCheck(isSafe, rationale, currentRiskyIngredients);
             return;
         }
         final List<String> originalLabels = new ArrayList<>(riskyIngredients);
@@ -806,18 +847,16 @@ public class RecipeDetailActivity extends BaseActivity {
                 }
             }
             currentRiskyMatchTerms = com.recipebookpro.util.RiskyIngredientMatcher.buildMatchTerms(recipe, allLabels);
-            finalizeHealthCheck(isSafe, rationale, currentRiskyIngredients, cache, profileHash);
+            finalizeHealthCheck(isSafe, rationale, currentRiskyIngredients);
         });
     }
 
-    private void finalizeHealthCheck(boolean isSafe, String rationale, List<String> riskyIngredients, com.recipebookpro.util.HealthWarningCache cache, String profileHash) {
-        cache.saveWarningToCache(recipe.getId(), profileHash, isSafe, rationale, riskyIngredients);
+    private void finalizeHealthCheck(boolean isSafe, String rationale, List<String> riskyIngredients) {
         applyHealthWarningState(isSafe, rationale, riskyIngredients);
 
-        // Notify IngredientsTabFragment to highlight risky ingredients
-        androidx.fragment.app.Fragment f = getSupportFragmentManager().findFragmentByTag("f0");
-        if (f instanceof com.recipebookpro.presentation.ui.recipe.IngredientsTabFragment) {
-            ((com.recipebookpro.presentation.ui.recipe.IngredientsTabFragment) f).refreshIngredientsHighlight();
+        // Notify ViewModel instead of fragile fragment tag
+        if (viewModel != null) {
+            viewModel.setRiskyMatchTerms(currentRiskyMatchTerms);
         }
     }
 
