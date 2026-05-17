@@ -57,7 +57,7 @@ public class RecipeDetailActivity extends BaseActivity {
     private FirebaseFirestore db;
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
-    
+
     private ArrayList<String> userAllergens = new ArrayList<>();
     private List<String> userHealthConditions = new ArrayList<>();
     private List<String> userCustomHealthConditions = new ArrayList<>();
@@ -71,6 +71,7 @@ public class RecipeDetailActivity extends BaseActivity {
     private TranslateRecipeUseCase translateRecipeUseCase;
     private TabLayoutMediator recipeTabLayoutMediator;
     private boolean firstResume = true;
+    private com.recipebookpro.presentation.viewmodel.RecipeDetailViewModel recipeDetailViewModel;
     private List<String> currentRiskyIngredients = new ArrayList<>();
     private List<String> currentRiskyMatchTerms = new ArrayList<>();
 
@@ -106,6 +107,30 @@ public class RecipeDetailActivity extends BaseActivity {
         db = FirebaseFirestore.getInstance();
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
+
+        recipeDetailViewModel = new androidx.lifecycle.ViewModelProvider(this, 
+                com.recipebookpro.presentation.di.ViewModelFactory.getInstance())
+                .get(com.recipebookpro.presentation.viewmodel.RecipeDetailViewModel.class);
+
+        recipeDetailViewModel.getHealthCheckState().observe(this, state -> {
+            if (state.isLoading) {
+                applyBannerSurface();
+                TextView tvHealthText = findViewById(R.id.tvHealthWarningText);
+                if (tvHealthText != null) tvHealthText.setText(R.string.health_warning_checking);
+                ImageView ivIcon = findViewById(R.id.ivHealthWarningIcon);
+                if (ivIcon != null) ivIcon.setImageResource(R.drawable.ic_cook);
+            } else if (state.error != null) {
+                applyBannerError();
+                TextView tv = findViewById(R.id.tvHealthWarningText);
+                if (tv != null) tv.setText(getString(R.string.health_warning_error));
+                ImageView iv = findViewById(R.id.ivHealthWarningIcon);
+                if (iv != null) iv.setImageResource(R.drawable.ic_remove);
+            } else {
+                com.recipebookpro.util.HealthWarningCache cache = new com.recipebookpro.util.HealthWarningCache(this);
+                String profileHash = generateUserProfileHash();
+                deliverHealthCheckResult(state.isSafe, state.rationale, state.riskyIngredients, cache, profileHash);
+            }
+        });
 
         Runnable afterRecipeReady = () -> {
             setupToolbar();
@@ -143,7 +168,7 @@ public class RecipeDetailActivity extends BaseActivity {
         db = FirebaseFirestore.getInstance();
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
-        
+
         db.collection("recipes").document(recipeId).get().addOnSuccessListener(doc -> {
             if (doc.exists()) {
                 recipe = Recipe.fromDocument(doc);
@@ -175,7 +200,7 @@ public class RecipeDetailActivity extends BaseActivity {
         toolbar.setTitle(recipe.getDisplayTitle(currentLang));
 
         toolbar.setNavigationOnClickListener(v -> finish());
-        
+
         toolbar.setOnMenuItemClickListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.action_share) {
@@ -218,7 +243,7 @@ public class RecipeDetailActivity extends BaseActivity {
         ivRecipeCover.setScaleType(ImageView.ScaleType.FIT_CENTER);
         ivRecipeCover.setImageResource(R.drawable.ic_cook);
         ivRecipeCover.setPadding(0, 0, 0, 0);
-        
+
         android.util.TypedValue typedValue = new android.util.TypedValue();
         getTheme().resolveAttribute(com.google.android.material.R.attr.colorPrimaryContainer, typedValue, true);
         ivRecipeCover.setBackgroundColor(typedValue.data);
@@ -227,25 +252,26 @@ public class RecipeDetailActivity extends BaseActivity {
 
         if (!TextUtils.isEmpty(recipe.getImageUrl())) {
             ImageRequest request = new ImageRequest.Builder(this)
-                .data(recipe.getImageUrl())
-                .target(new coil.target.Target() {
-                    @Override
-                    public void onStart(@Nullable android.graphics.drawable.Drawable placeholder) {}
+                    .data(recipe.getImageUrl())
+                    .target(new coil.target.Target() {
+                        @Override
+                        public void onStart(@Nullable android.graphics.drawable.Drawable placeholder) {
+                        }
 
-                    @Override
-                    public void onSuccess(@NonNull android.graphics.drawable.Drawable result) {
-                        ivRecipeCover.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                        ivRecipeCover.setBackground(null);
-                        ivRecipeCover.setImageTintList(null);
-                        ivRecipeCover.setImageDrawable(result);
-                    }
+                        @Override
+                        public void onSuccess(@NonNull android.graphics.drawable.Drawable result) {
+                            ivRecipeCover.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                            ivRecipeCover.setBackground(null);
+                            ivRecipeCover.setImageTintList(null);
+                            ivRecipeCover.setImageDrawable(result);
+                        }
 
-                    @Override
-                    public void onError(@Nullable android.graphics.drawable.Drawable error) {
-                        // Keep the placeholder state
-                    }
-                })
-                .build();
+                        @Override
+                        public void onError(@Nullable android.graphics.drawable.Drawable error) {
+                            // Keep the placeholder state
+                        }
+                    })
+                    .build();
             Coil.imageLoader(this).enqueue(request);
         }
     }
@@ -257,83 +283,103 @@ public class RecipeDetailActivity extends BaseActivity {
             return;
         }
 
+        reloadUserHealthProfileFromFirestore(true);
+    }
+
+    /**
+     * Firestore'dan güncel sağlık profilini okur. Profilde alerjen ekleyip/silince tarif ekranı
+     * hâlâ eski listeyi kullanmasın diye onResume'da da çağrılır.
+     */
+    private void reloadUserHealthProfileFromFirestore(boolean setupPagerAfterLoad) {
+        if (currentUser == null) {
+            if (setupPagerAfterLoad) {
+                checkHealthConditions();
+                setupViewPagerAndTabs();
+            }
+            return;
+        }
+
+        userHealthConditions.clear();
+        userCustomHealthConditions.clear();
+        userHealthTriggers.clear();
+
         db.collection("users").document(currentUser.getUid()).get()
-          .addOnSuccessListener(documentSnapshot -> {
-              if (documentSnapshot.exists()) {
-                  User user = documentSnapshot.toObject(User.class);
-                  if (user != null) {
-                      if (user.getAllergens() != null) {
-                          userAllergens.addAll(user.getAllergens());
-                      }
-                      if (user.getHealthConditions() != null) {
-                          userHealthConditions.addAll(user.getHealthConditions());
-                      }
-                      if (user.getCustomHealthConditionsForLang(
-                              com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(RecipeDetailActivity.this)) != null) {
-                          userCustomHealthConditions.addAll(user.getCustomHealthConditionsForLang(
-                                  com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(RecipeDetailActivity.this)));
-                      }
-                      // Load health triggers from Groq profile analysis
-                      userHealthTriggers.putAll(user.getActiveHealthTriggers());
-                      // Load saved cross-language translations for custom allergens
-                      Object transObj = documentSnapshot.get("customAllergenTranslations");
-                      if (transObj instanceof java.util.Map<?, ?>) {
-                          for (java.util.Map.Entry<?, ?> e : ((java.util.Map<?, ?>) transObj).entrySet()) {
-                              if (e.getKey() instanceof String && e.getValue() instanceof String) {
-                                  customAllergenTranslations.put(
-                                      ((String) e.getKey()).toLowerCase(java.util.Locale.ROOT),
-                                      ((String) e.getValue()).toLowerCase(java.util.Locale.ROOT));
-                              }
-                          }
-                      }
-                  }
-              }
-              checkAllergens();
-              checkHealthConditions();
-              setupViewPagerAndTabs();
-          })
-          .addOnFailureListener(e -> {
-              checkHealthConditions();
-              setupViewPagerAndTabs(); // setup anyway
-          });
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        User user = documentSnapshot.toObject(User.class);
+                        if (user != null) {
+                            if (user.getHealthConditions() != null) {
+                                userHealthConditions.addAll(user.getHealthConditions());
+                            }
+                            userCustomHealthConditions.addAll(user.getCustomHealthConditionsForLang(
+                                    com.recipebookpro.presentation.ui.LocaleHelper
+                                            .getLanguage(RecipeDetailActivity.this)));
+                            userHealthTriggers.putAll(user.getActiveHealthTriggers());
+                            // Load saved cross-language translations for custom allergens
+                            Object transObj = documentSnapshot.get("customAllergenTranslations");
+                            if (transObj instanceof java.util.Map<?, ?>) {
+                                for (java.util.Map.Entry<?, ?> e : ((java.util.Map<?, ?>) transObj).entrySet()) {
+                                    if (e.getKey() instanceof String && e.getValue() instanceof String) {
+                                        customAllergenTranslations.put(
+                                                ((String) e.getKey()).toLowerCase(java.util.Locale.ROOT),
+                                                ((String) e.getValue()).toLowerCase(java.util.Locale.ROOT));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (setupPagerAfterLoad) {
+                        checkAllergens();
+                        setupViewPagerAndTabs();
+                    }
+                    checkHealthConditions();
+                })
+                .addOnFailureListener(e -> {
+                    if (setupPagerAfterLoad) {
+                        setupViewPagerAndTabs();
+                    }
+                    checkHealthConditions();
+                });
     }
 
     private void checkAllergens() {
-        if (userAllergens.isEmpty() || recipe.getAllergens().isEmpty()) return;
+        if (userAllergens.isEmpty() || recipe.getAllergens().isEmpty())
+            return;
 
         // Canonical alias map: any TR or EN label → lowercase EN key used for matching
         java.util.Map<String, String> canonicalMap = new java.util.HashMap<>();
-        canonicalMap.put("gluten",        "gluten");
-        canonicalMap.put("glüten",        "gluten");
-        canonicalMap.put("dairy",         "dairy");
-        canonicalMap.put("süt ürünleri",  "dairy");
-        canonicalMap.put("milk",          "dairy");
-        canonicalMap.put("süt",           "dairy");
-        canonicalMap.put("egg",           "egg");
-        canonicalMap.put("yumurta",       "egg");
-        canonicalMap.put("nuts",          "nuts");
-        canonicalMap.put("kuruyemiş",     "nuts");
-        canonicalMap.put("nut",           "nuts");
-        canonicalMap.put("fıstık",        "nuts");
-        canonicalMap.put("peanut",        "nuts");
-        canonicalMap.put("soy",           "soy");
-        canonicalMap.put("soya",          "soy");
-        canonicalMap.put("seafood",       "seafood");
-        canonicalMap.put("deniz ürünleri","seafood");
-        canonicalMap.put("fish",          "seafood");
-        canonicalMap.put("balık",         "seafood");
-        canonicalMap.put("sesame",        "sesame");
-        canonicalMap.put("susam",         "sesame");
-        canonicalMap.put("celery",        "celery");
-        canonicalMap.put("kereviz",       "celery");
+        canonicalMap.put("gluten", "gluten");
+        canonicalMap.put("glüten", "gluten");
+        canonicalMap.put("dairy", "dairy");
+        canonicalMap.put("süt ürünleri", "dairy");
+        canonicalMap.put("milk", "dairy");
+        canonicalMap.put("süt", "dairy");
+        canonicalMap.put("egg", "egg");
+        canonicalMap.put("yumurta", "egg");
+        canonicalMap.put("nuts", "nuts");
+        canonicalMap.put("kuruyemiş", "nuts");
+        canonicalMap.put("nut", "nuts");
+        canonicalMap.put("fıstık", "nuts");
+        canonicalMap.put("peanut", "nuts");
+        canonicalMap.put("soy", "soy");
+        canonicalMap.put("soya", "soy");
+        canonicalMap.put("seafood", "seafood");
+        canonicalMap.put("deniz ürünleri", "seafood");
+        canonicalMap.put("fish", "seafood");
+        canonicalMap.put("balık", "seafood");
+        canonicalMap.put("sesame", "sesame");
+        canonicalMap.put("susam", "sesame");
+        canonicalMap.put("celery", "celery");
+        canonicalMap.put("kereviz", "celery");
 
         // Merge saved ML-Kit translations for custom allergens into the canonical map
-        // e.g. {"fıstık" → "pistachio"} means both map to the same canonical key "fıstık"
+        // e.g. {"fıstık" → "pistachio"} means both map to the same canonical key
+        // "fıstık"
         for (java.util.Map.Entry<String, String> entry : customAllergenTranslations.entrySet()) {
-            String orig = entry.getKey();        // e.g. "fıstık"
-            String trans = entry.getValue();     // e.g. "pistachio"
+            String orig = entry.getKey(); // e.g. "fıstık"
+            String trans = entry.getValue(); // e.g. "pistachio"
             // Both the original and its translation should resolve to the same key
-            canonicalMap.putIfAbsent(orig,  orig);
+            canonicalMap.putIfAbsent(orig, orig);
             canonicalMap.putIfAbsent(trans, orig); // translation maps back to original as key
         }
 
@@ -344,7 +390,8 @@ public class RecipeDetailActivity extends BaseActivity {
 
         // Layer 3 preparation: full ingredient text for custom allergen searches
         String ingredientsText = recipe.getFormattedIngredients() != null
-                ? recipe.getFormattedIngredients().toLowerCase(java.util.Locale.ROOT) : "";
+                ? recipe.getFormattedIngredients().toLowerCase(java.util.Locale.ROOT)
+                : "";
 
         for (String userAllergen : userAllergens) {
             String userAllergenLower = userAllergen.toLowerCase(java.util.Locale.ROOT).trim();
@@ -353,7 +400,8 @@ public class RecipeDetailActivity extends BaseActivity {
 
             // Layer 1: canonical map + original allergen tags
             for (String recipeAllergen : originalAllergens) {
-                String recipeKey = canonicalMap.getOrDefault(recipeAllergen.toLowerCase().trim(), recipeAllergen.toLowerCase().trim());
+                String recipeKey = canonicalMap.getOrDefault(recipeAllergen.toLowerCase().trim(),
+                        recipeAllergen.toLowerCase().trim());
                 if (userKey.equals(recipeKey) || userAllergen.equalsIgnoreCase(recipeAllergen)) {
                     matchingAllergens.add(recipeAllergen);
                     matched = true;
@@ -364,7 +412,8 @@ public class RecipeDetailActivity extends BaseActivity {
             // Layer 2: translated/display allergen tags
             if (!matched && displayAllergens != null) {
                 for (String translatedAllergen : displayAllergens) {
-                    String transKey = canonicalMap.getOrDefault(translatedAllergen.toLowerCase().trim(), translatedAllergen.toLowerCase().trim());
+                    String transKey = canonicalMap.getOrDefault(translatedAllergen.toLowerCase().trim(),
+                            translatedAllergen.toLowerCase().trim());
                     if (userKey.equals(transKey)
                             || userAllergen.equalsIgnoreCase(translatedAllergen)
                             || translatedAllergen.toLowerCase().contains(userAllergenLower)
@@ -408,14 +457,13 @@ public class RecipeDetailActivity extends BaseActivity {
         viewPager.setAdapter(pagerAdapter);
 
         String[] tabTitles = {
-            getString(R.string.tab_ingredients),
-            getString(R.string.tab_steps),
-            getString(R.string.tab_notes)
+                getString(R.string.tab_ingredients),
+                getString(R.string.tab_steps),
+                getString(R.string.tab_notes)
         };
 
         recipeTabLayoutMediator = new TabLayoutMediator(tabLayout, viewPager,
-                (tab, position) -> tab.setText(tabTitles[position])
-        );
+                (tab, position) -> tab.setText(tabTitles[position]));
         recipeTabLayoutMediator.attach();
     }
 
@@ -440,16 +488,19 @@ public class RecipeDetailActivity extends BaseActivity {
     }
 
     private void shareRecipe() {
-        if (recipe == null) return;
+        if (recipe == null)
+            return;
         startActivity(PublicShareIntentHelper.createRecipeShareChooserIntent(this, recipe));
     }
 
     private void toggleLike(MenuItem item) {
-        if (currentUser == null) return;
+        if (currentUser == null)
+            return;
         boolean shouldLike = !isLiked;
         String uid = currentUser.getUid();
         String recipeId = recipe.getId();
-        if (TextUtils.isEmpty(recipeId)) return;
+        if (TextUtils.isEmpty(recipeId))
+            return;
 
         item.setEnabled(false);
         db.collection("users").document(uid)
@@ -460,7 +511,8 @@ public class RecipeDetailActivity extends BaseActivity {
                     db.collection("recipes").document(recipeId)
                             .update("likes", FieldValue.increment(shouldLike ? 1 : -1))
                             .addOnCompleteListener(task -> item.setEnabled(true));
-                    Toast.makeText(this, shouldLike ? getString(R.string.liked) : getString(R.string.like_removed), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, shouldLike ? getString(R.string.liked) : getString(R.string.like_removed),
+                            Toast.LENGTH_SHORT).show();
                 })
                 .addOnFailureListener(e -> {
                     item.setEnabled(true);
@@ -484,49 +536,52 @@ public class RecipeDetailActivity extends BaseActivity {
                     Toast.makeText(RecipeDetailActivity.this, R.string.recipe_deleted, Toast.LENGTH_SHORT).show();
                     finish();
                 })
-                .addOnFailureListener(e -> 
-                    Toast.makeText(RecipeDetailActivity.this, R.string.recipe_delete_failed, Toast.LENGTH_SHORT).show()
-                );
+                .addOnFailureListener(e -> Toast
+                        .makeText(RecipeDetailActivity.this, R.string.recipe_delete_failed, Toast.LENGTH_SHORT).show());
     }
 
     private void addToShoppingList() {
-        if (currentUser == null) return;
-        
+        if (currentUser == null)
+            return;
+
         String listName = getString(R.string.shopping_list_for_recipe, recipe.getTitle());
-        
+
         Data inputData = new Data.Builder()
-            .putString(MergeIngredientsWorker.KEY_USER_ID, currentUser.getUid())
-            .putStringArray(MergeIngredientsWorker.KEY_RECIPE_IDS, new String[]{recipe.getId()})
-            .putString(MergeIngredientsWorker.KEY_LIST_NAME, listName)
-            .putString(MergeIngredientsWorker.KEY_TARGET_LANGUAGE, com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this))
-            .build();
-            
+                .putString(MergeIngredientsWorker.KEY_USER_ID, currentUser.getUid())
+                .putStringArray(MergeIngredientsWorker.KEY_RECIPE_IDS, new String[] { recipe.getId() })
+                .putString(MergeIngredientsWorker.KEY_LIST_NAME, listName)
+                .putString(MergeIngredientsWorker.KEY_TARGET_LANGUAGE,
+                        com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this))
+                .build();
+
         OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(MergeIngredientsWorker.class)
-            .setInputData(inputData)
-            .build();
-            
+                .setInputData(inputData)
+                .build();
+
         WorkManager.getInstance(this).enqueue(workRequest);
         Toast.makeText(this, R.string.shopping_ingredients_preparing, Toast.LENGTH_SHORT).show();
     }
 
     private void translateRecipe() {
-        if (recipe == null) return;
-        
+        if (recipe == null)
+            return;
+
         findViewById(R.id.pbTranslation).setVisibility(View.VISIBLE);
         ((android.widget.TextView) findViewById(R.id.tvTranslatedContent)).setText(R.string.downloading_model);
-        
+
         String targetLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
         translateRecipeUseCase.execute(recipe, targetLang, new TranslationService.TranslationCallback() {
             @Override
             public void onSuccess(String message) {
                 findViewById(R.id.pbTranslation).setVisibility(View.GONE);
                 findViewById(R.id.btnRevertTranslation).setVisibility(View.VISIBLE);
-                ((android.widget.TextView) findViewById(R.id.tvTranslatedContent)).setText(R.string.translation_completed);
-                
+                ((android.widget.TextView) findViewById(R.id.tvTranslatedContent))
+                        .setText(R.string.translation_completed);
+
                 // Refresh all views with the new translated data
                 setupToolbar();
                 setupViewPagerAndTabs();
-                
+
                 // Update original language in Firestore for future persistence
                 FirebaseFirestore.getInstance().collection("recipes").document(recipe.getId())
                         .update("originalLanguage", recipe.getOriginalLanguage());
@@ -535,7 +590,8 @@ public class RecipeDetailActivity extends BaseActivity {
             @Override
             public void onFailure(Exception e) {
                 findViewById(R.id.pbTranslation).setVisibility(View.GONE);
-                Toast.makeText(RecipeDetailActivity.this, getString(R.string.error_with_reason, e.getMessage()), Toast.LENGTH_LONG).show();
+                Toast.makeText(RecipeDetailActivity.this, getString(R.string.error_with_reason, e.getMessage()),
+                        Toast.LENGTH_LONG).show();
             }
 
             @Override
@@ -556,11 +612,12 @@ public class RecipeDetailActivity extends BaseActivity {
         card.setVisibility(View.VISIBLE);
         ((TextView) findViewById(R.id.tvTranslatedTitle)).setText(title);
         ((TextView) findViewById(R.id.tvTranslatedContent)).setText(content);
-        
+
         // Localize card labels
         TextView tvLabel = card.findViewById(R.id.tvTranslationLabel);
-        if (tvLabel != null) tvLabel.setText(R.string.translation_title);
-        
+        if (tvLabel != null)
+            tvLabel.setText(R.string.translation_title);
+
         // Scroll to the top of the card if needed, or just let the user see it
         AppBarLayout appBarLayout = findViewById(R.id.appBarLayout);
         if (appBarLayout != null) {
@@ -569,40 +626,42 @@ public class RecipeDetailActivity extends BaseActivity {
     }
 
     private void setupOwnerCard() {
-        if (recipe == null || TextUtils.isEmpty(recipe.getUserId())) return;
-        
+        if (recipe == null || TextUtils.isEmpty(recipe.getUserId()))
+            return;
+
         View card = findViewById(R.id.cardOwnerInfo);
         TextView tvOwner = findViewById(R.id.tvOwnerName);
         ImageView ivAvatar = findViewById(R.id.ivOwnerAvatar);
-        
-        db.collection("users").document(recipe.getUserId()).get()
-          .addOnSuccessListener(doc -> {
-              if (doc.exists()) {
-                  User user = doc.toObject(User.class);
-                  if (user != null) {
-                      tvOwner.setText(user.getDisplayName());
-                      if (!TextUtils.isEmpty(user.getProfileImageUrl())) {
-                          ImageRequest request = new ImageRequest.Builder(this)
-                              .data(user.getProfileImageUrl())
-                              .target(ivAvatar)
-                              .crossfade(true)
-                              .transformations(new coil.transform.CircleCropTransformation())
-                              .placeholder(R.drawable.ic_nav_profile)
-                              .build();
-                          Coil.imageLoader(this).enqueue(request);
-                      }
-                      String uid = user.getUid();
-                      if (TextUtils.isEmpty(uid)) uid = doc.getId();
-                      final String finalUid = uid;
 
-                      card.setOnClickListener(v -> {
-                          Intent intent = new Intent(RecipeDetailActivity.this, PublicProfileActivity.class);
-                          intent.putExtra(PublicProfileActivity.EXTRA_USER_ID, finalUid);
-                          startActivity(intent);
-                      });
-                  }
-              }
-          });
+        db.collection("users").document(recipe.getUserId()).get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        User user = doc.toObject(User.class);
+                        if (user != null) {
+                            tvOwner.setText(user.getDisplayName());
+                            if (!TextUtils.isEmpty(user.getProfileImageUrl())) {
+                                ImageRequest request = new ImageRequest.Builder(this)
+                                        .data(user.getProfileImageUrl())
+                                        .target(ivAvatar)
+                                        .crossfade(true)
+                                        .transformations(new coil.transform.CircleCropTransformation())
+                                        .placeholder(R.drawable.ic_nav_profile)
+                                        .build();
+                                Coil.imageLoader(this).enqueue(request);
+                            }
+                            String uid = user.getUid();
+                            if (TextUtils.isEmpty(uid))
+                                uid = doc.getId();
+                            final String finalUid = uid;
+
+                            card.setOnClickListener(v -> {
+                                Intent intent = new Intent(RecipeDetailActivity.this, PublicProfileActivity.class);
+                                intent.putExtra(PublicProfileActivity.EXTRA_USER_ID, finalUid);
+                                startActivity(intent);
+                            });
+                        }
+                    }
+                });
     }
 
     private void revertTranslation() {
@@ -611,15 +670,16 @@ public class RecipeDetailActivity extends BaseActivity {
             setupToolbar();
             setupViewPagerAndTabs();
             findViewById(R.id.cardTranslation).setVisibility(View.GONE);
-            
+
             // Also update Firestore to clear the translations permanently
             saveTranslatedToFirestore();
         }
     }
 
     private void saveTranslatedToFirestore() {
-        if (recipe == null || TextUtils.isEmpty(recipe.getId())) return;
-        
+        if (recipe == null || TextUtils.isEmpty(recipe.getId()))
+            return;
+
         db.collection("recipes").document(recipe.getId())
                 .set(recipe) // Save the entire updated object to ensure all translated fields are persisted
                 .addOnFailureListener(e -> {
@@ -634,6 +694,7 @@ public class RecipeDetailActivity extends BaseActivity {
             firstResume = false;
         } else {
             refreshRecipeFromFirestore();
+            reloadUserHealthProfileFromFirestore(false);
         }
     }
 
@@ -671,13 +732,15 @@ public class RecipeDetailActivity extends BaseActivity {
     }
 
     private void subscribeLikeState() {
-        if (currentUser == null || recipe == null || TextUtils.isEmpty(recipe.getId())) return;
+        if (currentUser == null || recipe == null || TextUtils.isEmpty(recipe.getId()))
+            return;
         if (likeStateListener != null) {
             likeStateListener.remove();
         }
         likeStateListener = db.collection("users").document(currentUser.getUid())
                 .addSnapshotListener((doc, e) -> {
-                    if (e != null || doc == null || !doc.exists()) return;
+                    if (e != null || doc == null || !doc.exists())
+                        return;
                     List<String> likedIds = (List<String>) doc.get("likedRecipeIds");
                     boolean newState = likedIds != null && likedIds.contains(recipe.getId());
                     isLiked = newState;
@@ -701,9 +764,10 @@ public class RecipeDetailActivity extends BaseActivity {
 
     private String generateUserProfileHash() {
         List<String> all = new ArrayList<>();
-        if (userHealthConditions != null) all.addAll(userHealthConditions);
-        if (userCustomHealthConditions != null) all.addAll(userCustomHealthConditions);
-        if (userAllergens != null) all.addAll(userAllergens);
+        if (userHealthConditions != null)
+            all.addAll(userHealthConditions);
+        if (userCustomHealthConditions != null)
+            all.addAll(userCustomHealthConditions);
         if (userHealthTriggers != null) {
             for (java.util.Map.Entry<String, java.util.List<String>> entry : userHealthTriggers.entrySet()) {
                 if (entry.getValue() != null) {
@@ -712,7 +776,8 @@ public class RecipeDetailActivity extends BaseActivity {
             }
         }
         java.util.Collections.sort(all);
-        return String.valueOf(all.hashCode());
+        String joined = TextUtils.join("|", all);
+        return Integer.toHexString(joined.hashCode()) + "_" + all.size();
     }
 
     private void checkHealthConditions() {
@@ -721,7 +786,8 @@ public class RecipeDetailActivity extends BaseActivity {
         ImageView ivIcon = findViewById(R.id.ivHealthWarningIcon);
         android.view.View llHeader = findViewById(R.id.llHealthWarningHeader);
 
-        if (cardHealth == null || tvHealthText == null) return;
+        if (cardHealth == null || tvHealthText == null)
+            return;
 
         if (currentUser == null) {
             cardHealth.setVisibility(View.GONE);
@@ -731,13 +797,13 @@ public class RecipeDetailActivity extends BaseActivity {
         cardHealth.setVisibility(View.VISIBLE);
 
         boolean hasConditions = (userHealthConditions != null && !userHealthConditions.isEmpty()) ||
-                                (userCustomHealthConditions != null && !userCustomHealthConditions.isEmpty()) ||
-                                (userAllergens != null && !userAllergens.isEmpty());
+                (userCustomHealthConditions != null && !userCustomHealthConditions.isEmpty());
 
         if (!hasConditions) {
             applyBannerSurface();
             tvHealthText.setText(R.string.health_warning_no_conditions);
-            if (ivIcon != null) ivIcon.setImageResource(R.drawable.ic_cook);
+            if (ivIcon != null)
+                ivIcon.setImageResource(R.drawable.ic_cook);
             return;
         }
 
@@ -748,47 +814,29 @@ public class RecipeDetailActivity extends BaseActivity {
 
         com.recipebookpro.util.HealthWarningCache cache = new com.recipebookpro.util.HealthWarningCache(this);
         String profileHash = generateUserProfileHash();
-        com.recipebookpro.util.HealthWarningCache.CachedWarning cached = cache.getCachedWarning(recipe.getId(), profileHash);
+
+        android.util.Log.d("GROQ_TEST", "RecipeDetailActivity health check — recipe=" + recipe.getId());
+        android.util.Log.d("GROQ_TEST", "  healthConditions       = " + userHealthConditions);
+        android.util.Log.d("GROQ_TEST", "  customHealth (active)  = " + userCustomHealthConditions);
+        android.util.Log.d("GROQ_TEST", "  healthTriggers keys    = " + userHealthTriggers.keySet());
+        android.util.Log.d("GROQ_TEST", "  profileHash            = " + profileHash);
+
+        com.recipebookpro.util.HealthWarningCache.CachedWarning cached = cache.getCachedWarning(recipe.getId(),
+                profileHash);
 
         if (cached != null) {
             deliverHealthCheckResult(cached.isSafe, cached.rationale, cached.riskyIngredients, cache, profileHash);
             return;
         }
 
-        applyBannerSurface();
-        tvHealthText.setText(R.string.health_warning_checking);
-        if (ivIcon != null) ivIcon.setImageResource(R.drawable.ic_cook);
-
-        com.recipebookpro.data.remote.HealthCheckService service = new com.recipebookpro.data.remote.HealthCheckService();
         String uiLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
-        service.checkRecipeSafety(recipe, userHealthConditions, userCustomHealthConditions, userAllergens,
-                userHealthTriggers, uiLang, new com.recipebookpro.data.remote.HealthCheckService.HealthCheckCallback() {
-            @Override
-            public void onResult(boolean isSafe, String rationale, List<String> riskyIngredients) {
-                if (isDestroyed() || isFinishing()) return;
-                deliverHealthCheckResult(isSafe, rationale, riskyIngredients, cache, profileHash);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                if (isDestroyed() || isFinishing()) return;
-                applyBannerError();
-                TextView tv = findViewById(R.id.tvHealthWarningText);
-                if (tv != null) tv.setText(getString(R.string.health_warning_error));
-                ImageView iv = findViewById(R.id.ivHealthWarningIcon);
-                if (iv != null) iv.setImageResource(R.drawable.ic_remove);
-            }
-        });
+        recipeDetailViewModel.checkRecipeSafety(recipe, userHealthConditions, userCustomHealthConditions,
+                new java.util.ArrayList<>(), userHealthTriggers, uiLang);
     }
 
     private void deliverHealthCheckResult(boolean isSafe, String rationale, List<String> riskyIngredients,
-                                          com.recipebookpro.util.HealthWarningCache cache, String profileHash) {
-        if ((riskyIngredients == null || riskyIngredients.isEmpty()) && !isSafe) {
-            String uiLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
-            riskyIngredients = com.recipebookpro.util.RiskyIngredientResolver.resolveFromRecipe(
-                    recipe, userHealthConditions, userCustomHealthConditions, userHealthTriggers,
-                    rationale, uiLang);
-        }
+            com.recipebookpro.util.HealthWarningCache cache, String profileHash) {
+        // AI sonucunu direkt kullan — yerel kural motoru KULLANILMAZ
         if (riskyIngredients == null || riskyIngredients.isEmpty()) {
             currentRiskyIngredients = new ArrayList<>();
             currentRiskyMatchTerms = new ArrayList<>();
@@ -797,7 +845,8 @@ public class RecipeDetailActivity extends BaseActivity {
         }
         final List<String> originalLabels = new ArrayList<>(riskyIngredients);
         com.recipebookpro.util.RiskyIngredientLocaleHelper.ensureUiLanguage(this, originalLabels, uiLabels -> {
-            if (isDestroyed() || isFinishing()) return;
+            if (isDestroyed() || isFinishing())
+                return;
             currentRiskyIngredients = uiLabels;
             List<String> allLabels = new ArrayList<>(originalLabels);
             for (String label : uiLabels) {
@@ -810,7 +859,8 @@ public class RecipeDetailActivity extends BaseActivity {
         });
     }
 
-    private void finalizeHealthCheck(boolean isSafe, String rationale, List<String> riskyIngredients, com.recipebookpro.util.HealthWarningCache cache, String profileHash) {
+    private void finalizeHealthCheck(boolean isSafe, String rationale, List<String> riskyIngredients,
+            com.recipebookpro.util.HealthWarningCache cache, String profileHash) {
         cache.saveWarningToCache(recipe.getId(), profileHash, isSafe, rationale, riskyIngredients);
         applyHealthWarningState(isSafe, rationale, riskyIngredients);
 
@@ -824,7 +874,8 @@ public class RecipeDetailActivity extends BaseActivity {
     private void toggleHealthWarningExpand() {
         android.view.View expanded = findViewById(R.id.llHealthWarningExpanded);
         ImageView chevron = findViewById(R.id.ivHealthWarningChevron);
-        if (expanded == null) return;
+        if (expanded == null)
+            return;
         healthWarningExpanded = !healthWarningExpanded;
         expanded.setVisibility(healthWarningExpanded ? View.VISIBLE : View.GONE);
         if (chevron != null) {
@@ -839,13 +890,14 @@ public class RecipeDetailActivity extends BaseActivity {
         ImageView ivIcon = findViewById(R.id.ivHealthWarningIcon);
         ImageView ivChevron = findViewById(R.id.ivHealthWarningChevron);
         MaterialCardView card = findViewById(R.id.cardHealthWarning);
-        if (tvSummary == null || card == null) return;
+        if (tvSummary == null || card == null)
+            return;
 
         // --- Pick colors ---
         int bgAttr, fgAttr;
         if (isSafe) {
             // Green: use a custom green background
-            bgAttr = -1;  // handled manually below
+            bgAttr = -1; // handled manually below
             fgAttr = -1;
         } else {
             bgAttr = com.google.android.material.R.attr.colorErrorContainer;
@@ -867,8 +919,10 @@ public class RecipeDetailActivity extends BaseActivity {
 
         // Apply label color
         tvSummary.setTextColor(fgColor);
-        if (tvDisclaimer != null) tvDisclaimer.setTextColor(fgColor);
-        if (tvRationale != null) tvRationale.setTextColor(fgColor);
+        if (tvDisclaimer != null)
+            tvDisclaimer.setTextColor(fgColor);
+        if (tvRationale != null)
+            tvRationale.setTextColor(fgColor);
 
         // --- Summary label (always visible, locale-aware) ---
         tvSummary.setText(isSafe ? getString(R.string.health_warning_safe) : getString(R.string.health_warning_unsafe));
@@ -887,7 +941,8 @@ public class RecipeDetailActivity extends BaseActivity {
             }
             // Append risky ingredients if available
             if (riskyIngredients != null && !riskyIngredients.isEmpty()) {
-                if (rationaleBuilder.length() > 0) rationaleBuilder.append("\n\n");
+                if (rationaleBuilder.length() > 0)
+                    rationaleBuilder.append("\n\n");
                 rationaleBuilder.append(getString(R.string.risky_ingredients_label,
                         TextUtils.join(", ", riskyIngredients)));
             }
@@ -900,14 +955,16 @@ public class RecipeDetailActivity extends BaseActivity {
                 }
             } else {
                 tvRationale.setText("");
-                if (ivChevron != null) ivChevron.setVisibility(View.GONE);
+                if (ivChevron != null)
+                    ivChevron.setVisibility(View.GONE);
             }
         }
     }
 
     private void applyBannerSurface() {
         MaterialCardView card = findViewById(R.id.cardHealthWarning);
-        if (card == null) return;
+        if (card == null)
+            return;
         android.util.TypedValue tv = new android.util.TypedValue();
         getTheme().resolveAttribute(com.google.android.material.R.attr.colorSurfaceVariant, tv, true);
         card.setCardBackgroundColor(tv.data);
@@ -916,14 +973,18 @@ public class RecipeDetailActivity extends BaseActivity {
         TextView tvText = findViewById(R.id.tvHealthWarningText);
         TextView tvDisc = findViewById(R.id.tvHealthWarningDisclaimer);
         ImageView ivIcon = findViewById(R.id.ivHealthWarningIcon);
-        if (tvText != null) tvText.setTextColor(fg);
-        if (tvDisc != null) tvDisc.setTextColor(fg);
-        if (ivIcon != null) ivIcon.setColorFilter(fg);
+        if (tvText != null)
+            tvText.setTextColor(fg);
+        if (tvDisc != null)
+            tvDisc.setTextColor(fg);
+        if (ivIcon != null)
+            ivIcon.setColorFilter(fg);
     }
 
     private void applyBannerError() {
         MaterialCardView card = findViewById(R.id.cardHealthWarning);
-        if (card == null) return;
+        if (card == null)
+            return;
         android.util.TypedValue tv = new android.util.TypedValue();
         getTheme().resolveAttribute(com.google.android.material.R.attr.colorErrorContainer, tv, true);
         card.setCardBackgroundColor(tv.data);
@@ -932,8 +993,11 @@ public class RecipeDetailActivity extends BaseActivity {
         TextView tvText = findViewById(R.id.tvHealthWarningText);
         TextView tvDisc = findViewById(R.id.tvHealthWarningDisclaimer);
         ImageView ivIcon = findViewById(R.id.ivHealthWarningIcon);
-        if (tvText != null) tvText.setTextColor(fg);
-        if (tvDisc != null) tvDisc.setTextColor(fg);
-        if (ivIcon != null) ivIcon.setColorFilter(fg);
+        if (tvText != null)
+            tvText.setTextColor(fg);
+        if (tvDisc != null)
+            tvDisc.setTextColor(fg);
+        if (ivIcon != null)
+            ivIcon.setColorFilter(fg);
     }
 }

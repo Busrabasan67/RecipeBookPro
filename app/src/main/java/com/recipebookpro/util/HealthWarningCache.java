@@ -14,7 +14,7 @@ import java.util.List;
 
 public class HealthWarningCache {
 
-    private static final String PREF_NAME = "HealthWarningCachePrefs";
+    private static final String PREF_NAME = "HealthWarningCachePrefsV6";
     private static final long EXPIRATION_MS = 24 * 60 * 60 * 1000L; // 24 hours
 
     private final Context appContext;
@@ -66,6 +66,11 @@ public class HealthWarningCache {
 
             prefs.edit().putString(buildKey(recipeId, userProfileHash), obj.toString()).apply();
         } catch (Exception ignored) {}
+    }
+
+    /** Profil değişince eski uyarıları temizle (24 saatlik önbellek). */
+    public void clearAll() {
+        prefs.edit().clear().apply();
     }
 
     public CachedWarning getCachedWarning(String recipeId, String userProfileHash) {

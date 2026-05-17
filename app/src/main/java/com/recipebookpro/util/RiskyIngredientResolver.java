@@ -57,8 +57,6 @@ public final class RiskyIngredientResolver {
         }
         addConditionTriggers(allConditions, triggers, uiLang);
 
-        String rationaleLower = rationale != null ? rationale.toLowerCase(Locale.ROOT) : "";
-
         for (Recipe.Ingredient ingredient : recipe.getIngredients()) {
             String combined = ingredientText(ingredient);
             if (combined.isEmpty()) {
@@ -71,14 +69,10 @@ public final class RiskyIngredientResolver {
                     break;
                 }
             }
-            if (!matched && !rationaleLower.isEmpty()) {
-                for (String[] group : CANONICAL_GROUPS) {
-                    if (textMentionsAny(rationaleLower, group) && textMentionsAny(combined, group)) {
-                        matched = true;
-                        break;
-                    }
-                }
-            }
+            // Rationale-based CANONICAL_GROUPS matching removed:
+            // It was too aggressive — it matched words in AI response text
+            // (e.g. "süt" appearing in an explanation) with ingredients,
+            // even when the user's profile had no related condition.
             if (matched) {
                 String label = pickLabel(ingredient, uiLang);
                 if (!TextUtils.isEmpty(label)) {
@@ -113,6 +107,9 @@ public final class RiskyIngredientResolver {
             }
             if (c.contains("hypertension") || c.contains("tansiyon")) {
                 addWords(triggers, turkish ? new String[]{"tuz", "soya sosu"} : new String[]{"salt", "soy sauce"});
+            }
+            if (c.contains("cardiovascular") || c.contains("kalp") || c.contains("kolesterol") || c.contains("cholesterol")) {
+                addWords(triggers, turkish ? new String[]{"tereyağı", "krema", "sucuk", "sosis", "pastırma", "margarin"} : new String[]{"butter", "cream", "sausage", "bacon", "margarine"});
             }
         }
     }

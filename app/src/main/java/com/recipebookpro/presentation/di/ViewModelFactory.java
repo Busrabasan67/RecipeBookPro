@@ -30,6 +30,11 @@ public class ViewModelFactory implements ViewModelProvider.Factory {
             RecipeRepositoryImpl repo = new RecipeRepositoryImpl();
             AuthRepositoryImpl authRepo = new AuthRepositoryImpl();
             return (T) new RecipeViewModel(new GetRecipesUseCase(repo), new GetCurrentUserUseCase(authRepo));
+        } else if (modelClass.isAssignableFrom(com.recipebookpro.presentation.viewmodel.RecipeDetailViewModel.class)) {
+            com.recipebookpro.data.remote.HealthCheckService service = new com.recipebookpro.data.remote.HealthCheckService();
+            com.recipebookpro.domain.repository.HealthRepository repo = new com.recipebookpro.data.repository.HealthRepositoryImpl(service);
+            com.recipebookpro.domain.usecase.CheckRecipeSafetyUseCase useCase = new com.recipebookpro.domain.usecase.CheckRecipeSafetyUseCase(repo);
+            return (T) new com.recipebookpro.presentation.viewmodel.RecipeDetailViewModel(useCase);
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
     }

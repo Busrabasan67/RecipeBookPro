@@ -162,6 +162,9 @@ public class User {
     }
 
     public List<String> getActiveCustomHealthConditionKeys() {
+        if (customHealthConditionsI18n != null && !customHealthConditionsI18n.isEmpty()) {
+            return activeCustomHealthConditionKeys != null ? activeCustomHealthConditionKeys : new ArrayList<>();
+        }
         if (activeCustomHealthConditionKeys != null && !activeCustomHealthConditionKeys.isEmpty()) {
             return activeCustomHealthConditionKeys;
         }
@@ -172,7 +175,7 @@ public class User {
             }
             return keys;
         }
-        return new ArrayList<>();
+        return activeCustomHealthConditionKeys != null ? activeCustomHealthConditionKeys : new ArrayList<>();
     }
 
     public void setActiveCustomHealthConditionKeys(List<String> activeCustomHealthConditionKeys) {

@@ -7,7 +7,6 @@ import android.util.Log;
 
 import com.recipebookpro.BuildConfig;
 import com.recipebookpro.domain.model.Recipe;
-import com.recipebookpro.util.RiskyIngredientResolver;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -25,19 +24,23 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Groq AI kullanarak tarif güvenlik analizi.
- *   - Geçmiş konuşmalara/önbelleklere BAKMAZ, her seferinde sıfırdan analiz yapar.
- *   - Sadece gönderilen GÜNCEL profili baz alır.
- *   - Doğal dil girişlerini yorumlar ("limon yiyince kaşınıyorum" → Limon alerjisi).
- *   - Semantik eşleştirme: türevler, eş anlamlılar bulunur.
- *   - Heuristik fallback: API erişilemezse yerel kural tabanlı analiz.
+ * Groq AI (LLaMA 3.3) kullanarak tarif güvenlik analizi.
+ *
+ * Mimari felsefe — "AI tek karar verici":
+ *   - Tüm semantik eşleştirme, doğal dil anlama ve iki dil desteği AI'ya bırakılır.
+ *   - API erişilemezse:
+ *       1. Otomatik retry (rate limit vb. için)
+ *       2. Profil oluşturulurken AI'ın ürettiği healthTriggers ile minimal fallback
+ *   - Her seferinde sıfırdan analiz yapar, önbellek/geçmiş konuşma kullanmaz.
  */
 public class HealthCheckService {
 
-    private static final String TAG       = "HealthCheckService";
-    private static final String API_KEY   = BuildConfig.GROQ_API_KEY;
-    private static final String API_URL   = "https://api.groq.com/openai/v1/chat/completions";
-    private static final String CHAT_MODEL = "llama-3.3-70b-versatile"; // daha güçlü model
+    private static final String TAG        = "HealthCheckService";
+    private static final String API_KEY    = BuildConfig.GROQ_API_KEY;
+    private static final String API_URL    = "https://api.groq.com/openai/v1/chat/completions";
+    private static final String CHAT_MODEL = "llama-3.1-8b-instant";
+    private static final int    MAX_RETRIES = 2;
+    private static final long   RETRY_DELAY_MS = 2500; // 2.5 saniye bekleme
 
     public interface HealthCheckCallback {
         void onResult(boolean isSafe, String rationale, List<String> riskyIngredients);
@@ -64,7 +67,18 @@ public class HealthCheckService {
 
         // Tüm koşulları tek listede topla
         List<String> allConditions = new ArrayList<>();
-        if (healthConditions != null)       allConditions.addAll(healthConditions);
+        if (healthConditions != null) {
+            for (String cond : healthConditions) {
+                String mapped = cond;
+                if ("diabetes".equalsIgnoreCase(cond))        mapped = "Diyabet / Şeker Hastalığı (Diabetes)";
+                else if ("kidney_disease".equalsIgnoreCase(cond)) mapped = "Böbrek Hastalığı (Kidney Disease)";
+                else if ("cardiovascular".equalsIgnoreCase(cond)) mapped = "Kalp ve Damar Hastalığı (Cardiovascular)";
+                else if ("hypertension".equalsIgnoreCase(cond))   mapped = "Hipertansiyon / Tansiyon (Hypertension)";
+                else if ("celiac".equalsIgnoreCase(cond))         mapped = "Çölyak / Gluten Hassasiyeti (Celiac)";
+                else if ("ibs".equalsIgnoreCase(cond))            mapped = "Hassas Bağırsak Sendromu (IBS)";
+                allConditions.add(mapped);
+            }
+        }
         if (customHealthConditions != null) allConditions.addAll(customHealthConditions);
         if (allergens != null)              allConditions.addAll(allergens);
 
@@ -77,7 +91,7 @@ public class HealthCheckService {
                 && uiLangCode.toLowerCase(Locale.ROOT).startsWith("tr");
         String targetLang = isTurkish ? "Turkish" : "English";
 
-        // healthTriggers'ı ek bağlam olarak ekle
+        // healthTriggers'ı ek bağlam olarak AI'ya gönder
         List<String> allTriggers = new ArrayList<>();
         if (healthTriggers != null) {
             for (Map.Entry<String, List<String>> e : healthTriggers.entrySet()) {
@@ -89,169 +103,234 @@ public class HealthCheckService {
         String systemPrompt = buildSystemPrompt(targetLang);
         String userPrompt   = buildUserPrompt(recipe, allConditions, allTriggers, isTurkish);
 
+        Log.d("GROQ_TEST", "════════ HealthCheckService ════════");
+        Log.d("GROQ_TEST", "healthConditions      = " + healthConditions);
+        Log.d("GROQ_TEST", "customHealthConditions= " + customHealthConditions);
+        Log.d("GROQ_TEST", "allergens (legacy)    = " + allergens);
+        Log.d("GROQ_TEST", "healthTriggers keys   = " + (healthTriggers != null ? healthTriggers.keySet() : "null"));
+        Log.d("GROQ_TEST", "allConditions (merged)= " + allConditions);
+        Log.d("GROQ_TEST", "allTriggers           = " + allTriggers);
+        Log.d("GROQ_TEST", "── USER PROMPT ──\n" + userPrompt);
+        Log.d("GROQ_TEST", "════════════════════════════════════");
+
         new Thread(() -> {
-            try {
-                JSONObject payload = new JSONObject();
-                payload.put("model", CHAT_MODEL);
+            // Retry mekanizmalı API çağrısı
+            Exception lastException = null;
+            int lastHttpCode = -1;
+            String lastErrBody = "";
 
-                JSONArray messages = new JSONArray();
-                JSONObject sysMsg = new JSONObject();
-                sysMsg.put("role", "system");
-                sysMsg.put("content", systemPrompt);
-                messages.put(sysMsg);
-
-                JSONObject userMsg = new JSONObject();
-                userMsg.put("role", "user");
-                userMsg.put("content", userPrompt);
-                messages.put(userMsg);
-
-                payload.put("messages", messages);
-
-                JSONObject responseFormat = new JSONObject();
-                responseFormat.put("type", "json_object");
-                payload.put("response_format", responseFormat);
-                payload.put("temperature", 0.0); // deterministik, tutarlı sonuç
-
-                URL url = new URL(API_URL);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("Authorization", "Bearer " + API_KEY);
-                conn.setDoOutput(true);
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(20000);
-
-                try (OutputStream os = conn.getOutputStream()) {
-                    os.write(payload.toString().getBytes(StandardCharsets.UTF_8));
+            for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+                if (attempt > 0) {
+                    Log.d(TAG, "Retry attempt " + (attempt + 1) + "/" + MAX_RETRIES
+                            + " (waiting " + RETRY_DELAY_MS + "ms)");
+                    try { Thread.sleep(RETRY_DELAY_MS); } catch (InterruptedException ignored) {}
                 }
 
-                int responseCode = conn.getResponseCode();
-                if (responseCode == 200) {
-                    String responseStr = readStream(conn.getInputStream());
-                    JSONObject jsonResponse = new JSONObject(responseStr);
-                    String text = jsonResponse.getJSONArray("choices")
-                            .getJSONObject(0)
-                            .getJSONObject("message")
-                            .getString("content");
+                try {
+                    JSONObject payload = new JSONObject();
+                    payload.put("model", CHAT_MODEL);
 
-                    String cleanedText = cleanJson(text);
-                    JSONObject resObj  = new JSONObject(cleanedText);
+                    JSONArray messages = new JSONArray();
+                    JSONObject sysMsg = new JSONObject();
+                    sysMsg.put("role", "system");
+                    sysMsg.put("content", systemPrompt);
+                    messages.put(sysMsg);
 
-                    // "uygun_mu" veya legacy "guvenli_mi" her ikisini de destekle
-                    boolean isSafe;
-                    if (resObj.has("uygun_mu")) {
-                        isSafe = resObj.optBoolean("uygun_mu", true);
-                    } else {
-                        isSafe = resObj.optBoolean("guvenli_mi", true);
+                    JSONObject userMsg = new JSONObject();
+                    userMsg.put("role", "user");
+                    userMsg.put("content", userPrompt);
+                    messages.put(userMsg);
+
+                    payload.put("messages", messages);
+
+                    JSONObject responseFormat = new JSONObject();
+                    responseFormat.put("type", "json_object");
+                    payload.put("response_format", responseFormat);
+                    payload.put("temperature", 0.0);
+
+                    URL url = new URL(API_URL);
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("POST");
+                    conn.setRequestProperty("Content-Type", "application/json");
+                    conn.setRequestProperty("Authorization", "Bearer " + API_KEY);
+                    conn.setDoOutput(true);
+                    conn.setConnectTimeout(15000);
+                    conn.setReadTimeout(20000);
+
+                    try (OutputStream os = conn.getOutputStream()) {
+                        os.write(payload.toString().getBytes(StandardCharsets.UTF_8));
                     }
 
-                    // Mesaj: "uyari_mesaji" yoksa "kullanici_mesaji"
-                    String userMessage = resObj.optString("uyari_mesaji",
-                            resObj.optString("kullanici_mesaji", ""));
+                    int responseCode = conn.getResponseCode();
+                    if (responseCode == 200) {
+                        String responseStr = readStream(conn.getInputStream());
+                        JSONObject jsonResponse = new JSONObject(responseStr);
+                        String text = jsonResponse.getJSONArray("choices")
+                                .getJSONObject(0)
+                                .getJSONObject("message")
+                                .getString("content");
 
-                    // Tavsiye ekle (varsa)
-                    String tavsiye = resObj.optString("tavsiye", "");
-                    if (!tavsiye.isEmpty() && !userMessage.isEmpty()) {
-                        userMessage = userMessage + "\n\n" + tavsiye;
-                    }
+                        String cleanedText = cleanJson(text);
+                        JSONObject resObj  = new JSONObject(cleanedText);
 
-                    // Riskli malzemeler
-                    List<String> riskyIngredients = new ArrayList<>();
-                    JSONArray riskyArr = resObj.optJSONArray("tespit_edilen_riskli_malzemeler");
-                    if (riskyArr == null) {
-                        riskyArr = resObj.optJSONArray("riskli_malzemeler");
-                    }
-                    if (riskyArr != null) {
-                        for (int i = 0; i < riskyArr.length(); i++) {
-                            String item = riskyArr.optString(i, "").trim();
-                            if (!item.isEmpty()) riskyIngredients.add(item);
+                        // ── isSafe parse ──
+                        boolean isSafe;
+                        if (resObj.has("uygun_mu")) {
+                            isSafe = resObj.optBoolean("uygun_mu", true);
+                        } else if (resObj.has("guvenli_mi")) {
+                            isSafe = resObj.optBoolean("guvenli_mi", true);
+                        } else if (resObj.has("is_safe")) {
+                            isSafe = resObj.optBoolean("is_safe", true);
+                        } else if (resObj.has("safe")) {
+                            isSafe = resObj.optBoolean("safe", true);
+                        } else {
+                            isSafe = true;
                         }
+
+                        // ── Mesaj parse ──
+                        String userMessage = resObj.optString("uyari_mesaji",
+                                resObj.optString("kullanici_mesaji",
+                                resObj.optString("warning_message",
+                                resObj.optString("message", ""))));
+
+                        // ── Riskli malzemeler parse ──
+                        List<String> riskyIngredients = new ArrayList<>();
+                        JSONArray riskyArr = resObj.optJSONArray("tespit_edilen_riskli_malzemeler");
+                        if (riskyArr == null) riskyArr = resObj.optJSONArray("riskli_malzemeler");
+                        if (riskyArr == null) riskyArr = resObj.optJSONArray("risky_ingredients");
+                        if (riskyArr == null) riskyArr = resObj.optJSONArray("detected_risky_ingredients");
+                        if (riskyArr != null) {
+                            for (int i = 0; i < riskyArr.length(); i++) {
+                                String item = riskyArr.optString(i, "").trim();
+                                if (!item.isEmpty()) riskyIngredients.add(item);
+                            }
+                        }
+
+                        Log.d(TAG, "Groq analiz OK — uygun=" + isSafe
+                                + " riskli=" + riskyIngredients);
+
+                        final boolean      fSafe  = isSafe;
+                        final String       fMsg   = userMessage;
+                        final List<String> fRisky = new ArrayList<>(riskyIngredients);
+                        mainHandler.post(() -> callback.onResult(fSafe, fMsg, fRisky));
+                        return; // Başarılı — döngüden çık
+
+                    } else {
+                        lastHttpCode = responseCode;
+                        try { lastErrBody = readStream(conn.getErrorStream()); } catch (Exception ignored) {}
+                        Log.w(TAG, "Groq HTTP " + responseCode + " (attempt " + (attempt + 1) + "): " + lastErrBody);
+
+                        // 429 (rate limit) veya 5xx (server error) → retry
+                        if (responseCode == 429 || responseCode >= 500) {
+                            continue; // sonraki denemeye geç
+                        }
+                        // Diğer hatalar (401, 400 vb.) → retry'sız fallback'e geç
+                        break;
                     }
 
-                    // Groq riskli malzeme bulamadıysa yerel resolver ile doldur
-                    if (!isSafe && riskyIngredients.isEmpty()) {
-                        riskyIngredients.addAll(RiskyIngredientResolver.resolveFromRecipe(
-                                recipe, healthConditions, customHealthConditions,
-                                healthTriggers, userMessage, uiLangCode));
-                    }
-
-                    Log.d(TAG, "Groq analiz OK — uygun=" + isSafe
-                            + " riskli=" + riskyIngredients);
-
-                    final boolean      fSafe  = isSafe;
-                    final String       fMsg   = userMessage;
-                    final List<String> fRisky = new ArrayList<>(riskyIngredients);
-                    mainHandler.post(() -> callback.onResult(fSafe, fMsg, fRisky));
-
-                } else {
-                    String errBody = "";
-                    try { errBody = readStream(conn.getErrorStream()); } catch (Exception ignored) {}
-                    Log.w(TAG, "Groq HTTP " + responseCode + ": " + errBody
-                            + " → heuristik fallback");
-                    performHeuristicFallback(recipe, allConditions, allTriggers,
-                            targetLang, healthConditions, customHealthConditions,
-                            healthTriggers, uiLangCode, callback, mainHandler);
+                } catch (Exception e) {
+                    lastException = e;
+                    Log.w(TAG, "Groq exception (attempt " + (attempt + 1) + ")", e);
+                    // Ağ hatası → retry
+                    continue;
                 }
-
-            } catch (Exception e) {
-                Log.w(TAG, "Groq exception → heuristik fallback", e);
-                performHeuristicFallback(recipe, allConditions, allTriggers,
-                        targetLang, healthConditions, customHealthConditions,
-                        healthTriggers, uiLangCode, callback, mainHandler);
             }
+
+            // ── Tüm retry'ler başarısız — minimal trigger-tabanlı fallback ──
+            // Bu fallback sadece profil oluşturulurken AI'ın ürettiği healthTriggers'ı kullanır.
+            // Hardcoded kural DEĞİL — tetikleyiciler zaten Groq tarafından analiz edilmiş.
+            Log.w(TAG, "All retries failed (HTTP=" + lastHttpCode + ") → trigger-based fallback");
+
+            if (!allTriggers.isEmpty()) {
+                List<String> fallbackRisky = matchTriggersToIngredients(recipe, allTriggers);
+                if (!fallbackRisky.isEmpty()) {
+                    String fallbackMsg = isTurkish
+                            ? "⚠ AI analizi şu an yapılamadı. Profilinize göre bazı malzemeler dikkat gerektirebilir: "
+                                + android.text.TextUtils.join(", ", fallbackRisky)
+                            : "⚠ AI analysis is currently unavailable. Based on your profile, some ingredients may require caution: "
+                                + android.text.TextUtils.join(", ", fallbackRisky);
+                    mainHandler.post(() -> callback.onResult(false, fallbackMsg, fallbackRisky));
+                    return;
+                }
+            }
+
+            // Trigger yoksa veya eşleşme yoksa → güvenli varsay ama not düş
+            String safeMsg = isTurkish
+                    ? "AI analizi geçici olarak yapılamadı. Tarif güvenli görünüyor ancak emin olmak için tekrar kontrol edebilirsiniz."
+                    : "AI analysis is temporarily unavailable. The recipe appears safe, but you can check again to be sure.";
+            mainHandler.post(() -> callback.onResult(true, safeMsg, new ArrayList<>()));
+
         }).start();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // System Prompt  (iki prompt birleştirildi + güçlendirildi)
+    // Minimal trigger-tabanlı fallback
+    // healthTriggers zaten profil oluşturulurken Groq tarafından analiz edilmiş.
+    // Hardcoded kural DEĞİL — AI'ın ürettiği tetikleyiciler kullanılıyor.
     // ─────────────────────────────────────────────────────────────────────────
-    private String buildSystemPrompt(String targetLang) {
-        return
-            "# ROL\n" +
-            "Sen dünyanın en titiz sağlık ve gastronomi güvenlik asistanısın.\n\n" +
+    private List<String> matchTriggersToIngredients(Recipe recipe, List<String> triggers) {
+        List<String> risky = new ArrayList<>();
+        if (recipe.getIngredients() == null) return risky;
 
-            "# KRİTİK KURAL — ASLA UNUTMA\n" +
-            "Bu konuşmada sana gönderilen 'GÜNCEL PROFİL' dışında HİÇBİR önceki bilgiyi,\n" +
-            "konuşmayı veya analizi dikkate ALMA. Her analizi sıfırdan yap.\n" +
-            "Eğer bir hastalık/alerji GÜNCEL PROFİL listesinde YOKSA, o konuda ASLA uyarı verme.\n\n" +
+        for (Recipe.Ingredient ing : recipe.getIngredients()) {
+            String ingText = (ing.getName() + " " + ing.getDisplayName() + " " + ing.getDisplayText())
+                    .toLowerCase(Locale.ROOT);
 
-            "# DOĞAL DİL ANALİZİ\n" +
-            "Kullanıcı profili tıbbi terimler yerine günlük cümleler içerebilir.\n" +
-            "Örnekler:\n" +
-            "  'Limon yiyince kaşınıyorum' → Limon alerjisi → Tarifte limon, limon suyu, limon kabuğu ara.\n" +
-            "  'Süt içince midem bulanıyor' → Laktoz intoleransı → Tarifte süt, peynir, tereyağı, krema ara.\n" +
-            "  'Fındıktan nefret ediyorum' → Bu bir alerji DEĞİL, sadece tercih; uyarı verme.\n" +
-            "  'Fındığa alerjim var' → Fındık alerjisi → Tarifte fındık ve türevleri ara.\n" +
-            "Cümleyi analiz et, asıl alerjeni/hastalığı tespit et, sonra tarifte tara.\n\n" +
+            for (String trigger : triggers) {
+                String tl = trigger.toLowerCase(Locale.ROOT).trim();
+                if (tl.length() >= 2 && ingText.contains(tl)) {
+                    String label = !TextUtils.isEmpty(ing.getDisplayName())
+                            ? ing.getDisplayName().trim()
+                            : ing.getName().trim();
+                    if (!label.isEmpty() && !risky.contains(label)) {
+                        risky.add(label);
+                    }
+                    break;
+                }
+            }
+        }
+        return risky;
+    }
 
-            "# SEMANTİK EŞLEŞTİRME KURALLARI\n" +
-            "Birebir kelime eşleşmesi aramak YASAK. Şu örnekleri uygula:\n" +
-            "  Şeker/Diyabet → bal, pekmez, şurup, agave, fruktoz, beyaz şeker, esmer şeker\n" +
-            "  Gluten/Çölyak → un, buğday, irmik, bulgur, arpa, çavdar, makarna, ekmek\n" +
-            "  Laktoz/Süt    → süt, peynir, tereyağı, krema, yoğurt, labne, kaşar, beyaz peynir\n" +
-            "  Yumurta       → yumurta, mayonez, omlet, meringue\n" +
-            "  Fındık        → fındık, fındık ezmesi, pralin, nutella\n" +
-            "  Limon         → limon, limon suyu, limon kabuğu rendesi, sitrik asit\n" +
-            "Kullanıcı MANUEL girdi eklemişse (örn: 'limon'), o maddenin TÜM türevlerini de tara.\n\n" +
+    // ─────────────────────────────────────────────────────────────────────────
+    // System Prompt — AI'ın tüm analiz mantığı burada
+    // ─────────────────────────────────────────────────────────────────────────
+    private String buildSystemPrompt(String uiLangCode) {
+        boolean isTurkish = uiLangCode.toLowerCase(Locale.ROOT).startsWith("tr");
 
-            "# ANALİZ AKIŞI\n" +
-            "1. GÜNCEL PROFİL'i oku ve her maddeyi anla (doğal dil → tıbbi kavram).\n" +
-            "2. Tarifte her malzemeyi tek tek kontrol et.\n" +
-            "3. Sadece gerçek bir risk varsa 'uygun_mu: false' döndür.\n" +
-            "4. Risk yoksa 'uygun_mu: true' ve pozitif mesaj döndür.\n\n" +
-
-            "# ÇIKTI FORMATI — SADECE JSON, BAŞKA HİÇBİR ŞEY YAZMA\n" +
-            "{\n" +
-            "  \"uygun_mu\": true/false,\n" +
-            "  \"tespit_edilen_riskli_malzemeler\": [\"malzeme1\", \"malzeme2\"],\n" +
-            "  \"uyari_mesaji\": \"Kullanıcıya yönelik, samimi ve net açıklama. Hangi profil maddesi + hangi tarif malzemesi riski neden yaratıyor, açıkla.\",\n" +
-            "  \"tavsiye\": \"Bu bir tıbbi tavsiye değildir. Gerekirse doktorunuza danışın.\"\n" +
-            "}\n\n" +
-            "KURAL: 'uyari_mesaji' ve 'tespit_edilen_riskli_malzemeler' içindeki tüm metinler "
-                + targetLang + " dilinde yazılmalıdır.\n" +
-            "KURAL: 'uygun_mu' false ise 'tespit_edilen_riskli_malzemeler' BOŞ OLAMAZ.\n" +
-            "KURAL: 'uygun_mu' true ise 'tespit_edilen_riskli_malzemeler' boş liste olmalı ve 'uyari_mesaji' olumlu olmalı.\n" +
-            "KURAL: JSON dışında hiçbir açıklama, selamlama veya markdown ekleme.";
+        if (isTurkish) {
+            return "Sen dünyanın en titiz sağlık ve gastronomi güvenlik asistanısın.\n\n" +
+                "# KRİTİK KURAL\n" +
+                "1. SADECE 'GÜNCEL PROFİL' kısmında yazan hastalıklara/alerjilere göre analiz yap.\n" +
+                "2. Profilde YAZMAYAN hiçbir hastalık için ASLA uyarı verme.\n" +
+                "3. KESİNLİKLE uydurma veya tahmin yapma. Malzemede açıkça belirtilmedikçe 'çapraz bulaşma' (cross-contamination) veya 'üretim bandı' gibi varsayımlarda BULUNMA.\n" +
+                "4. Bir malzeme DOĞRUDAN alerjenin kendisi veya türevi değilse, o malzemeyi GÜVENLİ kabul etmek ZORUNDASIN. Alakasız şeyleri tehlikeli sayma.\n\n" +
+                "# ÇIKTI FORMATI — SADECE JSON\n" +
+                "{\n" +
+                "  \"uygun_mu\": true/false,\n" +
+                "  \"tespit_edilen_riskli_malzemeler\": [\"malzeme1\"],\n" +
+                "  \"uyari_mesaji\": \"Neden riskli olduğunu açıklayan kısa ve net TÜRKÇE uyarı.\"\n" +
+                "}\n\n" +
+                "KURAL: JSON ANAHTARLARI HER ZAMAN TÜRKÇE OLMALI.\n" +
+                "KURAL: TÜM metin değerleri TÜRKÇE olmalı.\n" +
+                "KURAL: JSON dışında hiçbir şey yazma.";
+        } else {
+            return "You are the world's most meticulous health and culinary safety assistant.\n\n" +
+                "# CRITICAL RULE\n" +
+                "1. ONLY analyze based on the conditions listed in the 'CURRENT PROFILE'.\n" +
+                "2. NEVER give warnings for diseases or allergies NOT listed in the profile.\n" +
+                "3. DO NOT hallucinate or guess. DO NOT assume 'cross-contamination' or 'shared processing facilities' unless explicitly stated in the ingredient.\n" +
+                "4. If an ingredient is NOT clearly and directly the allergen itself (or a known direct derivative), you MUST assume it is safe. Do not flag unrelated items.\n\n" +
+                "# OUTPUT FORMAT — ONLY JSON\n" +
+                "{\n" +
+                "  \"uygun_mu\": true/false,\n" +
+                "  \"tespit_edilen_riskli_malzemeler\": [\"ingredient1\"],\n" +
+                "  \"uyari_mesaji\": \"A clear and short warning in ENGLISH explaining the risk.\"\n" +
+                "}\n\n" +
+                "RULE: JSON KEYS MUST ALWAYS BE IN TURKISH (uygun_mu, tespit_edilen_riskli_malzemeler, uyari_mesaji).\n" +
+                "RULE: ALL text values MUST be in ENGLISH.\n" +
+                "RULE: Do NOT write anything outside the JSON.";
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -261,24 +340,76 @@ public class HealthCheckService {
                                     List<String> allTriggers, boolean isTurkish) {
         StringBuilder sb = new StringBuilder();
 
-        sb.append("# GÜNCEL PROFİL\n");
-        sb.append("Hastalıklar ve Alerjiler (SADECE bunlara bak):\n");
-        for (String cond : allConditions) {
-            sb.append("  - ").append(cond).append("\n");
-        }
-
-        if (!allTriggers.isEmpty()) {
-            sb.append("\nBu profil için önceden tespit edilmiş tetikleyici maddeler (referans):\n");
-            for (String t : allTriggers) {
-                sb.append("  - ").append(t).append("\n");
+        if (isTurkish) {
+            sb.append("# GÜNCEL PROFİL\n");
+            sb.append("Hastalıklar ve Alerjiler:\n");
+            for (String cond : allConditions) {
+                sb.append("  - ").append(cond).append("\n");
             }
+            if (!allTriggers.isEmpty()) {
+                sb.append("\nÖnceden tespit edilen riskli maddeler (referans):\n");
+                for (String t : allTriggers) {
+                    sb.append("  - ").append(t).append("\n");
+                }
+            }
+            sb.append("\n# DİKKAT EDİLECEKLER (Semantik Eşleşme)\n");
+            sb.append("Eğer profildeki hastalıklarla ilgiliyse şu gizli malzemelere de dikkat et:\n");
+            String condsLower = allConditions.toString().toLowerCase(Locale.ROOT);
+            if (condsLower.contains("şeker") || condsLower.contains("diyabet")) {
+                sb.append("  - Şeker/Diyabet için: bal, pekmez, şurup, reçel, şeker\n");
+            }
+            if (condsLower.contains("çölyak") || condsLower.contains("gluten")) {
+                sb.append("  - Çölyak/Gluten için: un, buğday, irmik, makarna, ekmek\n");
+            }
+            if (condsLower.contains("laktoz")) {
+                sb.append("  - Laktoz için: süt, peynir, tereyağı, krema, yoğurt\n");
+            }
+            if (condsLower.contains("kalp") || condsLower.contains("damar")) {
+                sb.append("  - Kalp ve Damar için: tereyağı, krema, sucuk, sosis, pastırma, margarin\n");
+            }
+            if (condsLower.contains("tansiyon")) {
+                sb.append("  - Tansiyon için: tuz, soya sosu\n");
+            }
+
+            sb.append("\n# TARİF\n");
+            sb.append("Tarif Adı: \"").append(recipe.getTitle()).append("\"\n");
+            sb.append("Malzemeler:\n");
+        } else {
+            sb.append("# CURRENT PROFILE\n");
+            sb.append("Health Conditions & Allergies:\n");
+            for (String cond : allConditions) {
+                sb.append("  - ").append(cond).append("\n");
+            }
+            if (!allTriggers.isEmpty()) {
+                sb.append("\nPreviously identified risky ingredients (reference):\n");
+                for (String t : allTriggers) {
+                    sb.append("  - ").append(t).append("\n");
+                }
+            }
+            sb.append("\n# SEMANTIC MATCHING GUIDELINES\n");
+            sb.append("If related to the profile, check for these hidden sources:\n");
+            String condsLower = allConditions.toString().toLowerCase(Locale.ROOT);
+            if (condsLower.contains("diabetes") || condsLower.contains("sugar") || condsLower.contains("şeker")) {
+                sb.append("  - Diabetes/Sugar: honey, molasses, syrup, jam, sugar\n");
+            }
+            if (condsLower.contains("celiac") || condsLower.contains("gluten")) {
+                sb.append("  - Celiac/Gluten: flour, wheat, semolina, pasta, bread\n");
+            }
+            if (condsLower.contains("lactose") || condsLower.contains("dairy")) {
+                sb.append("  - Lactose/Dairy: milk, cheese, butter, cream, yogurt\n");
+            }
+            if (condsLower.contains("cardio") || condsLower.contains("heart") || condsLower.contains("kalp") || condsLower.contains("damar")) {
+                sb.append("  - Cardiovascular/Heart: butter, cream, sausage, bacon, margarine\n");
+            }
+            if (condsLower.contains("hypertension") || condsLower.contains("blood pressure") || condsLower.contains("tansiyon")) {
+                sb.append("  - Hypertension: salt, soy sauce\n");
+            }
+
+            sb.append("\n# RECIPE\n");
+            sb.append("Recipe Name: \"").append(recipe.getTitle()).append("\"\n");
+            sb.append("Ingredients:\n");
         }
 
-        sb.append("\n# ANALİZ EDİLECEK TARİF\n");
-        sb.append("Tarif Adı: \"").append(recipe.getTitle()).append("\"\n");
-        sb.append("Malzemeler:\n");
-
-        // Malzemeleri tek tek listele (daha kolay analiz için)
         if (recipe.getIngredients() != null && !recipe.getIngredients().isEmpty()) {
             for (Recipe.Ingredient ing : recipe.getIngredients()) {
                 String line = ing.getDisplayText().trim();
@@ -288,150 +419,14 @@ public class HealthCheckService {
             sb.append(recipe.getFormattedIngredients()).append("\n");
         }
 
-        sb.append("\nYukarıdaki GÜNCEL PROFİL'i ve tarifte listelenen malzemeleri analiz et. ")
-          .append("Sadece profilde yazanlara göre değerlendirme yap.");
+        sb.append("\nAnaliz et. Sadece profilde yazanlara göre değerlendir.");
 
         return sb.toString();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Heuristik Fallback (API erişilemezse)
-    // ─────────────────────────────────────────────────────────────────────────
-    private void performHeuristicFallback(Recipe recipe,
-                                           List<String> allConditions,
-                                           List<String> allTriggers,
-                                           String targetLang,
-                                           List<String> healthConditions,
-                                           List<String> customConditions,
-                                           Map<String, List<String>> healthTriggers,
-                                           String uiLangCode,
-                                           HealthCheckCallback callback,
-                                           Handler mainHandler) {
-
-        boolean simulatedSafe = true;
-        String rationaleText  = "";
-        List<String> riskyIngredients = new ArrayList<>();
-        String ingredientsLower = recipe.getFormattedIngredients() != null
-                ? recipe.getFormattedIngredients().toLowerCase(Locale.ROOT) : "";
-
-        boolean turkish = "Turkish".equals(targetLang);
-
-        // 1. healthTriggers tetikleyicilerini tara
-        if (!allTriggers.isEmpty() && !ingredientsLower.isEmpty()) {
-            for (String trigger : allTriggers) {
-                String tl = trigger.toLowerCase(Locale.ROOT).trim();
-                if (tl.length() >= 2 && containsWord(ingredientsLower, tl)) {
-                    riskyIngredients.add(trigger);
-                    simulatedSafe = false;
-                }
-            }
-            if (!simulatedSafe) {
-                rationaleText = turkish
-                        ? "Sağlık profilinize göre bu tarifteki bazı malzemeler risk oluşturabilir: "
-                            + TextUtils.join(", ", riskyIngredients)
-                        : "Based on your health profile, some ingredients may pose a risk: "
-                            + TextUtils.join(", ", riskyIngredients);
-                deliver(simulatedSafe, rationaleText, riskyIngredients, callback, mainHandler);
-                return;
-            }
-        }
-
-        // 2. Sabit kurallar
-        for (String condition : allConditions) {
-            String c = condition.toLowerCase(Locale.ROOT);
-
-            if (c.contains("diabet") || c.contains("diyabet") || c.contains("şeker hastalığı")) {
-                if (containsWord(ingredientsLower, "sugar","şeker","honey","bal","syrup","şurup","pekmez")) {
-                    simulatedSafe = false;
-                    riskyIngredients.add(turkish ? "şeker/bal/pekmez" : "sugar/honey/syrup");
-                    rationaleText = turkish
-                            ? "Bu tarif rafine şeker veya tatlandırıcı içeriyor. Diyabet profiliniz için dikkatli tüketin."
-                            : "This recipe contains refined sugars. Please consume cautiously for diabetes.";
-                    break;
-                }
-            }
-            if (c.contains("celiac") || c.contains("çölyak") || c.contains("gluten") || c.contains("glüten")) {
-                if (containsWord(ingredientsLower, "flour","un","wheat","buğday","bulgur","irmik","ekmek","makarna")) {
-                    simulatedSafe = false;
-                    riskyIngredients.add(turkish ? "un/buğday/gluten" : "flour/wheat/gluten");
-                    rationaleText = turkish
-                            ? "Gluten içeren malzemeler tespit edildi. Çölyak/gluten hassasiyetiniz için uygun değil."
-                            : "Gluten-containing ingredients detected. Not suitable for celiac/gluten sensitivity.";
-                    break;
-                }
-            }
-            if (c.contains("lactose") || c.contains("laktoz") || c.contains("dairy") || c.contains("süt")) {
-                if (containsWord(ingredientsLower, "milk","süt","cheese","peynir","cream","krema","butter","tereyağı","yoğurt","yogurt")) {
-                    simulatedSafe = false;
-                    riskyIngredients.add(turkish ? "süt ürünleri" : "dairy");
-                    rationaleText = turkish
-                            ? "Bu tarif süt ürünleri içeriyor. Laktoz intoleransınız için uygun olmayabilir."
-                            : "This recipe contains dairy products. May not be suitable for lactose intolerance.";
-                    break;
-                }
-            }
-            if (c.contains("hypertension") || c.contains("hipertansiyon") || c.contains("tansiyon")) {
-                if (containsWord(ingredientsLower, "salt","tuz","soy sauce","soya sosu")) {
-                    simulatedSafe = false;
-                    riskyIngredients.add(turkish ? "tuz/soya sosu" : "salt/soy sauce");
-                    rationaleText = turkish
-                            ? "Yüksek sodyum içeriği tansiyonunuzu olumsuz etkileyebilir."
-                            : "High sodium content may affect your blood pressure.";
-                    break;
-                }
-            }
-            if (c.contains("kidney") || c.contains("böbrek") || c.contains("renal")) {
-                if (containsWord(ingredientsLower, "salt","tuz","banana","muz","potassium")) {
-                    simulatedSafe = false;
-                    riskyIngredients.add(turkish ? "tuz/potasyum" : "salt/potassium");
-                    rationaleText = turkish
-                            ? "Sodyum veya potasyum içeriği böbrek rahatsızlığınız için dikkat gerektirir."
-                            : "Sodium or potassium content requires caution for kidney disease.";
-                    break;
-                }
-            }
-            if (c.contains("cardiovascular") || c.contains("kalp") || c.contains("kolesterol") || c.contains("cholesterol")) {
-                if (containsWord(ingredientsLower, "butter","tereyağı","cream","krema","sausage","sucuk","bacon","pastırma")) {
-                    simulatedSafe = false;
-                    riskyIngredients.add(turkish ? "doymuş yağ" : "saturated fat");
-                    rationaleText = turkish
-                            ? "Doymuş yağ içerikleri kalp/kolesterol profiliniz için önerilmez."
-                            : "Saturated fat content is not recommended for cardiovascular health.";
-                    break;
-                }
-            }
-        }
-
-        if (simulatedSafe) {
-            rationaleText = turkish
-                    ? "Tarifteki malzemeler sağlık profilinizle çelişmiyor. Afiyet olsun!"
-                    : "The ingredients do not conflict with your health profile. Enjoy!";
-        }
-
-        deliver(simulatedSafe, rationaleText, riskyIngredients, callback, mainHandler);
-    }
-
-    private void deliver(boolean isSafe, String rationale, List<String> risky,
-                          HealthCheckCallback callback, Handler mainHandler) {
-        final boolean      fSafe  = isSafe;
-        final String       fMsg   = rationale;
-        final List<String> fRisky = new ArrayList<>(risky);
-        mainHandler.post(() -> callback.onResult(fSafe, fMsg, fRisky));
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
     // Yardımcı
     // ─────────────────────────────────────────────────────────────────────────
-    private boolean containsWord(String text, String... targets) {
-        if (text == null || text.isEmpty()) return false;
-        for (String word : targets) {
-            String w = java.util.regex.Pattern.quote(word.toLowerCase(Locale.ROOT));
-            String regex = "(?i)(^|\\s|\\p{Punct})" + w + "(\\p{L}{0,4})?(\\s|\\p{Punct}|$)";
-            if (java.util.regex.Pattern.compile(regex).matcher(text).find()) return true;
-        }
-        return false;
-    }
-
     private String readStream(InputStream stream) throws Exception {
         if (stream == null) return "";
         BufferedReader br = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));

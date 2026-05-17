@@ -573,13 +573,19 @@ public class ProfileFragment extends Fragment {
     }
 
     private void refreshCustomHealthChipsForCurrentLanguage(boolean forcePersist) {
-        if (!isAdded() || chipGroupCustomHealthConditions == null
-                || userCustomHealthConditionsI18n.isEmpty()) {
+        if (!isAdded() || chipGroupCustomHealthConditions == null) {
             return;
         }
         String uiLang = LocaleHelper.getLanguage(requireContext());
         boolean langChanged = !uiLang.equals(lastDisplayedUiLang);
         lastDisplayedUiLang = uiLang;
+
+        // When there are no custom conditions, still populate predefined chips
+        // and ensure isLoading is set to false so chip listeners work
+        if (userCustomHealthConditionsI18n.isEmpty()) {
+            populateHealthConditionChips();
+            return;
+        }
 
         if (!langChanged && !forcePersist) {
             populateHealthConditionChips();
@@ -718,8 +724,10 @@ public class ProfileFragment extends Fragment {
         updates.put("activeCustomHealthConditionKeys", new ArrayList<>(activeCustomHealthKeys));
         updates.put("healthTriggers", userHealthTriggers);
         updates.put("healthWarningTemplates", userHealthWarningTemplates);
+        updates.put("allergens", new ArrayList<>()); // Clear legacy allergens
 
         db.collection("users").document(currentUser.getUid()).update(updates);
+        new com.recipebookpro.util.HealthWarningCache(requireContext()).clearAll();
 
         final String uid = currentUser.getUid();
         final List<String> finalConditions = new ArrayList<>(userHealthConditions);
@@ -737,6 +745,7 @@ public class ProfileFragment extends Fragment {
                 entity.setActiveCustomHealthConditionKeys(finalActiveKeys);
                 entity.setHealthTriggers(finalTriggers);
                 entity.setHealthWarningTemplates(finalTemplates);
+                entity.setAllergens(new ArrayList<>()); // Clear legacy allergens locally
                 entity.setLastUpdated(System.currentTimeMillis());
                 localDb.userDao().insertUser(entity);
             }
