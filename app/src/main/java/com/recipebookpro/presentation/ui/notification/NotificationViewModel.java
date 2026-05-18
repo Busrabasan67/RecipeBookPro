@@ -29,10 +29,6 @@ public class NotificationViewModel extends ViewModel {
         repository.markAsRead(notificationId);
     }
 
-    public void deleteNotification(String notificationId) {
-        repository.deleteNotification(notificationId);
-    }
-
     public void respondToInvitation(String invitationId, boolean accept) {
         repository.respondToInvitation(invitationId, accept);
     }

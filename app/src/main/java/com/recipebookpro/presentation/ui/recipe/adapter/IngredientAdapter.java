@@ -57,7 +57,7 @@ public class IngredientAdapter extends RecyclerView.Adapter<IngredientAdapter.Vi
             // field and hide amount if we want,
             // or we can separate them. ScaledDisplayText returns everything. Let's just put
             // it in tvIngredientName.
-            holder.tvIngredientName.setText(ingredient.getScaledDisplayText(currentScaleRatio));
+            holder.tvIngredientName.setText(amountUnit);
             holder.tvIngredientAmountUnit.setVisibility(View.GONE);
         } else {
             holder.tvIngredientName.setText(ingredient.getDisplayName());

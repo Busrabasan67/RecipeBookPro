@@ -174,7 +174,7 @@ public class CookbookPickerBottomSheet extends BottomSheetDialogFragment {
         if (isOwnRecipe()) {
             db.collection("cookbooks").document(book.getId())
               .update("recipeIds", FieldValue.arrayUnion(recipe.getId()))
-              .addOnSuccessListener(aVoid -> showSuccessAndDismiss(book.getName()))
+              .addOnSuccessListener(aVoid -> showSuccessAndDismiss())
               .addOnFailureListener(e ->
                   Snackbar.make(requireView(), R.string.error_generic, Snackbar.LENGTH_SHORT).show());
         } else {
@@ -210,12 +210,12 @@ public class CookbookPickerBottomSheet extends BottomSheetDialogFragment {
         batch.update(cookbookRef, "recipeIds", FieldValue.arrayUnion(newRecipeRef.getId()));
 
         batch.commit()
-             .addOnSuccessListener(aVoid -> showSuccessAndDismiss(book.getName()))
+             .addOnSuccessListener(aVoid -> showSuccessAndDismiss())
              .addOnFailureListener(e ->
                  Snackbar.make(requireView(), R.string.error_generic, Snackbar.LENGTH_SHORT).show());
     }
 
-    private void showSuccessAndDismiss(String cookbookName) {
+    private void showSuccessAndDismiss() {
         if (getActivity() != null) {
             View rootView = getActivity().findViewById(android.R.id.content);
             if (rootView != null) {

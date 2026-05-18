@@ -40,10 +40,6 @@ public final class DayPlannerCalorieSummary {
         return knownDayTotal;
     }
 
-    public int getUnknownRecipeCount() {
-        return unknownRecipeCount;
-    }
-
     /** Tarif var ama hiçbirinde kalori yok. */
     public boolean isAllPending() {
         return hasRecipes && knownDayTotal == 0 && unknownRecipeCount > 0;

@@ -5,7 +5,6 @@ import android.text.TextUtils;
 
 import com.google.android.gms.tasks.Tasks;
 import com.recipebookpro.data.remote.MLKitTranslationService;
-import com.recipebookpro.presentation.ui.LocaleHelper;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -71,10 +70,6 @@ public final class RiskyIngredientLocaleHelper {
             translateWithMlKit(context, labels, source, target, callback);
         }).addOnFailureListener(e ->
                 callback.onReady(applyDictionaryFallback(labels, target)));
-    }
-
-    public static void ensureUiLanguage(Context context, List<String> labels, Callback callback) {
-        ensureLanguage(context, labels, LocaleHelper.getLanguage(context), callback);
     }
 
     private static String guessSource(String targetLang, List<String> labels) {

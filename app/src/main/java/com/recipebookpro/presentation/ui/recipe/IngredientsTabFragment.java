@@ -23,20 +23,16 @@ import java.util.ArrayList;
 public class IngredientsTabFragment extends Fragment {
 
     private static final String ARG_RECIPE = "recipe";
-    private static final String ARG_ALLERGENS = "allergens";
-
     private Recipe recipe;
-    private ArrayList<String> userAllergens;
     private int currentServings;
     
     private TextView tvServingsCount;
     private IngredientAdapter adapter;
 
-    public static IngredientsTabFragment newInstance(Recipe recipe, ArrayList<String> userAllergens) {
+    public static IngredientsTabFragment newInstance(Recipe recipe) {
         IngredientsTabFragment fragment = new IngredientsTabFragment();
         Bundle args = new Bundle();
         args.putSerializable(ARG_RECIPE, recipe);
-        args.putStringArrayList(ARG_ALLERGENS, userAllergens);
         fragment.setArguments(args);
         return fragment;
     }
@@ -46,7 +42,6 @@ public class IngredientsTabFragment extends Fragment {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
             recipe = (Recipe) getArguments().getSerializable(ARG_RECIPE);
-            userAllergens = getArguments().getStringArrayList(ARG_ALLERGENS);
             currentServings = recipe.getServings();
             if (currentServings <= 0) currentServings = 1;
         }
@@ -115,7 +110,4 @@ public class IngredientsTabFragment extends Fragment {
         adapter.setScaleRatio(ratio);
     }
 
-    public void refreshIngredientsHighlight() {
-        // Obsolete, handled by ViewModel observer now
-    }
 }

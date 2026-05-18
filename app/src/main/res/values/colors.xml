@@ -46,27 +46,11 @@
     <color name="md_theme_dark_outline">#A08D86</color>
     <color name="md_theme_dark_outlineVariant">#53433D</color>
 
-    <color name="book_scene_top">#4F2F1F</color>
-    <color name="book_scene_bottom">#2E1C14</color>
-    <color name="book_cover_base">#7A523A</color>
-    <color name="book_cover_shadow">#593828</color>
-    <color name="book_cover_title">#F8F1E6</color>
-    <color name="book_cover_subtle">#D7C0AA</color>
-    <color name="book_paper">#F7F0E3</color>
-    <color name="book_paper_edge">#E4D8C4</color>
     <color name="book_rule_line">#D7C4AA</color>
-    <color name="book_margin_line">#D9A090</color>
     <color name="book_ink">#4A2E22</color>
-    <color name="book_body_ink">#5A4032</color>
     <color name="book_note_ink">#775B4B</color>
-    <color name="book_section_title">#5A3523</color>
-    <color name="book_page_number">#977861</color>
-    <color name="book_toolbar_title">#F9F1E3</color>
-    <color name="book_toolbar_subtitle">#DEC4AA</color>
-    <color name="book_toolbar_button">#F8E6CC</color>
     <color name="book_accent">#D1A15A</color>
     <color name="book_accent_soft">#D8B98B</color>
-    <color name="book_ink_on_dark">#4B2E1E</color>
 
     <color name="category_dessert">#F3C7D9</color>
     <color name="category_main_course">#D7C7FF</color>
