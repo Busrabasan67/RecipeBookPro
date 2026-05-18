@@ -438,8 +438,9 @@
     <string name="empty_fields">Lütfen tüm alanları doldurun.</string>
     <string name="password_too_short">Şifre en az 6 karakter olmalıdır.</string>
     <string name="passwords_not_match">Şifreler eşleşmiyor.</string>
-    <string name="login_failed">Giriş başarısız. Bilgilerinizi kontrol edin.</string>
+    <string name="login_failed">E-posta veya şifre hatalı. Lütfen bilgilerinizi kontrol edip tekrar deneyin.</string>
     <string name="register_failed">Kayıt başarısız. Lütfen tekrar deneyin.</string>
+    <string name="register_success">Kayıt işleminiz başarıyla tamamlandı! RecipeBook Pro\'ya hoş geldiniz.</string>
     <string name="no_account">Hesabınız yok mu? Kayıt Ol</string>
     <string name="already_have_account">Zaten hesabınız var mı? Giriş Yap</string>
     <string name="sign_up">Kayıt Ol</string>

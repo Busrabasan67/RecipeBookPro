@@ -330,8 +330,9 @@
     <string name="empty_fields">Please fill in all fields.</string>
     <string name="password_too_short">Password must be at least 6 characters.</string>
     <string name="passwords_not_match">Passwords do not match.</string>
-    <string name="login_failed">Login failed. Check your credentials.</string>
+    <string name="login_failed">Incorrect email or password. Please verify your credentials and try again.</string>
     <string name="register_failed">Registration failed. Please try again.</string>
+    <string name="register_success">Registration completed successfully! Welcome to RecipeBook Pro.</string>
     <string name="no_account">No account? Sign Up</string>
     <string name="already_have_account">Already have an account? Sign In</string>
     <string name="sign_up">Sign Up</string>
