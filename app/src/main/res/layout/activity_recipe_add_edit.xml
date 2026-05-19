@@ -190,30 +190,6 @@
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
 
-            <!-- Allergens -->
-            <com.google.android.material.textview.MaterialTextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/allergens_label"
-                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                android:layout_marginBottom="8dp" />
-                
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/cgAllergens"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                app:singleSelection="false" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAddCustomAllergen"
-                style="@style/Widget.Material3.Button.TextButton.Icon"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/add_custom"
-                app:icon="@drawable/ic_add"
-                android:layout_marginBottom="24dp" />
-
             <!-- Ingredients -->
             <com.google.android.material.textview.MaterialTextView
                 android:layout_width="match_parent"

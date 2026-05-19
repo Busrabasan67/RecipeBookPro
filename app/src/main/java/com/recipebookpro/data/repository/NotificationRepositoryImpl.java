@@ -103,16 +103,42 @@ public class NotificationRepositoryImpl implements NotificationRepository {
     }
 
     @Override
-    public void deleteNotification(String notificationId) {
+    public void deleteNotification(Notification notification) {
+        if (notification == null || notification.getId() == null || notification.getId().trim().isEmpty()) {
+            return;
+        }
+
+        String invitationId = getInvitationId(notification);
+        String notificationId = notification.getId();
         db.collection(COLLECTION_NOTIFICATIONS).document(notificationId).get()
                 .addOnSuccessListener(doc -> {
                     if (doc.exists()) {
                         doc.getReference().delete();
-                    } else {
-                        // If it's an invitation, we don't delete the invitation here, 
-                        // as it should be handled via respondToInvitation
                     }
+                    dismissInvitationIfNeeded(invitationId);
                 });
+    }
+
+    private String getInvitationId(Notification notification) {
+        if (!Notification.TYPE_INVITATION.equals(notification.getType())) {
+            return null;
+        }
+        if (notification.getData() != null) {
+            String dataInvitationId = notification.getData().get("invitationId");
+            if (dataInvitationId != null && !dataInvitationId.trim().isEmpty()) {
+                return dataInvitationId.trim();
+            }
+        }
+        return notification.getId();
+    }
+
+    private void dismissInvitationIfNeeded(String invitationId) {
+        if (invitationId == null || invitationId.trim().isEmpty()) {
+            return;
+        }
+        db.collection(COLLECTION_INVITATIONS)
+                .document(invitationId)
+                .update("status", Invitation.STATUS_DISMISSED);
     }
 
     @Override

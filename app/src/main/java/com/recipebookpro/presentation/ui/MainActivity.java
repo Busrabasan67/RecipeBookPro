@@ -28,7 +28,6 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.recipebookpro.R;
 import com.recipebookpro.data.repository.NotificationRepositoryImpl;
 import com.recipebookpro.domain.repository.NotificationRepository;
-import com.recipebookpro.util.LocaleUtils;
 import com.recipebookpro.util.NotificationHelper;
 import com.recipebookpro.service.NotificationService;
 import android.content.Intent;
@@ -36,10 +35,8 @@ import android.content.Intent;
 public class MainActivity extends BaseActivity {
 
     private NavController navController;
-    private static final int NOTIFICATION_PERMISSION_CODE = 101;
     private NotificationRepository notificationRepository;
     private BadgeDrawable badgeDrawable;
-    private long lastAlertTimestamp = System.currentTimeMillis();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -169,7 +166,6 @@ public class MainActivity extends BaseActivity {
             
             MaterialToolbar toolbar = findViewById(R.id.topAppBar);
             toolbar.post(() -> {
-                int count = 0; // Temporary, will be updated by observer
                 BadgeUtils.attachBadgeDrawable(badgeDrawable, toolbar, R.id.action_notifications);
             });
         }

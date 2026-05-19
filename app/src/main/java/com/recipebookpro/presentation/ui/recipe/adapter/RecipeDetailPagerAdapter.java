@@ -15,12 +15,11 @@ import java.util.ArrayList;
 public class RecipeDetailPagerAdapter extends FragmentStateAdapter {
 
     private final Recipe recipe;
-    private final ArrayList<String> userAllergens;
 
-    public RecipeDetailPagerAdapter(@NonNull FragmentActivity fragmentActivity, Recipe recipe, ArrayList<String> userAllergens) {
+
+    public RecipeDetailPagerAdapter(@NonNull FragmentActivity fragmentActivity, Recipe recipe) {
         super(fragmentActivity);
         this.recipe = recipe;
-        this.userAllergens = userAllergens;
     }
 
     @NonNull
@@ -28,13 +27,13 @@ public class RecipeDetailPagerAdapter extends FragmentStateAdapter {
     public Fragment createFragment(int position) {
         switch (position) {
             case 0:
-                return IngredientsTabFragment.newInstance(recipe, userAllergens);
+                return IngredientsTabFragment.newInstance(recipe);
             case 1:
                 return StepsTabFragment.newInstance(recipe);
             case 2:
                 return NotesTabFragment.newInstance(recipe);
             default:
-                return IngredientsTabFragment.newInstance(recipe, userAllergens);
+                return IngredientsTabFragment.newInstance(recipe);
         }
     }
 

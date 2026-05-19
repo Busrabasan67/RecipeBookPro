@@ -75,7 +75,6 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
     private DayCardAdapter dayCardAdapter;
     private ShoppingListAdapter shoppingListAdapter;
     private final List<ShoppingList> shoppingLists = new ArrayList<>();
-    private ListenerRegistration shoppingListsListener;
 
     private final Map<String, List<Recipe>> resolvedRecipes = new HashMap<>();
     private ListenerRegistration currentPlanListener;
@@ -447,11 +446,11 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
     }
 
     @Override
-    public void onAddRecipeClick(String dayKey, int dayIndex) {
+    public void onAddRecipeClick(String dayKey) {
         RecipeSearchBottomSheet sheet = RecipeSearchBottomSheet.newInstance(dayKey);
         sheet.setOnRecipeSelectedListener((key, recipe) -> {
             if (currentPlan == null) return;
-            
+
             List<String> dayIds = currentPlan.getDays().get(key);
             if (dayIds == null) {
                 dayIds = new ArrayList<>();

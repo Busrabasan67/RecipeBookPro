@@ -186,15 +186,13 @@ public class HealthCheckRepositoryImpl implements HealthCheckRepository {
                     Log.w(TAG, "Groq HTTP " + responseCode + ": " + errBody
                             + " → heuristik fallback");
                     performHeuristicFallback(recipe, allConditions, allTriggers,
-                            targetLang, healthConditions, customHealthConditions,
-                            healthTriggers, uiLangCode, callback, mainHandler);
+                            targetLang, callback, mainHandler);
                 }
 
             } catch (Exception e) {
                 Log.w(TAG, "Groq exception → heuristik fallback", e);
                 performHeuristicFallback(recipe, allConditions, allTriggers,
-                        targetLang, healthConditions, customHealthConditions,
-                        healthTriggers, uiLangCode, callback, mainHandler);
+                        targetLang, callback, mainHandler);
             }
         }).start();
     }
@@ -300,10 +298,6 @@ public class HealthCheckRepositoryImpl implements HealthCheckRepository {
                                            List<String> allConditions,
                                            List<String> allTriggers,
                                            String targetLang,
-                                           List<String> healthConditions,
-                                           List<String> customConditions,
-                                           Map<String, List<String>> healthTriggers,
-                                           String uiLangCode,
                                            HealthCheckCallback callback,
                                            Handler mainHandler) {
 

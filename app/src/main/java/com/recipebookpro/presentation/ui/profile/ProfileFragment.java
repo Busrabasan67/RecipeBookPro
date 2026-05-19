@@ -768,31 +768,4 @@ public class ProfileFragment extends Fragment {
         }).start();
     }
 
-    /**
-     * Persist only healthTriggers and healthWarningTemplates to Firestore/Room.
-     * Called from addCustomAllergenChip after Groq analysis adds triggers for allergens.
-     */
-    private void updateHealthTriggersInDatabase() {
-        if (currentUser == null) return;
-
-        java.util.Map<String, Object> updates = new java.util.HashMap<>();
-        updates.put("healthTriggers", userHealthTriggers);
-        updates.put("healthWarningTemplates", userHealthWarningTemplates);
-
-        db.collection("users").document(currentUser.getUid()).update(updates);
-
-        final String uid = currentUser.getUid();
-        final java.util.Map<String, java.util.List<String>> finalTriggers = new java.util.HashMap<>(userHealthTriggers);
-        final java.util.Map<String, String> finalTemplates = new java.util.HashMap<>(userHealthWarningTemplates);
-        new Thread(() -> {
-            com.recipebookpro.data.local.AppDatabase localDb = com.recipebookpro.data.local.AppDatabase.getDatabase(requireContext());
-            com.recipebookpro.data.local.entity.UserEntity entity = localDb.userDao().getUserByUid(uid);
-            if (entity != null) {
-                entity.setHealthTriggers(finalTriggers);
-                entity.setHealthWarningTemplates(finalTemplates);
-                entity.setLastUpdated(System.currentTimeMillis());
-                localDb.userDao().insertUser(entity);
-            }
-        }).start();
-    }
 }

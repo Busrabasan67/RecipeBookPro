@@ -224,16 +224,6 @@ public final class ShoppingIngredientLocaleFix {
         return t.substring(0, 1).toUpperCase(Locale.ROOT) + t.substring(1).toLowerCase(Locale.ROOT);
     }
 
-    public static String canonicalMergeKey(ShoppingItem item, String targetLang) {
-        if (item == null) {
-            return "|";
-        }
-        ShoppingItem w = new ShoppingItem(item.getName(), item.getAmount(), item.getUnit());
-        w.setHomeStatus(item.getHomeStatus());
-        applyPostTranslationFixes(w, targetLang);
-        return canonicalMergeKeyAfterFix(w, targetLang);
-    }
-
     public static String canonicalMergeKeyAfterFix(ShoppingItem item, String targetLang) {
         String tl = normalizeTargetLang(targetLang);
         if ("tr".equals(tl)) {
