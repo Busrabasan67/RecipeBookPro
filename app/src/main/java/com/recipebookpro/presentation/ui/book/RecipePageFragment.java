@@ -32,11 +32,9 @@ import coil.request.ImageRequest;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public class RecipePageFragment extends Fragment {
 
-    private static final String ARG_RECIPE = "recipe";
     private static final String ARG_PAGE_NO = "page_no";
     private static final String ARG_TOTAL = "total";
 

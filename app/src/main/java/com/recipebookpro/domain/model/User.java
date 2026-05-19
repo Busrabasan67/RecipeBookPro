@@ -1,7 +1,9 @@
 package com.recipebookpro.domain.model;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class User {
     private String uid;
@@ -11,6 +13,12 @@ public class User {
 
     // --- New fields ---
     private List<String> allergens;       // user allergens for warnings
+    private List<String> healthConditions;
+    private List<String> customHealthConditions;              // legacy single-language list
+    private List<LocalizedText> customHealthConditionsI18n;   // tr + en stored together
+    private List<String> activeCustomHealthConditionKeys;   // checked chip keys only
+    private Map<String, List<String>> healthTriggers;       // condition name → trigger ingredients
+    private Map<String, String> healthWarningTemplates;      // condition name → short warning template
     private String profileImageUrl;
     private String role;                  // "user" | "admin"
     
@@ -23,6 +31,12 @@ public class User {
     public User() {
         // Firestore requires an empty constructor
         allergens = new ArrayList<>();
+        healthConditions = new ArrayList<>();
+        customHealthConditions = new ArrayList<>();
+        customHealthConditionsI18n = new ArrayList<>();
+        activeCustomHealthConditionKeys = new ArrayList<>();
+        healthTriggers = new HashMap<>();
+        healthWarningTemplates = new HashMap<>();
         followerIds = new ArrayList<>();
         followingIds = new ArrayList<>();
     }
@@ -33,6 +47,12 @@ public class User {
         this.displayName = displayName;
         this.createdAt = createdAt;
         this.allergens = new ArrayList<>();
+        this.healthConditions = new ArrayList<>();
+        this.customHealthConditions = new ArrayList<>();
+        this.customHealthConditionsI18n = new ArrayList<>();
+        this.activeCustomHealthConditionKeys = new ArrayList<>();
+        this.healthTriggers = new HashMap<>();
+        this.healthWarningTemplates = new HashMap<>();
         this.followerIds = new ArrayList<>();
         this.followingIds = new ArrayList<>();
         this.role = "user";
@@ -107,5 +127,99 @@ public class User {
 
     public void setFollowingCount(int followingCount) {
         this.followingCount = followingCount;
+    }
+
+    public List<String> getHealthConditions() {
+        return healthConditions == null ? new ArrayList<>() : healthConditions;
+    }
+    public void setHealthConditions(List<String> healthConditions) {
+        this.healthConditions = healthConditions != null ? healthConditions : new ArrayList<>();
+    }
+
+    public List<String> getCustomHealthConditions() {
+        return customHealthConditions == null ? new ArrayList<>() : customHealthConditions;
+    }
+    public void setCustomHealthConditions(List<String> customHealthConditions) {
+        this.customHealthConditions = customHealthConditions != null ? customHealthConditions : new ArrayList<>();
+    }
+
+    public List<LocalizedText> getCustomHealthConditionsI18n() {
+        return customHealthConditionsI18n == null ? new ArrayList<>() : customHealthConditionsI18n;
+    }
+
+    public void setCustomHealthConditionsI18n(List<LocalizedText> customHealthConditionsI18n) {
+        this.customHealthConditionsI18n = customHealthConditionsI18n != null
+                ? customHealthConditionsI18n : new ArrayList<>();
+    }
+
+    /** Resolved bilingual list (migrates legacy string-only data when needed). */
+    public List<LocalizedText> resolveCustomHealthConditionsI18n() {
+        if (customHealthConditionsI18n != null && !customHealthConditionsI18n.isEmpty()) {
+            return customHealthConditionsI18n;
+        }
+        return com.recipebookpro.util.BilingualTextHelper.mergeLegacyStrings(
+                getCustomHealthConditions(), customHealthConditionsI18n);
+    }
+
+    public List<String> getActiveCustomHealthConditionKeys() {
+        if (activeCustomHealthConditionKeys != null && !activeCustomHealthConditionKeys.isEmpty()) {
+            return activeCustomHealthConditionKeys;
+        }
+        if (customHealthConditions != null && !customHealthConditions.isEmpty()) {
+            List<String> keys = new ArrayList<>();
+            for (String condition : customHealthConditions) {
+                keys.add(LocalizedText.fromLegacy(condition).getKey());
+            }
+            return keys;
+        }
+        return new ArrayList<>();
+    }
+
+    public void setActiveCustomHealthConditionKeys(List<String> activeCustomHealthConditionKeys) {
+        this.activeCustomHealthConditionKeys = activeCustomHealthConditionKeys != null
+                ? activeCustomHealthConditionKeys : new ArrayList<>();
+    }
+
+    public List<LocalizedText> resolveActiveCustomHealthConditionsI18n() {
+        List<LocalizedText> all = resolveCustomHealthConditionsI18n();
+        List<String> activeKeys = getActiveCustomHealthConditionKeys();
+        List<LocalizedText> active = new ArrayList<>();
+        for (LocalizedText item : all) {
+            if (activeKeys.contains(item.getKey())) {
+                active.add(item);
+            }
+        }
+        return active;
+    }
+
+    public List<String> getCustomHealthConditionsForLang(String lang) {
+        return com.recipebookpro.util.BilingualTextHelper.labelsForLang(resolveActiveCustomHealthConditionsI18n(), lang);
+    }
+
+    public Map<String, List<String>> getHealthTriggers() {
+        return healthTriggers == null ? new HashMap<>() : healthTriggers;
+    }
+    public void setHealthTriggers(Map<String, List<String>> healthTriggers) {
+        this.healthTriggers = healthTriggers != null ? healthTriggers : new HashMap<>();
+    }
+
+    /** Triggers for checked custom conditions only (inactive chips excluded). */
+    public Map<String, List<String>> getActiveHealthTriggers() {
+        Map<String, List<String>> all = getHealthTriggers();
+        List<String> activeKeys = getActiveCustomHealthConditionKeys();
+        Map<String, List<String>> filtered = new HashMap<>();
+        for (String key : activeKeys) {
+            if (all.containsKey(key)) {
+                filtered.put(key, all.get(key));
+            }
+        }
+        return filtered;
+    }
+
+    public Map<String, String> getHealthWarningTemplates() {
+        return healthWarningTemplates == null ? new HashMap<>() : healthWarningTemplates;
+    }
+    public void setHealthWarningTemplates(Map<String, String> healthWarningTemplates) {
+        this.healthWarningTemplates = healthWarningTemplates != null ? healthWarningTemplates : new HashMap<>();
     }
 }

@@ -128,10 +128,6 @@ public class Cookbook implements Serializable {
         return userId;
     }
 
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-
     public String getName() {
         return name;
     }
@@ -194,10 +190,6 @@ public class Cookbook implements Serializable {
         return followerCount;
     }
 
-    public void setFollowerCount(int followerCount) {
-        this.followerCount = followerCount;
-    }
-
     public List<String> getRecipeIds() {
         return recipeIds;
     }
@@ -208,10 +200,6 @@ public class Cookbook implements Serializable {
 
     public long getCreatedAt() {
         return createdAt;
-    }
-
-    public void setCreatedAt(long createdAt) {
-        this.createdAt = createdAt;
     }
 
     public Map<String, List<StickerModel>> getRecipeStickers() {

@@ -14,6 +14,7 @@ public class Invitation implements Serializable {
     public static final String STATUS_PENDING = "pending";
     public static final String STATUS_ACCEPTED = "accepted";
     public static final String STATUS_REJECTED = "rejected";
+    public static final String STATUS_DISMISSED = "dismissed";
 
     private String id;
     private String type;

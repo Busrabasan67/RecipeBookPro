@@ -12,18 +12,24 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.recipebookpro.R;
 import com.recipebookpro.domain.model.Recipe;
+import com.recipebookpro.util.RiskyIngredientMatcher;
 
 import java.util.List;
 
 public class IngredientAdapter extends RecyclerView.Adapter<IngredientAdapter.ViewHolder> {
 
     private final List<Recipe.Ingredient> ingredients;
-    private final List<String> userAllergens;
+    private List<String> riskyMatchTerms;
     private double currentScaleRatio = 1.0;
 
-    public IngredientAdapter(List<Recipe.Ingredient> ingredients, List<String> userAllergens) {
+    public IngredientAdapter(List<Recipe.Ingredient> ingredients, List<String> riskyMatchTerms) {
         this.ingredients = ingredients;
-        this.userAllergens = userAllergens;
+        this.riskyMatchTerms = riskyMatchTerms;
+    }
+
+    public void setRiskyMatchTerms(List<String> riskyMatchTerms) {
+        this.riskyMatchTerms = riskyMatchTerms;
+        notifyDataSetChanged();
     }
 
     public void setScaleRatio(double ratio) {
@@ -42,53 +48,52 @@ public class IngredientAdapter extends RecyclerView.Adapter<IngredientAdapter.Vi
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Recipe.Ingredient ingredient = ingredients.get(position);
-        
+
         // Use scaled display text if a numeric amount exists
         String amountUnit = "";
         if (ingredient.getNumericAmount() > 0) {
-             amountUnit = ingredient.getScaledDisplayText(currentScaleRatio);
-             // Since scaled display text includes the name, we just show that in the name field and hide amount if we want,
-             // or we can separate them. ScaledDisplayText returns everything. Let's just put it in tvIngredientName.
-             holder.tvIngredientName.setText(ingredient.getScaledDisplayText(currentScaleRatio));
-             holder.tvIngredientAmountUnit.setVisibility(View.GONE);
+            amountUnit = ingredient.getScaledDisplayText(currentScaleRatio);
+            // Since scaled display text includes the name, we just show that in the name
+            // field and hide amount if we want,
+            // or we can separate them. ScaledDisplayText returns everything. Let's just put
+            // it in tvIngredientName.
+            holder.tvIngredientName.setText(amountUnit);
+            holder.tvIngredientAmountUnit.setVisibility(View.GONE);
         } else {
-             holder.tvIngredientName.setText(ingredient.getDisplayName());
-             String au = (ingredient.getAmount() + " " + ingredient.getUnit()).trim();
-             if (!au.isEmpty()) {
-                 holder.tvIngredientAmountUnit.setText(au);
-                 holder.tvIngredientAmountUnit.setVisibility(View.VISIBLE);
-             } else {
-                 holder.tvIngredientAmountUnit.setVisibility(View.GONE);
-             }
-        }
-
-        // Allergy check â€” yellow background on the entire row
-        boolean hasAllergy = false;
-        if (userAllergens != null && !userAllergens.isEmpty()) {
-            String ingNameLower = ingredient.getName().toLowerCase();
-            for (String allergen : userAllergens) {
-                if (ingNameLower.contains(allergen.toLowerCase())) {
-                    hasAllergy = true;
-                    break;
-                }
+            holder.tvIngredientName.setText(ingredient.getDisplayName());
+            String au = (ingredient.getAmount() + " " + ingredient.getUnit()).trim();
+            if (!au.isEmpty()) {
+                holder.tvIngredientAmountUnit.setText(au);
+                holder.tvIngredientAmountUnit.setVisibility(View.VISIBLE);
+            } else {
+                holder.tvIngredientAmountUnit.setVisibility(View.GONE);
             }
         }
 
-        if (hasAllergy) {
+        boolean hasRisk = RiskyIngredientMatcher.isRisky(ingredient, riskyMatchTerms, currentScaleRatio);
+
+        if (hasRisk) {
             holder.allergyIndicator.setVisibility(View.VISIBLE);
-            holder.itemView.setBackgroundColor(0xFFFFF3E0);
-            holder.tvIngredientName.setTextColor(0xFF000000);
-            holder.tvIngredientAmountUnit.setTextColor(0xFF000000);
-        } else {
-            holder.allergyIndicator.setVisibility(View.GONE);
-            holder.itemView.setBackgroundResource(android.R.color.transparent);
             
             Context context = holder.itemView.getContext();
             TypedValue typedValue = new TypedValue();
             
+            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorErrorContainer, typedValue, true);
+            holder.itemView.setBackgroundColor(typedValue.data);
+            
+            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnErrorContainer, typedValue, true);
+            holder.tvIngredientName.setTextColor(typedValue.data);
+            holder.tvIngredientAmountUnit.setTextColor(typedValue.data);
+        } else {
+            holder.allergyIndicator.setVisibility(View.GONE);
+            holder.itemView.setBackgroundResource(android.R.color.transparent);
+
+            Context context = holder.itemView.getContext();
+            TypedValue typedValue = new TypedValue();
+
             context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurface, typedValue, true);
             holder.tvIngredientName.setTextColor(typedValue.data);
-            
+
             context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorPrimary, typedValue, true);
             holder.tvIngredientAmountUnit.setTextColor(typedValue.data);
         }

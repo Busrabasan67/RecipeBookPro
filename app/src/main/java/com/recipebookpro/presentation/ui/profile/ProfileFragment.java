@@ -33,7 +33,10 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.recipebookpro.R;
+import com.recipebookpro.domain.model.LocalizedText;
 import com.recipebookpro.domain.model.User;
+import com.recipebookpro.presentation.ui.LocaleHelper;
+import com.recipebookpro.util.BilingualTextHelper;
 import com.recipebookpro.presentation.ui.auth.LoginActivity;
 
 import coil.Coil;
@@ -54,12 +57,28 @@ public class ProfileFragment extends Fragment {
 
     private FirebaseFirestore db;
     private FirebaseUser currentUser;
-    private ChipGroup chipGroupAllergens;
-    private TextInputEditText etCustomAllergen;
+    private ChipGroup chipGroupHealthConditions;
+    private ChipGroup chipGroupCustomHealthConditions;
+    private TextInputEditText etCustomHealthCondition;
     private ImageView ivProfileAvatar;
-    private List<String> userAllergens = new ArrayList<>();
+    private List<String> userHealthConditions = new ArrayList<>();
+    private List<LocalizedText> userCustomHealthConditionsI18n = new ArrayList<>();
+    private final java.util.Set<String> activeCustomHealthKeys = new java.util.LinkedHashSet<>();
+    private java.util.Map<String, java.util.List<String>> userHealthTriggers = new java.util.HashMap<>();
+    private java.util.Map<String, String> userHealthWarningTemplates = new java.util.HashMap<>();
     private boolean isLoading = true;
     private Uri cameraImageUri;
+    private String lastDisplayedUiLang = "";
+
+    private static final java.util.Map<Integer, String> CHIP_CONDITION_MAP = new java.util.LinkedHashMap<>();
+    static {
+        CHIP_CONDITION_MAP.put(R.id.chipDiabetes, "diabetes");
+        CHIP_CONDITION_MAP.put(R.id.chipKidney, "kidney_disease");
+        CHIP_CONDITION_MAP.put(R.id.chipCardiovascular, "cardiovascular");
+        CHIP_CONDITION_MAP.put(R.id.chipHypertension, "hypertension");
+        CHIP_CONDITION_MAP.put(R.id.chipCeliac, "celiac");
+        CHIP_CONDITION_MAP.put(R.id.chipIbs, "ibs");
+    }
 
     private final ActivityResultLauncher<String[]> permissionLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestMultiplePermissions(),
@@ -119,23 +138,39 @@ public class ProfileFragment extends Fragment {
         MaterialButton btnLogout = view.findViewById(R.id.btnLogout);
         MaterialButton btnSettings = view.findViewById(R.id.btnSettings);
 
-        chipGroupAllergens = view.findViewById(R.id.chipGroupAllergens);
-        etCustomAllergen = view.findViewById(R.id.etCustomAllergen);
+
+        chipGroupHealthConditions = view.findViewById(R.id.chipGroupHealthConditions);
+        chipGroupCustomHealthConditions = view.findViewById(R.id.chipGroupCustomHealthConditions);
+        etCustomHealthCondition = view.findViewById(R.id.etCustomHealthCondition);
         ivProfileAvatar = view.findViewById(R.id.ivProfileAvatar);
 
-        etCustomAllergen.setOnEditorActionListener((v, actionId, event) -> {
+
+
+
+        etCustomHealthCondition.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE ||
                 (event != null && event.getAction() == KeyEvent.ACTION_DOWN && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
-                String custom = etCustomAllergen.getText() != null
-                        ? etCustomAllergen.getText().toString().trim() : "";
+                String custom = etCustomHealthCondition.getText() != null
+                        ? etCustomHealthCondition.getText().toString().trim() : "";
                 if (!custom.isEmpty()) {
-                    addCustomAllergenChip(custom);
-                    etCustomAllergen.setText("");
+                    addCustomHealthConditionChip(custom);
+                    etCustomHealthCondition.setText("");
                 }
                 return true;
             }
             return false;
         });
+
+        for (java.util.Map.Entry<Integer, String> entry : CHIP_CONDITION_MAP.entrySet()) {
+            Chip chip = view.findViewById(entry.getKey());
+            if (chip != null) {
+                chip.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                    if (!isLoading) {
+                        onHealthConditionChanged();
+                    }
+                });
+            }
+        }
 
         if (currentUser != null) {
             tvEmail.setText(currentUser.getEmail());
@@ -156,7 +191,7 @@ public class ProfileFragment extends Fragment {
         });
 
 
-        loadUserAllergens();
+        loadUserProfileData();
 
         NestedScrollView nsvProfile = view.findViewById(R.id.nsvProfile);
 
@@ -197,7 +232,7 @@ public class ProfileFragment extends Fragment {
         });
     }
 
-    private void loadUserAllergens() {
+    private void loadUserProfileData() {
         if (currentUser == null) return;
 
         final String uid = currentUser.getUid();
@@ -208,8 +243,19 @@ public class ProfileFragment extends Fragment {
             com.recipebookpro.data.local.entity.UserEntity localUser = localDb.userDao().getUserByUid(uid);
             if (localUser != null && isAdded()) {
                 requireActivity().runOnUiThread(() -> {
-                    userAllergens = new ArrayList<>(localUser.getAllergens());
-                    translateAndPopulateAllergenChips();
+                    userHealthConditions = localUser.getHealthConditions() != null ? new ArrayList<>(localUser.getHealthConditions()) : new ArrayList<>();
+                    userCustomHealthConditionsI18n = BilingualTextHelper.mergeLegacyStrings(
+                            localUser.getCustomHealthConditions(),
+                            localUser.getCustomHealthConditionsI18n());
+                    applyActiveCustomHealthKeys(localUser.getActiveCustomHealthConditionKeys());
+
+                    List<String> legacyAllergens = localUser.getAllergens();
+                    if (legacyAllergens != null && !legacyAllergens.isEmpty()) {
+                        for (String allergen : legacyAllergens) {
+                            addLegacyAllergenAsCondition(allergen);
+                        }
+                    }
+                    syncCustomHealthConditionsUi();
                 });
             }
             
@@ -228,16 +274,43 @@ public class ProfileFragment extends Fragment {
                                     db.collection("users").document(uid).update("profileImageUrl", authPhoto);
                                 }
 
-                                userAllergens = new ArrayList<>(user.getAllergens());
-                                translateAndPopulateAllergenChips();
-                                
-                                // Update Room in background
+                                userHealthConditions = user.getHealthConditions() != null ? new ArrayList<>(user.getHealthConditions()) : new ArrayList<>();
+                                userCustomHealthConditionsI18n = user.resolveCustomHealthConditionsI18n();
+                                applyActiveCustomHealthKeys(user.getActiveCustomHealthConditionKeys());
+                                userHealthTriggers = user.getHealthTriggers() != null ? new java.util.HashMap<>(user.getHealthTriggers()) : new java.util.HashMap<>();
+                                userHealthWarningTemplates = user.getHealthWarningTemplates() != null ? new java.util.HashMap<>(user.getHealthWarningTemplates()) : new java.util.HashMap<>();
+
+                                boolean needsMigration = false;
+                                List<String> legacyAllergens = user.getAllergens();
+                                if (legacyAllergens != null && !legacyAllergens.isEmpty()) {
+                                    for (String allergen : legacyAllergens) {
+                                        if (addLegacyAllergenAsCondition(allergen)) {
+                                            needsMigration = true;
+                                        }
+                                    }
+                                }
+
+                                if (userHealthConditions.isEmpty() && activeCustomHealthKeys.isEmpty()) {
+                                    persistHealthConditionsToRemote();
+                                } else if (needsMigration || user.getCustomHealthConditionsI18n() == null
+                                        || user.getCustomHealthConditionsI18n().isEmpty()) {
+                                    persistHealthConditionsToRemote();
+                                }
+
+                                syncCustomHealthConditionsUi();
+
                                 final User finalUser = user;
                                 new Thread(() -> {
-                                    localDb.userDao().insertUser(new com.recipebookpro.data.local.entity.UserEntity(
-                                        uid, finalUser.getEmail(), finalUser.getDisplayName(), 
-                                        finalUser.getProfileImageUrl(), finalUser.getAllergens()
-                                    ));
+                                    com.recipebookpro.data.local.entity.UserEntity entity =
+                                            new com.recipebookpro.data.local.entity.UserEntity(
+                                                    uid, finalUser.getEmail(), finalUser.getDisplayName(),
+                                                    finalUser.getProfileImageUrl(), new ArrayList<>(),
+                                                    finalUser.getHealthConditions(), new ArrayList<>());
+                                    entity.setCustomHealthConditionsI18n(userCustomHealthConditionsI18n);
+                                    entity.setActiveCustomHealthConditionKeys(new ArrayList<>(activeCustomHealthKeys));
+                                    entity.setHealthTriggers(userHealthTriggers);
+                                    entity.setHealthWarningTemplates(userHealthWarningTemplates);
+                                    localDb.userDao().insertUser(entity);
                                 }).start();
                             }
                         }
@@ -246,185 +319,7 @@ public class ProfileFragment extends Fragment {
         }).start();
     }
 
-    private void translateAndPopulateAllergenChips() {
-        if (userAllergens == null || userAllergens.isEmpty() || !isAdded()) {
-            populateAllergenChips();
-            return;
-        }
 
-        // Draw immediately so the screen is not empty while ML Kit downloads models or translates
-        populateAllergenChips();
-
-        String targetLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(requireContext());
-        String joinedText = TextUtils.join(" ", userAllergens).toLowerCase();
-        
-        com.google.mlkit.nl.languageid.LanguageIdentifier identifier = com.google.mlkit.nl.languageid.LanguageIdentification.getClient();
-        identifier.identifyLanguage(joinedText)
-                .addOnSuccessListener(sourceLang -> {
-                    String finalSource = sourceLang;
-                    if (sourceLang.equals("und")) {
-                        int enCount = 0;
-                        int trCount = 0;
-                        if (joinedText.matches(".*\\b(dairy|gluten|egg|peanut|soy|fish)\\b.*")) enCount++;
-                        if (joinedText.matches(".*\\b(süt|glüten|yumurta|fıstık|soya|balık)\\b.*")) trCount++;
-                        if (enCount > trCount) finalSource = "en";
-                        else if (trCount > enCount) finalSource = "tr";
-                        else finalSource = "tr"; // default to tr
-                    }
-                    
-                    if (!finalSource.equalsIgnoreCase(targetLang)) {
-                        performAllergenTranslation(finalSource, targetLang);
-                    }
-                });
-    }
-
-    private void performAllergenTranslation(String sourceLang, String targetLang) {
-        if (!isAdded()) return;
-        com.recipebookpro.data.remote.MLKitTranslationService translationService = new com.recipebookpro.data.remote.MLKitTranslationService(requireContext());
-        translationService.prepareModel(sourceLang, targetLang)
-                .addOnSuccessListener(unused -> {
-                    java.util.List<com.google.android.gms.tasks.Task<String>> tasks = new java.util.ArrayList<>();
-                    for (String allergen : userAllergens) {
-                        tasks.add(translationService.translateSingleField(allergen, sourceLang, targetLang));
-                    }
-                    com.google.android.gms.tasks.Tasks.whenAllComplete(tasks).addOnCompleteListener(allTasks -> {
-                        if (allTasks.isSuccessful() && isAdded()) {
-                            java.util.List<String> translatedList = new java.util.ArrayList<>();
-                            for (com.google.android.gms.tasks.Task<String> task : tasks) {
-                                if (task.isSuccessful() && task.getResult() != null) {
-                                    translatedList.add(task.getResult().trim());
-                                }
-                            }
-                            if (translatedList.size() == userAllergens.size()) {
-                                userAllergens = translatedList;
-                                updateAllergensInDatabase(userAllergens);
-                            }
-                            populateAllergenChips();
-                        }
-                        translationService.close();
-                    });
-                })
-                .addOnFailureListener(e -> {
-                    translationService.close();
-                });
-    }
-
-    private void populateAllergenChips() {
-        chipGroupAllergens.removeAllViews();
-        String[] allergenTags = getResources().getStringArray(R.array.allergen_tags);
-
-        List<String> defaultTags = new ArrayList<>();
-        for (String t : allergenTags) defaultTags.add(t.toLowerCase());
-
-        isLoading = true;
-        for (String tag : allergenTags) {
-            addAllergenChipInternal(tag, false);
-        }
-
-        for (String userAllergen : userAllergens) {
-            boolean isDefault = false;
-            for (String def : allergenTags) {
-                if (def.equalsIgnoreCase(userAllergen)) { isDefault = true; break; }
-            }
-            if (!isDefault) {
-                addAllergenChipInternal(userAllergen, true);
-            }
-        }
-        isLoading = false;
-    }
-
-    private void addAllergenChipInternal(String tag, boolean isCustom) {
-        Chip chip = new Chip(requireContext());
-        chip.setText(tag);
-        chip.setCheckable(true);
-        chip.setCheckedIconVisible(true);
-        if (isCustom) {
-            chip.setCloseIconVisible(true);
-            chip.setOnCloseIconClickListener(v -> {
-                chipGroupAllergens.removeView(chip);
-                onAllergenChanged();
-            });
-        }
-
-        boolean isSelected = false;
-        for (String userAllergen : userAllergens) {
-            if (userAllergen.equalsIgnoreCase(tag)) {
-                isSelected = true;
-                break;
-            }
-        }
-        chip.setChecked(isSelected);
-
-        chip.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (!isLoading) {
-                onAllergenChanged();
-            }
-        });
-
-        chipGroupAllergens.addView(chip);
-    }
-
-    private void addCustomAllergenChip(String text) {
-        for (int i = 0; i < chipGroupAllergens.getChildCount(); i++) {
-            Chip existing = (Chip) chipGroupAllergens.getChildAt(i);
-            if (existing.getText().toString().equalsIgnoreCase(text)) return;
-        }
-
-        isLoading = true;
-        Chip chip = new Chip(requireContext());
-        chip.setText(text);
-        chip.setCheckable(true);
-        chip.setCheckedIconVisible(true);
-        chip.setChecked(true);
-        chip.setCloseIconVisible(true);
-        chip.setOnCloseIconClickListener(v -> {
-            chipGroupAllergens.removeView(chip);
-            onAllergenChanged();
-        });
-        chip.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (!isLoading) {
-                onAllergenChanged();
-            }
-        });
-        chipGroupAllergens.addView(chip);
-        isLoading = false;
-        onAllergenChanged();
-    }
-
-    private void onAllergenChanged() {
-        if (currentUser == null) return;
-
-        List<String> selected = new ArrayList<>();
-        for (int i = 0; i < chipGroupAllergens.getChildCount(); i++) {
-            Chip chip = (Chip) chipGroupAllergens.getChildAt(i);
-            if (chip.isChecked()) {
-                selected.add(chip.getText().toString());
-            }
-        }
-
-        userAllergens = selected;
-        updateAllergensInDatabase(selected);
-    }
-
-    private void updateAllergensInDatabase(List<String> selected) {
-        if (currentUser == null) return;
-        
-        db.collection("users").document(currentUser.getUid())
-                .update("allergens", selected);
-
-        // Update Room
-        final String uid = currentUser.getUid();
-        final List<String> finalSelected = new ArrayList<>(selected);
-        new Thread(() -> {
-            com.recipebookpro.data.local.AppDatabase localDb = com.recipebookpro.data.local.AppDatabase.getDatabase(requireContext());
-            com.recipebookpro.data.local.entity.UserEntity entity = localDb.userDao().getUserByUid(uid);
-            if (entity != null) {
-                entity.setAllergens(finalSelected);
-                entity.setLastUpdated(System.currentTimeMillis());
-                localDb.userDao().insertUser(entity);
-            }
-        }).start();
-    }
 
     private void uploadProfileImage(Uri imageUri) {
         if (currentUser == null) return;
@@ -535,4 +430,342 @@ public class ProfileFragment extends Fragment {
             Toast.makeText(requireContext(), R.string.camera_error, Toast.LENGTH_SHORT).show();
         }
     }
+
+    private void populateHealthConditionChips() {
+        isLoading = true;
+        
+        if (getView() != null) {
+            for (java.util.Map.Entry<Integer, String> entry : CHIP_CONDITION_MAP.entrySet()) {
+                Chip chip = getView().findViewById(entry.getKey());
+                if (chip != null) {
+                    chip.setChecked(userHealthConditions.contains(entry.getValue()));
+                }
+            }
+        }
+
+        if (chipGroupCustomHealthConditions != null) {
+            chipGroupCustomHealthConditions.removeAllViews();
+            String uiLang = LocaleHelper.getLanguage(requireContext());
+            for (LocalizedText condition : userCustomHealthConditionsI18n) {
+                addCustomHealthConditionChipInternal(condition, uiLang,
+                        activeCustomHealthKeys.contains(condition.getKey()));
+            }
+        }
+        
+        isLoading = false;
+    }
+
+    private void addCustomHealthConditionChipInternal(LocalizedText condition, String uiLang, boolean checked) {
+        Chip chip = new Chip(requireContext());
+        chip.setTag(condition.getKey());
+        chip.setText(condition.getForLang(uiLang));
+        chip.setCheckable(true);
+        chip.setCheckedIconVisible(true);
+        chip.setChecked(checked);
+        chip.setCloseIconVisible(true);
+        chip.setOnCloseIconClickListener(v -> {
+            Object tag = chip.getTag();
+            if (tag instanceof String) {
+                removeCustomConditionByKey((String) tag);
+            }
+            chipGroupCustomHealthConditions.removeView(chip);
+            onHealthConditionChanged();
+        });
+        chip.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!isLoading) {
+                onHealthConditionChanged();
+            }
+        });
+        chipGroupCustomHealthConditions.addView(chip);
+    }
+
+    private void addCustomHealthConditionChip(String text) {
+        for (int i = 0; i < chipGroupCustomHealthConditions.getChildCount(); i++) {
+            Chip existing = (Chip) chipGroupCustomHealthConditions.getChildAt(i);
+            if (existing.getText().toString().equalsIgnoreCase(text)) return;
+        }
+
+        // Show analyzing toast
+        Toast.makeText(requireContext(), R.string.analyzing_health_input, Toast.LENGTH_SHORT).show();
+
+        // Send to Groq for standardization
+        com.recipebookpro.data.remote.GroqHealthProfileAnalyzer analyzer =
+                new com.recipebookpro.data.remote.GroqHealthProfileAnalyzer();
+        analyzer.analyzeHealthInput(text, LocaleHelper.getLanguage(requireContext()),
+                new com.recipebookpro.data.remote.GroqHealthProfileAnalyzer.ProfileAnalysisCallback() {
+            @Override
+            public void onResult(String durumTuru, LocalizedText standartIsim,
+                                 java.util.List<String> tetikleyiciler, LocalizedText kisaUyariSablonu) {
+                if (!isAdded()) return;
+
+                LocalizedText condition = standartIsim != null ? standartIsim : LocalizedText.fromLegacy(text);
+                condition.mergeFrom(LocalizedText.fromLegacy(text));
+                prepareConditionForUiLanguage(condition, tetikleyiciler, kisaUyariSablonu);
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                if (!isAdded()) return;
+
+                LocalizedText fallback = LocalizedText.fromLegacy(text);
+                prepareConditionForUiLanguage(fallback, null, null);
+            }
+        });
+    }
+
+    private void prepareConditionForUiLanguage(LocalizedText condition,
+                                               java.util.List<String> tetikleyiciler,
+                                               LocalizedText kisaUyariSablonu) {
+        if (!isAdded() || condition == null) {
+            return;
+        }
+        String uiLang = LocaleHelper.getLanguage(requireContext());
+        BilingualTextHelper.syncForAppLanguage(requireContext(), condition, uiLang,
+                synced -> finishAddingCustomCondition(synced, tetikleyiciler, kisaUyariSablonu));
+    }
+
+    private void finishAddingCustomCondition(LocalizedText condition, java.util.List<String> tetikleyiciler,
+                                             LocalizedText kisaUyariSablonu) {
+        if (!isAdded() || condition == null) return;
+
+        if (hasCustomCondition(condition.getKey())) {
+            String uiLang = LocaleHelper.getLanguage(requireContext());
+            Toast.makeText(requireContext(),
+                    getString(R.string.health_analysis_success, condition.getForLang(uiLang)),
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        isLoading = true;
+        userCustomHealthConditionsI18n.add(condition);
+        activeCustomHealthKeys.add(condition.getKey());
+        addCustomHealthConditionChipInternal(condition, LocaleHelper.getLanguage(requireContext()), true);
+        isLoading = false;
+
+        migrateTriggerMapsToKey(condition);
+
+        if (kisaUyariSablonu != null && !TextUtils.isEmpty(kisaUyariSablonu.getTr())) {
+            userHealthWarningTemplates.put(condition.getKey(), kisaUyariSablonu.getTr());
+        }
+        if (kisaUyariSablonu != null && !TextUtils.isEmpty(kisaUyariSablonu.getEn())) {
+            userHealthWarningTemplates.put(condition.getKey() + "_en", kisaUyariSablonu.getEn());
+        }
+
+        Toast.makeText(requireContext(),
+                getString(R.string.health_analysis_success, condition.getForLang(LocaleHelper.getLanguage(requireContext()))),
+                Toast.LENGTH_LONG).show();
+
+        if (tetikleyiciler != null && !tetikleyiciler.isEmpty()) {
+            String currentLang = LocaleHelper.getLanguage(requireContext());
+            String oppositeLang = currentLang.equalsIgnoreCase("tr") ? "en" : "tr";
+            com.recipebookpro.util.RiskyIngredientLocaleHelper.ensureLanguage(requireContext(), tetikleyiciler, oppositeLang, translated -> {
+                if (!isAdded()) return;
+                List<String> combinedTriggers = new ArrayList<>(tetikleyiciler);
+                for (String t : translated) {
+                    if (!combinedTriggers.contains(t)) {
+                        combinedTriggers.add(t);
+                    }
+                }
+                userHealthTriggers.put(condition.getKey(), combinedTriggers);
+                onHealthConditionChanged();
+            });
+        } else {
+            onHealthConditionChanged();
+        }
+    }
+
+    private void removeCustomConditionByKey(String key) {
+        userCustomHealthConditionsI18n.removeIf(item -> item.getKey().equals(key));
+        activeCustomHealthKeys.remove(key);
+        userHealthTriggers.remove(key);
+        userHealthWarningTemplates.remove(key);
+        userHealthWarningTemplates.remove(key + "_en");
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        refreshCustomHealthChipsForCurrentLanguage(false);
+    }
+
+    private void refreshCustomHealthChipsForCurrentLanguage(boolean forcePersist) {
+        if (!isAdded() || chipGroupCustomHealthConditions == null) {
+            return;
+        }
+        String uiLang = LocaleHelper.getLanguage(requireContext());
+        boolean langChanged = !uiLang.equals(lastDisplayedUiLang);
+        lastDisplayedUiLang = uiLang;
+
+        if (userCustomHealthConditionsI18n.isEmpty()) {
+            populateHealthConditionChips();
+            if (forcePersist) {
+                persistHealthConditionsToRemote();
+            }
+            return;
+        }
+
+        if (!langChanged && !forcePersist) {
+            populateHealthConditionChips();
+            return;
+        }
+
+        BilingualTextHelper.syncAllForAppLanguage(requireContext(), userCustomHealthConditionsI18n, uiLang,
+                synced -> {
+                    if (!isAdded()) {
+                        return;
+                    }
+                    userCustomHealthConditionsI18n = new ArrayList<>(synced);
+                    populateHealthConditionChips();
+                    if (langChanged || forcePersist) {
+                        persistHealthConditionsToRemote();
+                    }
+                });
+    }
+
+    private boolean hasCustomCondition(String key) {
+        for (LocalizedText existing : userCustomHealthConditionsI18n) {
+            if (existing.getKey().equals(key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void migrateTriggerMapsToKey(LocalizedText condition) {
+        String[] legacyKeys = new String[] {condition.getTr(), condition.getEn()};
+        for (String legacyKey : legacyKeys) {
+            if (!TextUtils.isEmpty(legacyKey) && userHealthTriggers.containsKey(legacyKey)) {
+                userHealthTriggers.put(condition.getKey(), userHealthTriggers.remove(legacyKey));
+            }
+            if (!TextUtils.isEmpty(legacyKey) && userHealthWarningTemplates.containsKey(legacyKey)) {
+                userHealthWarningTemplates.put(condition.getKey(), userHealthWarningTemplates.remove(legacyKey));
+            }
+        }
+    }
+
+    private boolean addLegacyAllergenAsCondition(String allergen) {
+        if (TextUtils.isEmpty(allergen)) {
+            return false;
+        }
+        LocalizedText condition = LocalizedText.fromLegacy(allergen.trim());
+        if (hasCustomCondition(condition.getKey())) {
+            return false;
+        }
+        userCustomHealthConditionsI18n.add(condition);
+        activeCustomHealthKeys.add(condition.getKey());
+        return true;
+    }
+
+    private void applyActiveCustomHealthKeys(List<String> keys) {
+        activeCustomHealthKeys.clear();
+        if (keys != null && !keys.isEmpty()) {
+            activeCustomHealthKeys.addAll(keys);
+        }
+    }
+
+    private void syncActiveCustomHealthKeysFromChips() {
+        activeCustomHealthKeys.clear();
+        if (chipGroupCustomHealthConditions == null) {
+            return;
+        }
+        for (int i = 0; i < chipGroupCustomHealthConditions.getChildCount(); i++) {
+            Chip chip = (Chip) chipGroupCustomHealthConditions.getChildAt(i);
+            if (chip.isChecked() && chip.getTag() instanceof String) {
+                activeCustomHealthKeys.add((String) chip.getTag());
+            }
+        }
+    }
+
+    private void syncCustomHealthConditionsUi() {
+        if (!isAdded()) {
+            return;
+        }
+        lastDisplayedUiLang = "";
+        refreshCustomHealthChipsForCurrentLanguage(true);
+    }
+
+    private void onHealthConditionChanged() {
+        if (currentUser == null) return;
+
+        List<String> conditions = collectHealthConditions();
+
+        userHealthConditions = conditions;
+        syncActiveCustomHealthKeysFromChips();
+
+        persistHealthConditionsToRemote();
+    }
+
+    private List<String> collectHealthConditions() {
+        List<String> result = new ArrayList<>();
+        if (chipGroupHealthConditions == null) return result;
+        for (java.util.Map.Entry<Integer, String> entry : CHIP_CONDITION_MAP.entrySet()) {
+            Chip chip = chipGroupHealthConditions.findViewById(entry.getKey());
+            if (chip != null && chip.isChecked()) {
+                result.add(entry.getValue());
+            }
+        }
+        return result;
+    }
+
+    private static java.util.List<java.util.Map<String, String>> toFirestoreLocalizedList(
+            List<LocalizedText> items) {
+        java.util.List<java.util.Map<String, String>> firestoreList = new ArrayList<>();
+        if (items == null) {
+            return firestoreList;
+        }
+        for (LocalizedText item : items) {
+            java.util.Map<String, String> map = new java.util.HashMap<>();
+            map.put("key", item.getKey());
+            map.put("tr", item.getTr() != null ? item.getTr() : "");
+            map.put("en", item.getEn() != null ? item.getEn() : "");
+            firestoreList.add(map);
+        }
+        return firestoreList;
+    }
+
+    private void persistHealthConditionsToRemote() {
+        if (currentUser == null) return;
+
+        List<LocalizedText> activeConditions = new ArrayList<>();
+        for (LocalizedText item : userCustomHealthConditionsI18n) {
+            if (activeCustomHealthKeys.contains(item.getKey())) {
+                activeConditions.add(item);
+            }
+        }
+        List<String> legacyLabels = BilingualTextHelper.labelsForLang(activeConditions, "tr");
+
+        java.util.Map<String, Object> updates = new java.util.HashMap<>();
+        updates.put("healthConditions", userHealthConditions != null ? userHealthConditions : new ArrayList<>());
+        updates.put("customHealthConditions", legacyLabels != null ? legacyLabels : new ArrayList<>());
+        updates.put("customHealthConditionsI18n", userCustomHealthConditionsI18n != null ? toFirestoreLocalizedList(userCustomHealthConditionsI18n) : new ArrayList<>());
+        updates.put("activeCustomHealthConditionKeys", activeCustomHealthKeys != null ? new ArrayList<>(activeCustomHealthKeys) : new ArrayList<>());
+        updates.put("healthTriggers", userHealthTriggers != null ? userHealthTriggers : new java.util.HashMap<>());
+        updates.put("healthWarningTemplates", userHealthWarningTemplates != null ? userHealthWarningTemplates : new java.util.HashMap<>());
+
+        db.collection("users").document(currentUser.getUid()).update(updates);
+
+        android.util.Log.d("FIRESTORE_WRITE", "Writing to Firestore: " + updates.toString());
+
+        final String uid = currentUser.getUid();
+        final List<String> finalConditions = new ArrayList<>(userHealthConditions);
+        final List<LocalizedText> finalCustom = new ArrayList<>(userCustomHealthConditionsI18n);
+        final List<String> finalActiveKeys = new ArrayList<>(activeCustomHealthKeys);
+        final java.util.Map<String, java.util.List<String>> finalTriggers = new java.util.HashMap<>(userHealthTriggers);
+        final java.util.Map<String, String> finalTemplates = new java.util.HashMap<>(userHealthWarningTemplates);
+        new Thread(() -> {
+            com.recipebookpro.data.local.AppDatabase localDb = com.recipebookpro.data.local.AppDatabase.getDatabase(requireContext());
+            com.recipebookpro.data.local.entity.UserEntity entity = localDb.userDao().getUserByUid(uid);
+            if (entity != null) {
+                entity.setHealthConditions(finalConditions);
+                entity.setCustomHealthConditions(legacyLabels);
+                entity.setCustomHealthConditionsI18n(finalCustom);
+                entity.setActiveCustomHealthConditionKeys(finalActiveKeys);
+                entity.setHealthTriggers(finalTriggers);
+                entity.setHealthWarningTemplates(finalTemplates);
+                entity.setLastUpdated(System.currentTimeMillis());
+                localDb.userDao().insertUser(entity);
+            }
+        }).start();
+    }
+
 }
