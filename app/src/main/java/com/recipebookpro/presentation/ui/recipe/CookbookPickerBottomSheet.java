@@ -202,7 +202,11 @@ public class CookbookPickerBottomSheet extends BottomSheetDialogFragment {
         recipeData.put("createdAt", System.currentTimeMillis());
         recipeData.put("isPublic", false);
         recipeData.put("likes", 0);
-        recipeData.put("sourceRecipeId", recipe.getId());
+        String existingSourceRecipeId = recipe.getSourceRecipeId().trim();
+        String rootSourceRecipeId = existingSourceRecipeId.isEmpty()
+                ? recipe.getId()
+                : existingSourceRecipeId;
+        recipeData.put("sourceRecipeId", rootSourceRecipeId);
 
         batch.set(newRecipeRef, recipeData);
 

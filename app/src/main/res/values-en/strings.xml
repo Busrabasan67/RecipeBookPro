@@ -474,4 +474,5 @@
     <string name="send_reset_link_confirm">A password reset link will be sent to your email address. Do you want to proceed?</string>
     <string name="notifications">Notifications</string>
     <string name="no_notifications">No notifications yet.</string>
+    <string name="notification_deleted">Notification deleted.</string>
 </resources>

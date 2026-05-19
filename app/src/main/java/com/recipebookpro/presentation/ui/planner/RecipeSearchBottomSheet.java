@@ -28,12 +28,13 @@ import com.recipebookpro.R;
 import com.recipebookpro.domain.model.Cookbook;
 import com.recipebookpro.domain.model.Recipe;
 import com.recipebookpro.domain.model.RecipeCollection;
+import com.recipebookpro.domain.service.RecipeFamilyDeduplicator;
 import com.recipebookpro.presentation.ui.planner.adapter.DayRecipeAdapter;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -130,7 +131,7 @@ public class RecipeSearchBottomSheet extends BottomSheetDialogFragment {
                 .addOnSuccessListener(results -> {
                     if (!isAdded()) return;
 
-                    Map<String, Recipe> mergedById = new HashMap<>();
+                    Map<String, Recipe> mergedById = new LinkedHashMap<>();
                     QuerySnapshot snapOwnRecipes = (QuerySnapshot) results.get(0);
                     for (QueryDocumentSnapshot doc : snapOwnRecipes) {
                         Recipe recipe = Recipe.fromDocument(doc);
@@ -213,7 +214,7 @@ public class RecipeSearchBottomSheet extends BottomSheetDialogFragment {
 
     private void publishMergedRecipes(Map<String, Recipe> mergedById) {
         allRecipes.clear();
-        allRecipes.addAll(mergedById.values());
+        allRecipes.addAll(RecipeFamilyDeduplicator.keepLatestRecipePerFamily(new ArrayList<>(mergedById.values())));
         Collections.sort(allRecipes, (a, b) -> a.getTitle().compareToIgnoreCase(b.getTitle()));
         filterRecipes("");
     }

@@ -454,6 +454,7 @@
     <string name="shopping_item_source_recipe">From recipes</string>
     <string name="notifications">Notifications</string>
     <string name="no_notifications">No notifications yet.</string>
+    <string name="notification_deleted">Notification deleted.</string>
     <string name="notification_permission_rationale">Notification permission is required to keep you updated about new recipes and invitations.</string>
 
     <!-- Health conditions section -->

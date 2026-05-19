@@ -7,7 +7,7 @@ import androidx.lifecycle.LiveData;
 public interface NotificationRepository {
     LiveData<List<Notification>> getNotifications(String userId);
     void markAsRead(String notificationId);
-    void deleteNotification(String notificationId);
+    void deleteNotification(Notification notification);
     void sendNotification(Notification notification);
     void respondToInvitation(String invitationId, boolean accept);
 }

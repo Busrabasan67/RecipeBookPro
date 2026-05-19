@@ -452,6 +452,7 @@
     <string name="cookbook_empty">Bu defterde henüz tarif yok.</string>
     <string name="notifications">Bildirimler</string>
     <string name="no_notifications">Henüz bildiriminiz yok.</string>
+    <string name="notification_deleted">Bildirim silindi.</string>
     <string name="notification_permission_rationale">Bildirim izni, yeni tariflerden ve davetlerden haberdar olmanız için gereklidir.</string>
     <string name="delete_cookbook">Yemek Kitabını Sil</string>
     <string name="delete_cookbook_confirm">Bu yemek kitabını silmek istediğinizden emin misiniz? Kitap silinecek ancak içindeki tarifler kaybolmayacaktır.</string>

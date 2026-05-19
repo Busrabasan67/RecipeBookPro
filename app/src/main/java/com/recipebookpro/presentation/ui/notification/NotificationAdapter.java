@@ -17,7 +17,9 @@ import com.recipebookpro.domain.model.Notification;
 import com.recipebookpro.util.LocaleUtils;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 public class NotificationAdapter extends ListAdapter<Notification, NotificationAdapter.NotificationViewHolder> {
@@ -44,6 +46,22 @@ public class NotificationAdapter extends ListAdapter<Notification, NotificationA
             }
         });
         this.listener = listener;
+    }
+
+    public Notification getNotificationAt(int position) {
+        if (position < 0 || position >= getItemCount()) {
+            return null;
+        }
+        return getItem(position);
+    }
+
+    public void removeNotification(Notification notification) {
+        if (notification == null) {
+            return;
+        }
+        List<Notification> updated = new ArrayList<>(getCurrentList());
+        updated.remove(notification);
+        submitList(updated);
     }
 
     @NonNull
