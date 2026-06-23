@@ -814,11 +814,6 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
     @Override
     public void onResume() {
         super.onResume();
-        if (firstResume) {
-            firstResume = false;
-            return;
-        }
-        performSearch();
     }
 
     @Override
