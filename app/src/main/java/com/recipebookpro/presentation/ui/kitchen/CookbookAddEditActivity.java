@@ -22,7 +22,9 @@ import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.WriteBatch;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import androidx.core.view.ViewCompat;
@@ -33,12 +35,14 @@ import android.view.View;
 import com.recipebookpro.R;
 import com.recipebookpro.data.remote.CookbookDescriptionLocalizer;
 import com.recipebookpro.domain.model.Cookbook;
+import com.recipebookpro.domain.model.Recipe;
 import com.recipebookpro.presentation.ui.BaseActivity;
 import com.recipebookpro.presentation.ui.LocaleHelper;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -53,6 +57,7 @@ import androidx.core.content.FileProvider;
 public class CookbookAddEditActivity extends BaseActivity {
 
     public static final String EXTRA_COOKBOOK_ID = "cookbook_id";
+    public static final String EXTRA_RECIPE_TO_ADD = "recipe_to_add";
 
     private TextInputEditText etTitle, etDescription, etTagInput;
     private MaterialSwitch switchPublic;
@@ -70,6 +75,7 @@ public class CookbookAddEditActivity extends BaseActivity {
 
     private String editCookbookId;
     private Cookbook existingCookbook;
+    private Recipe recipeToAdd;
     private boolean isEditMode = false;
 
     private final ExecutorService cookbookTitleDescExecutor = Executors.newSingleThreadExecutor();
@@ -144,6 +150,7 @@ public class CookbookAddEditActivity extends BaseActivity {
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
 
         editCookbookId = getIntent().getStringExtra(EXTRA_COOKBOOK_ID);
+        recipeToAdd = (Recipe) getIntent().getSerializableExtra(EXTRA_RECIPE_TO_ADD);
         isEditMode = !TextUtils.isEmpty(editCookbookId);
 
         initViews();
@@ -418,15 +425,86 @@ public class CookbookAddEditActivity extends BaseActivity {
         book.setPublic(switchPublic.isChecked());
         book.setTags(tags);
 
-        db.collection("cookbooks").document(docId).set(book)
+        saveNewCookbookWithOptionalRecipe(docId, book);
+    }
+
+    private void saveNewCookbookWithOptionalRecipe(String docId, Cookbook book) {
+        DocumentReference cookbookRef = db.collection("cookbooks").document(docId);
+
+        if (recipeToAdd == null || TextUtils.isEmpty(recipeToAdd.getId())) {
+            cookbookRef.set(book)
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(this, R.string.cookbook_saved, Toast.LENGTH_SHORT).show();
+                        finish();
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(this, R.string.save_failed, Toast.LENGTH_SHORT).show();
+                        btnSave.setEnabled(true);
+                    });
+            return;
+        }
+
+        if (currentUser.getUid().equals(recipeToAdd.getUserId())) {
+            List<String> recipeIds = new ArrayList<>();
+            recipeIds.add(recipeToAdd.getId());
+            book.setRecipeIds(recipeIds);
+
+            cookbookRef.set(book)
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(this, R.string.recipe_copied, Toast.LENGTH_SHORT).show();
+                        finish();
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(this, R.string.save_failed, Toast.LENGTH_SHORT).show();
+                        btnSave.setEnabled(true);
+                    });
+            return;
+        }
+
+        DocumentReference newRecipeRef = db.collection("recipes").document();
+        List<String> recipeIds = new ArrayList<>();
+        recipeIds.add(newRecipeRef.getId());
+        book.setRecipeIds(recipeIds);
+
+        WriteBatch batch = db.batch();
+        batch.set(cookbookRef, book);
+        batch.set(newRecipeRef, buildRecipeCopyData(recipeToAdd));
+
+        batch.commit()
                 .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(this, R.string.cookbook_saved, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.recipe_copied, Toast.LENGTH_SHORT).show();
                     finish();
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, R.string.save_failed, Toast.LENGTH_SHORT).show();
                     btnSave.setEnabled(true);
                 });
+    }
+
+    private Map<String, Object> buildRecipeCopyData(Recipe sourceRecipe) {
+        Map<String, Object> recipeData = new HashMap<>();
+        recipeData.put("title", sourceRecipe.getTitle());
+        recipeData.put("description", sourceRecipe.getDescription());
+        recipeData.put("category", sourceRecipe.getCategory());
+        recipeData.put("ingredients", sourceRecipe.getIngredients());
+        recipeData.put("stepList", sourceRecipe.getStepList());
+        recipeData.put("steps", sourceRecipe.getSteps());
+        recipeData.put("imageUrl", sourceRecipe.getImageUrl());
+        recipeData.put("servings", sourceRecipe.getServings());
+        recipeData.put("allergens", sourceRecipe.getAllergens());
+        recipeData.put("ingredientNames", sourceRecipe.getIngredientNames());
+        recipeData.put("userId", currentUser.getUid());
+        recipeData.put("createdAt", System.currentTimeMillis());
+        recipeData.put("isPublic", false);
+        recipeData.put("likes", 0);
+
+        String existingSourceRecipeId = sourceRecipe.getSourceRecipeId().trim();
+        String rootSourceRecipeId = existingSourceRecipeId.isEmpty()
+                ? sourceRecipe.getId()
+                : existingSourceRecipeId;
+        recipeData.put("sourceRecipeId", rootSourceRecipeId);
+
+        return recipeData;
     }
 
     private void saveToFirestore(String title, String desc, String imageUrl) {
@@ -447,21 +525,8 @@ public class CookbookAddEditActivity extends BaseActivity {
                         btnSave.setEnabled(true);
                     });
         } else {
-            Cookbook book = new Cookbook(currentUser.getUid(), title);
-            book.setDescription(desc);
-            book.setCoverImageUrl(imageUrl);
-            book.setPublic(switchPublic.isChecked());
-            book.setTags(tags);
-
-            db.collection("cookbooks").add(book)
-                    .addOnSuccessListener(ref -> {
-                        Toast.makeText(this, R.string.cookbook_saved, Toast.LENGTH_SHORT).show();
-                        finish();
-                    })
-                    .addOnFailureListener(e -> {
-                        Toast.makeText(this, R.string.save_failed, Toast.LENGTH_SHORT).show();
-                        btnSave.setEnabled(true);
-                    });
+            String docId = db.collection("cookbooks").document().getId();
+            saveToFirestoreWithId(docId, title, desc, imageUrl);
         }
     }
 

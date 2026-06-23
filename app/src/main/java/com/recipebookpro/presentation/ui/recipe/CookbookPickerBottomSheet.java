@@ -137,7 +137,9 @@ public class CookbookPickerBottomSheet extends BottomSheetDialogFragment {
         btnNew.setText(getString(R.string.kitchen_new_book));
         btnNew.setIcon(ContextCompat.getDrawable(requireContext(), R.drawable.ic_add));
         btnNew.setOnClickListener(v -> {
-            startActivity(new Intent(getContext(), CookbookAddEditActivity.class));
+            Intent intent = new Intent(getContext(), CookbookAddEditActivity.class);
+            intent.putExtra(CookbookAddEditActivity.EXTRA_RECIPE_TO_ADD, recipe);
+            startActivity(intent);
             dismiss();
         });
         containerCookbooks.addView(btnNew);

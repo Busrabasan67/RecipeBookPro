@@ -254,6 +254,7 @@ public class RecipeDetailActivity extends BaseActivity {
                     .build();
             Coil.imageLoader(this).enqueue(request);
         }
+        subscribeLikeState();
     }
 
     private void loadUserAllergensAndSetupPager() {
@@ -424,6 +425,8 @@ public class RecipeDetailActivity extends BaseActivity {
             @Override
             public void onSuccess() {
                 item.setEnabled(true);
+                isLiked = shouldLike;
+                item.setIcon(isLiked ? R.drawable.ic_heart_filled : R.drawable.ic_heart_outline);
                 int delta = shouldLike ? 1 : -1;
                 recipe.setLikes(Math.max(0, recipe.getLikes() + delta));
                 Toast.makeText(RecipeDetailActivity.this,
