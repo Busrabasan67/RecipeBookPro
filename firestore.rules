@@ -2,12 +2,12 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
+    function isAuthenticated() {
       return request.auth != null;
     }
 
     function isOwner(userId) {
-      return signedIn() && userId == request.auth.uid;
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
     function changedOnly(fields) {
@@ -15,7 +15,7 @@ service cloud.firestore {
     }
 
     function signedInLikeCounterUpdate() {
-      return signedIn()
+      return isAuthenticated()
         && changedOnly(['likes'])
         && request.resource.data.likes is int
         && (
@@ -32,79 +32,93 @@ service cloud.firestore {
     }
 
     function signedInFollowUpdate() {
-      return signedIn()
+      return isAuthenticated()
         && changedOnly(['followerIds', 'followerCount', 'followingIds', 'followingCount']);
     }
 
     function signedInCookbookFollowUpdate() {
-      return signedIn()
+      return isAuthenticated()
         && changedOnly(['followerIds', 'followerCount']);
     }
 
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || signedInFollowUpdate();
+      allow delete: if isOwner(userId);
+    }
+
     match /recipes/{recipeId} {
-      allow read: if signedIn() || resource.data.isPublic == true || resource.data.public == true;
-      allow create: if isOwner(request.resource.data.userId);
-      allow update: if isOwner(resource.data.userId) || signedInLikeCounterUpdate();
-      allow delete: if isOwner(resource.data.userId);
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid
+        || signedInLikeCounterUpdate()
+      );
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
 
       match /notes/{userId} {
         allow read, write: if isOwner(userId);
       }
     }
 
-    match /users/{userId} {
-      allow read: if signedIn();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || signedInFollowUpdate();
-      allow delete: if isOwner(userId);
-    }
-
     match /cookbooks/{cookbookId} {
-      allow read: if signedIn() || resource.data.isPublic == true || resource.data.public == true;
-      allow create: if isOwner(request.resource.data.userId);
-      allow update: if isOwner(resource.data.userId)
-        || (signedIn() && request.auth.uid in resource.data.collaboratorIds)
-        || signedInCookbookFollowUpdate();
-      allow delete: if isOwner(resource.data.userId);
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.uid in resource.data.collaboratorIds ||
+        request.auth.uid in resource.data.followerIds ||
+        resource.data.isPublic == true ||
+        resource.data.public == true
+      );
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.uid in resource.data.collaboratorIds ||
+        signedInCookbookFollowUpdate()
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.uid in resource.data.collaboratorIds
+      );
     }
 
     match /collections/{collectionId} {
-      allow read: if signedIn();
-      allow create: if isOwner(request.resource.data.userId);
-      allow update, delete: if isOwner(resource.data.userId);
-    }
-
-    match /meal_plans/{planId} {
-      allow read: if signedIn()
-        && (resource.data.userId == request.auth.uid
-          || request.auth.uid in resource.data.collaboratorIds);
-      allow create: if isOwner(request.resource.data.userId);
-      allow update, delete: if isOwner(resource.data.userId)
-        || (signedIn() && request.auth.uid in resource.data.collaboratorIds);
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
     match /shopping_lists/{listId} {
-      allow read: if signedIn()
-        && (resource.data.userId == request.auth.uid
-          || request.auth.uid in resource.data.collaboratorIds);
-      allow create: if isOwner(request.resource.data.userId);
-      allow update, delete: if isOwner(resource.data.userId)
-        || (signedIn() && request.auth.uid in resource.data.collaboratorIds);
+      allow read, update, delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.uid in resource.data.collaboratorIds
+      );
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
     }
 
-    match /notifications/{notificationId} {
-      allow read, update, delete: if signedIn()
-        && (resource.data.userId == request.auth.uid
-          || resource.data.toUserId == request.auth.uid);
-      allow create: if signedIn();
+    match /meal_plans/{planId} {
+      allow read, update, delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.uid in resource.data.collaboratorIds
+      );
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
     }
 
     match /invitations/{invitationId} {
-      allow read, update, delete: if signedIn()
-        && (resource.data.fromUserId == request.auth.uid
-          || resource.data.toUserId == request.auth.uid);
-      allow create: if signedIn()
-        && request.resource.data.fromUserId == request.auth.uid;
+      allow read, update, delete: if isAuthenticated() && (
+        resource.data.fromUserId == request.auth.uid ||
+        resource.data.toUserId == request.auth.uid
+      );
+      allow create: if isAuthenticated() && request.resource.data.fromUserId == request.auth.uid;
+    }
+
+    match /notifications/{notificationId} {
+      allow read, update, delete: if isAuthenticated() && (
+        resource.data.recipientId == request.auth.uid ||
+        resource.data.userId == request.auth.uid ||
+        resource.data.toUserId == request.auth.uid
+      );
+      allow create: if isAuthenticated();
     }
   }
 }
