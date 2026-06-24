@@ -555,6 +555,10 @@ public class ProfileFragment extends Fragment {
                 getString(R.string.health_analysis_success, condition.getForLang(LocaleHelper.getLanguage(requireContext()))),
                 Toast.LENGTH_LONG).show();
 
+        // Persist the visible chip immediately. Trigger translation is a secondary enrichment
+        // step and must not be allowed to delay saving the condition itself.
+        onHealthConditionChanged();
+
         if (tetikleyiciler != null && !tetikleyiciler.isEmpty()) {
             String currentLang = LocaleHelper.getLanguage(requireContext());
             String oppositeLang = currentLang.equalsIgnoreCase("tr") ? "en" : "tr";
@@ -569,8 +573,6 @@ public class ProfileFragment extends Fragment {
                 userHealthTriggers.put(condition.getKey(), combinedTriggers);
                 onHealthConditionChanged();
             });
-        } else {
-            onHealthConditionChanged();
         }
     }
 
@@ -742,7 +744,11 @@ public class ProfileFragment extends Fragment {
         updates.put("healthTriggers", userHealthTriggers != null ? userHealthTriggers : new java.util.HashMap<>());
         updates.put("healthWarningTemplates", userHealthWarningTemplates != null ? userHealthWarningTemplates : new java.util.HashMap<>());
 
-        db.collection("users").document(currentUser.getUid()).update(updates);
+        db.collection("users").document(currentUser.getUid())
+                .set(updates, com.google.firebase.firestore.SetOptions.merge())
+                .addOnFailureListener(error ->
+                        android.util.Log.e("FIRESTORE_WRITE",
+                                "Health conditions could not be saved", error));
 
         android.util.Log.d("FIRESTORE_WRITE", "Writing to Firestore: " + updates.toString());
 
@@ -755,16 +761,24 @@ public class ProfileFragment extends Fragment {
         new Thread(() -> {
             com.recipebookpro.data.local.AppDatabase localDb = com.recipebookpro.data.local.AppDatabase.getDatabase(requireContext());
             com.recipebookpro.data.local.entity.UserEntity entity = localDb.userDao().getUserByUid(uid);
-            if (entity != null) {
-                entity.setHealthConditions(finalConditions);
-                entity.setCustomHealthConditions(legacyLabels);
-                entity.setCustomHealthConditionsI18n(finalCustom);
-                entity.setActiveCustomHealthConditionKeys(finalActiveKeys);
-                entity.setHealthTriggers(finalTriggers);
-                entity.setHealthWarningTemplates(finalTemplates);
-                entity.setLastUpdated(System.currentTimeMillis());
-                localDb.userDao().insertUser(entity);
+            if (entity == null) {
+                entity = new com.recipebookpro.data.local.entity.UserEntity(
+                        uid,
+                        currentUser.getEmail(),
+                        currentUser.getDisplayName(),
+                        currentUser.getPhotoUrl() != null ? currentUser.getPhotoUrl().toString() : "",
+                        new ArrayList<>(),
+                        finalConditions,
+                        legacyLabels);
             }
+            entity.setHealthConditions(finalConditions);
+            entity.setCustomHealthConditions(legacyLabels);
+            entity.setCustomHealthConditionsI18n(finalCustom);
+            entity.setActiveCustomHealthConditionKeys(finalActiveKeys);
+            entity.setHealthTriggers(finalTriggers);
+            entity.setHealthWarningTemplates(finalTemplates);
+            entity.setLastUpdated(System.currentTimeMillis());
+            localDb.userDao().insertUser(entity);
         }).start();
     }
 

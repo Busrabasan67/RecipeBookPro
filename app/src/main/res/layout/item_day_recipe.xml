@@ -5,45 +5,54 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="4dp"
+    app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
     app:cardCornerRadius="8dp"
     app:cardElevation="0dp"
-    app:strokeWidth="0dp"
-    app:cardBackgroundColor="?attr/colorSurfaceContainerLow">
+    app:strokeWidth="0dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:orientation="vertical">
 
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/tvDayRecipeName"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:padding="8dp"
-            android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
-            android:maxLines="2"
-            android:ellipsize="end"
-            tools:text="Mercimek Çorbası" />
+            android:gravity="top"
+            android:orientation="horizontal">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/tvDayRecipeName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="3"
+                android:padding="8dp"
+                android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+                tools:text="Mercimek Çorbası" />
+
+            <ImageButton
+                android:id="@+id/btnRemoveDayRecipe"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Tarifi Kaldır"
+                android:padding="8dp"
+                android:src="@drawable/ic_close" />
+
+        </LinearLayout>
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/tvDayRecipeCalories"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:padding="8dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="8dp"
             android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
             android:textColor="?attr/colorPrimary"
             tools:text="350 kcal" />
-
-        <ImageButton
-            android:id="@+id/btnRemoveDayRecipe"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:padding="8dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_close"
-            android:contentDescription="Tarifi Kaldır" />
 
     </LinearLayout>
 

@@ -70,6 +70,10 @@
         <item name="fontFamily">sans-serif</item>
     </style>
 
+    <style name="TextAppearance.RecipeBookPro.CompactInputHint" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textSize">11sp</item>
+    </style>
+
     <style name="CircleImageView" parent="">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">50%</item>

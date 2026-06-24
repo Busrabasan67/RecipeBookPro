@@ -194,9 +194,11 @@
             <com.google.android.material.textview.MaterialTextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
                 android:text="@string/ingredients"
                 android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                android:layout_marginBottom="8dp" />
+                android:textColor="?attr/colorOnSurface"
+                android:textStyle="bold" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvIngredientsEdit"
@@ -219,9 +221,11 @@
             <com.google.android.material.textview.MaterialTextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
                 android:text="@string/steps"
                 android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                android:layout_marginBottom="8dp" />
+                android:textColor="?attr/colorOnSurface"
+                android:textStyle="bold" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvStepsEdit"
