@@ -33,6 +33,7 @@
     <string name="save">Kaydet</string>
     <string name="save_recipe">Tarifi Kaydet</string>
     <string name="delete">Kaldır</string>
+    <string name="remove">Çıkar</string>
     <string name="delete_recipe">Tarifi Sil</string>
     <string name="cancel">İptal</string>
     <string name="no_recipes">Henüz tarif yok. İlk tarifinizi eklemek için +\'ya dokunun.</string>

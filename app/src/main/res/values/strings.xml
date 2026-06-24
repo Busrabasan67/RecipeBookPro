@@ -33,6 +33,7 @@
     <string name="save">Save</string>
     <string name="save_recipe">Save Recipe</string>
     <string name="delete">Delete</string>
+    <string name="remove">Remove</string>
     <string name="delete_recipe">Delete Recipe</string>
     <string name="cancel">Cancel</string>
     <string name="no_recipes">No recipes yet. Tap + to add your first recipe.</string>

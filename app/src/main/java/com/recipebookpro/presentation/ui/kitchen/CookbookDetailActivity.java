@@ -25,6 +25,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.recipebookpro.R;
 import com.recipebookpro.data.remote.CookbookDescriptionLocalizer;
@@ -70,6 +71,8 @@ public class CookbookDetailActivity extends BaseActivity {
 
     private final ExecutorService descriptionExecutor = Executors.newSingleThreadExecutor();
     private int descriptionJobSeq = 0;
+    private int recipesLoadSeq = 0;
+    private ListenerRegistration cookbookListener;
     /** Son başarılı çeviri veya ham gösterimin yapıldığı uygulama dili (LocaleHelper). */
     private String descriptionAppliedLang;
 
@@ -165,7 +168,8 @@ public class CookbookDetailActivity extends BaseActivity {
 
     private void loadCookbook() {
         progress.setVisibility(View.VISIBLE);
-        db.collection("cookbooks").document(cookbookId).addSnapshotListener((doc, e) -> {
+        cookbookListener = db.collection("cookbooks").document(cookbookId).addSnapshotListener((doc, e) -> {
+            if (isFinishing() || isDestroyed()) return;
             if (e != null || doc == null || !doc.exists()) {
                 progress.setVisibility(View.GONE);
                 Toast.makeText(this, R.string.cookbook_not_found, Toast.LENGTH_SHORT).show();
@@ -275,6 +279,7 @@ public class CookbookDetailActivity extends BaseActivity {
         tvDescription.setText(rawTrim);
         final int job = ++descriptionJobSeq;
         final String uiLang = LocaleHelper.getLanguage(this);
+        if (descriptionExecutor.isShutdown()) return;
         descriptionExecutor.execute(() -> {
             try {
                 String localized = CookbookDescriptionLocalizer.localizeSync(
@@ -426,10 +431,14 @@ public class CookbookDetailActivity extends BaseActivity {
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.remove_recipe_title)
                 .setMessage(getString(R.string.remove_recipe_from_cookbook_confirm, recipe.getTitle()))
-                .setPositiveButton(R.string.delete, (dialog, which) -> {
+                .setPositiveButton(R.string.remove, (dialog, which) -> {
                     db.collection("cookbooks").document(cookbookId)
                             .update("recipeIds", FieldValue.arrayRemove(recipe.getId()))
                             .addOnSuccessListener(aVoid -> {
+                                recipesLoadSeq++;
+                                recipeList.removeIf(r -> r.getId().equals(recipe.getId()));
+                                adapter.setRecipeList(recipeList);
+                                tvEmpty.setVisibility(recipeList.isEmpty() ? View.VISIBLE : View.GONE);
                                 Toast.makeText(this, R.string.recipe_removed_from_cookbook, Toast.LENGTH_SHORT).show();
                             })
                             .addOnFailureListener(e -> {
@@ -441,10 +450,11 @@ public class CookbookDetailActivity extends BaseActivity {
     }
 
     private void loadRecipes() {
+        final int loadSeq = ++recipesLoadSeq;
         List<String> ids = cookbook.getRecipeIds();
         if (ids == null || ids.isEmpty()) {
             recipeList.clear();
-            adapter.notifyDataSetChanged();
+            adapter.setRecipeList(recipeList);
             tvEmpty.setVisibility(View.VISIBLE);
             progress.setVisibility(View.GONE);
             return;
@@ -462,16 +472,35 @@ public class CookbookDetailActivity extends BaseActivity {
         }
 
         Tasks.whenAllSuccess(tasks).addOnSuccessListener(results -> {
+            if (loadSeq != recipesLoadSeq || isFinishing() || isDestroyed()) {
+                return;
+            }
             recipeList.clear();
+            java.util.Set<String> foundIds = new java.util.HashSet<>();
             for (Object result : results) {
                 com.google.firebase.firestore.QuerySnapshot snap = (com.google.firebase.firestore.QuerySnapshot) result;
                 for (com.google.firebase.firestore.DocumentSnapshot doc : snap.getDocuments()) {
                     recipeList.add(Recipe.fromDocument(doc));
+                    foundIds.add(doc.getId());
                 }
             }
+            if (foundIds.size() < ids.size()) {
+                List<String> validIds = new ArrayList<>();
+                for (String id : ids) {
+                    if (foundIds.contains(id)) {
+                        validIds.add(id);
+                    }
+                }
+                db.collection("cookbooks").document(cookbookId).update("recipeIds", validIds);
+            }
             adapter.setRecipeList(recipeList);
+            tvEmpty.setVisibility(recipeList.isEmpty() ? View.VISIBLE : View.GONE);
             progress.setVisibility(View.GONE);
-        }).addOnFailureListener(e -> progress.setVisibility(View.GONE));
+        }).addOnFailureListener(e -> {
+            if (loadSeq == recipesLoadSeq && !isFinishing() && !isDestroyed()) {
+                progress.setVisibility(View.GONE);
+            }
+        });
     }
 
     private <T> List<List<T>> partition(List<T> list, int size) {
@@ -527,6 +556,10 @@ public class CookbookDetailActivity extends BaseActivity {
 
     @Override
     protected void onDestroy() {
+        if (cookbookListener != null) {
+            cookbookListener.remove();
+            cookbookListener = null;
+        }
         descriptionExecutor.shutdown();
         super.onDestroy();
     }

@@ -69,6 +69,8 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
     private final Map<Integer, List<String>> ingredientSearchTermsByChipId = new HashMap<>();
     private final Map<String, List<String>> ingredientSearchTermsByTerm = new HashMap<>();
     private boolean firstResume = true;
+    private String lastClickedRecipeId = null;
+    private String lastClickedUserId = null;
 
     private TranslationService translationService;
 
@@ -712,6 +714,7 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
 
     @Override
     public void onRecipeClick(Recipe recipe) {
+        lastClickedRecipeId = recipe.getId();
         android.content.Intent intent = new android.content.Intent(getContext(), RecipeDetailActivity.class);
         intent.putExtra(RecipeDetailActivity.EXTRA_RECIPE, recipe);
         startActivity(intent);
@@ -724,6 +727,7 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
 
     @Override
     public void onAuthorClick(String userId) {
+        lastClickedUserId = userId;
         Intent intent = new Intent(getContext(), com.recipebookpro.presentation.ui.kitchen.PublicProfileActivity.class);
         intent.putExtra(com.recipebookpro.presentation.ui.kitchen.PublicProfileActivity.EXTRA_USER_ID, userId);
         startActivity(intent);
@@ -814,6 +818,60 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
     @Override
     public void onResume() {
         super.onResume();
+        if (lastClickedUserId != null && db != null) {
+            db.collection("users").document(lastClickedUserId).get()
+                    .addOnSuccessListener(userDoc -> {
+                        if (userDoc.exists()) {
+                            User updatedAuthor = userDoc.toObject(User.class);
+                            if (updatedAuthor != null) {
+                                updatedAuthor.setUid(userDoc.getId());
+                                ownersById.put(updatedAuthor.getUid(), updatedAuthor);
+                                adapter.setOwnerMap(ownersById);
+                            }
+                        }
+                        lastClickedUserId = null;
+                    })
+                    .addOnFailureListener(e -> lastClickedUserId = null);
+        }
+
+        if (lastClickedRecipeId != null && db != null) {
+            db.collection("recipes").document(lastClickedRecipeId).get()
+                    .addOnSuccessListener(doc -> {
+                        if (doc.exists()) {
+                            Recipe updatedRecipe = Recipe.fromDocument(doc);
+                            for (int i = 0; i < results.size(); i++) {
+                                if (results.get(i).recipe.getId().equals(updatedRecipe.getId())) {
+                                    ScoredRecipe oldScored = results.get(i);
+                                    results.set(i, new ScoredRecipe(updatedRecipe, oldScored.matchPercent, oldScored.missingIngredients));
+                                    
+                                    String authorId = updatedRecipe.getUserId();
+                                    if (authorId != null && !authorId.isEmpty()) {
+                                        final int indexToUpdate = i;
+                                        db.collection("users").document(authorId).get()
+                                                .addOnSuccessListener(userDoc -> {
+                                                    if (userDoc.exists()) {
+                                                        User updatedAuthor = userDoc.toObject(User.class);
+                                                        if (updatedAuthor != null) {
+                                                            updatedAuthor.setUid(userDoc.getId());
+                                                            ownersById.put(authorId, updatedAuthor);
+                                                            adapter.setOwnerMap(ownersById);
+                                                        }
+                                                    } else {
+                                                        adapter.notifyItemChanged(indexToUpdate);
+                                                    }
+                                                })
+                                                .addOnFailureListener(e -> adapter.notifyItemChanged(indexToUpdate));
+                                    } else {
+                                        adapter.notifyItemChanged(i);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                        lastClickedRecipeId = null;
+                    })
+                    .addOnFailureListener(e -> lastClickedRecipeId = null);
+        }
     }
 
     @Override

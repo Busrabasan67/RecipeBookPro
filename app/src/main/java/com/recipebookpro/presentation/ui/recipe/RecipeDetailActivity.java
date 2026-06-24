@@ -452,11 +452,32 @@ public class RecipeDetailActivity extends BaseActivity {
     }
 
     private void deleteRecipe() {
-        db.collection("recipes").document(recipe.getId())
+        String recipeId = recipe.getId();
+        db.collection("recipes").document(recipeId)
                 .delete()
                 .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(RecipeDetailActivity.this, R.string.recipe_deleted, Toast.LENGTH_SHORT).show();
-                    finish();
+                    db.collection("cookbooks")
+                            .whereArrayContains("recipeIds", recipeId)
+                            .get()
+                            .addOnSuccessListener(snap -> {
+                                List<com.google.android.gms.tasks.Task<Void>> updates = new java.util.ArrayList<>();
+                                for (com.google.firebase.firestore.DocumentSnapshot doc : snap.getDocuments()) {
+                                    updates.add(doc.getReference().update("recipeIds", com.google.firebase.firestore.FieldValue.arrayRemove(recipeId)));
+                                }
+                                if (updates.isEmpty()) {
+                                    Toast.makeText(RecipeDetailActivity.this, R.string.recipe_deleted, Toast.LENGTH_SHORT).show();
+                                    finish();
+                                } else {
+                                    com.google.android.gms.tasks.Tasks.whenAll(updates).addOnCompleteListener(task -> {
+                                        Toast.makeText(RecipeDetailActivity.this, R.string.recipe_deleted, Toast.LENGTH_SHORT).show();
+                                        finish();
+                                    });
+                                }
+                            })
+                            .addOnFailureListener(e -> {
+                                Toast.makeText(RecipeDetailActivity.this, R.string.recipe_deleted, Toast.LENGTH_SHORT).show();
+                                finish();
+                            });
                 })
                 .addOnFailureListener(e -> Toast
                         .makeText(RecipeDetailActivity.this, R.string.recipe_delete_failed, Toast.LENGTH_SHORT).show());
