@@ -7,7 +7,6 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
-import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.core.graphics.ColorUtils;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -71,11 +70,6 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.RecipeView
         notifyDataSetChanged();
     }
 
-    public void clearRecipes() {
-        recipeList.clear();
-        notifyDataSetChanged();
-    }
-
     @NonNull
     @Override
     public RecipeViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -115,7 +109,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.RecipeView
         }
 
         void bind(Recipe recipe) {
-            String currentLang = Locale.getDefault().getLanguage();
+            String currentLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(itemView.getContext());
             tvTitle.setText(recipe.getDisplayTitle(currentLang));
 
             // Determine data to load: URL or placeholder resource

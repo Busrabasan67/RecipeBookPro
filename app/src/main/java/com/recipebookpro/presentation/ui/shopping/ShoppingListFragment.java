@@ -6,7 +6,6 @@ import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import com.google.firebase.firestore.Filter;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
@@ -25,7 +24,6 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
-import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.recipebookpro.R;
 import com.recipebookpro.domain.model.ShoppingList;
@@ -47,7 +45,6 @@ public class ShoppingListFragment extends Fragment {
     
     private FirebaseFirestore db;
     private FirebaseUser currentUser;
-    private ListenerRegistration shoppingListsListener;
 
     @Nullable
     @Override

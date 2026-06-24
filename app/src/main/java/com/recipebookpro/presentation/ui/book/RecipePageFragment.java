@@ -32,11 +32,9 @@ import coil.request.ImageRequest;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public class RecipePageFragment extends Fragment {
 
-    private static final String ARG_RECIPE = "recipe";
     private static final String ARG_PAGE_NO = "page_no";
     private static final String ARG_TOTAL = "total";
 
@@ -144,9 +142,9 @@ public class RecipePageFragment extends Fragment {
                 if (isAdded()) {
                     // Force refresh UI with translated data
                     updateUI(null);
-                    // Save the identified language to Firestore
+                    // Persist translated fields so other screens can render the selected language.
                     FirebaseFirestore.getInstance().collection("recipes").document(recipe.getId())
-                            .update("originalLanguage", recipe.getOriginalLanguage());
+                            .set(recipe);
                 }
             }
             @Override

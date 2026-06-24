@@ -137,7 +137,9 @@ public class CookbookPickerBottomSheet extends BottomSheetDialogFragment {
         btnNew.setText(getString(R.string.kitchen_new_book));
         btnNew.setIcon(ContextCompat.getDrawable(requireContext(), R.drawable.ic_add));
         btnNew.setOnClickListener(v -> {
-            startActivity(new Intent(getContext(), CookbookAddEditActivity.class));
+            Intent intent = new Intent(getContext(), CookbookAddEditActivity.class);
+            intent.putExtra(CookbookAddEditActivity.EXTRA_RECIPE_TO_ADD, recipe);
+            startActivity(intent);
             dismiss();
         });
         containerCookbooks.addView(btnNew);
@@ -174,7 +176,7 @@ public class CookbookPickerBottomSheet extends BottomSheetDialogFragment {
         if (isOwnRecipe()) {
             db.collection("cookbooks").document(book.getId())
               .update("recipeIds", FieldValue.arrayUnion(recipe.getId()))
-              .addOnSuccessListener(aVoid -> showSuccessAndDismiss(book.getName()))
+              .addOnSuccessListener(aVoid -> showSuccessAndDismiss())
               .addOnFailureListener(e ->
                   Snackbar.make(requireView(), R.string.error_generic, Snackbar.LENGTH_SHORT).show());
         } else {
@@ -202,7 +204,11 @@ public class CookbookPickerBottomSheet extends BottomSheetDialogFragment {
         recipeData.put("createdAt", System.currentTimeMillis());
         recipeData.put("isPublic", false);
         recipeData.put("likes", 0);
-        recipeData.put("sourceRecipeId", recipe.getId());
+        String existingSourceRecipeId = recipe.getSourceRecipeId().trim();
+        String rootSourceRecipeId = existingSourceRecipeId.isEmpty()
+                ? recipe.getId()
+                : existingSourceRecipeId;
+        recipeData.put("sourceRecipeId", rootSourceRecipeId);
 
         batch.set(newRecipeRef, recipeData);
 
@@ -210,12 +216,12 @@ public class CookbookPickerBottomSheet extends BottomSheetDialogFragment {
         batch.update(cookbookRef, "recipeIds", FieldValue.arrayUnion(newRecipeRef.getId()));
 
         batch.commit()
-             .addOnSuccessListener(aVoid -> showSuccessAndDismiss(book.getName()))
+             .addOnSuccessListener(aVoid -> showSuccessAndDismiss())
              .addOnFailureListener(e ->
                  Snackbar.make(requireView(), R.string.error_generic, Snackbar.LENGTH_SHORT).show());
     }
 
-    private void showSuccessAndDismiss(String cookbookName) {
+    private void showSuccessAndDismiss() {
         if (getActivity() != null) {
             View rootView = getActivity().findViewById(android.R.id.content);
             if (rootView != null) {

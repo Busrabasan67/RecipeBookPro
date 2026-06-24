@@ -22,7 +22,7 @@ import java.util.Map;
 public class DayCardAdapter extends RecyclerView.Adapter<DayCardAdapter.DayViewHolder> {
 
     public interface OnDayInteractionListener {
-        void onAddRecipeClick(String dayKey, int dayIndex);
+        void onAddRecipeClick(String dayKey);
         void onRecipeLongPress(String dayKey, Recipe recipe);
         void onRecipeClick(Recipe recipe);
     }
@@ -114,7 +114,7 @@ public class DayCardAdapter extends RecyclerView.Adapter<DayCardAdapter.DayViewH
         });
 
         holder.btnAddToDay.setOnClickListener(v -> {
-            if (listener != null) listener.onAddRecipeClick(dayKey, position);
+            if (listener != null) listener.onAddRecipeClick(dayKey);
         });
     }
 

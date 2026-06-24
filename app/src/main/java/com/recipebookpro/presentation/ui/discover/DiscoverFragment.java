@@ -1,6 +1,8 @@
 package com.recipebookpro.presentation.ui.discover;
 
 import android.content.Intent;
+import android.content.Context;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -39,8 +41,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -62,6 +66,11 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
     private final List<ScoredRecipe> results = new ArrayList<>();
     private final List<Cookbook> publicCookbooks = new ArrayList<>();
     private final Map<String, User> ownersById = new HashMap<>();
+    private final Map<Integer, List<String>> ingredientSearchTermsByChipId = new HashMap<>();
+    private final Map<String, List<String>> ingredientSearchTermsByTerm = new HashMap<>();
+    private boolean firstResume = true;
+    private String lastClickedRecipeId = null;
+    private String lastClickedUserId = null;
 
     private TranslationService translationService;
 
@@ -126,16 +135,63 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
 
     private void populateIngredients() {
         String[] commonIngredients = getResources().getStringArray(R.array.discover_default_ingredients);
-        for (String ing : commonIngredients) {
+        String[] turkishIngredients = getDiscoverDefaultIngredientsForLanguage("tr");
+        String[] englishIngredients = getDiscoverDefaultIngredientsForLanguage("en");
+        ingredientSearchTermsByChipId.clear();
+        ingredientSearchTermsByTerm.clear();
+
+        for (int i = 0; i < commonIngredients.length; i++) {
+            String ing = commonIngredients[i];
             Chip chip = new Chip(requireContext());
+            chip.setId(View.generateViewId());
             // Capitalize first letter for UI
             String capitalized = ing.substring(0, 1).toUpperCase() + ing.substring(1);
             chip.setText(capitalized);
             chip.setCheckable(true);
             chip.setClickable(true);
             chip.setOnCheckedChangeListener((buttonView, isChecked) -> performSearch());
+            List<String> searchTerms = buildIngredientSearchTerms(ing, turkishIngredients, englishIngredients, i);
+            ingredientSearchTermsByChipId.put(chip.getId(), searchTerms);
+            for (String term : searchTerms) {
+                ingredientSearchTermsByTerm.put(term, searchTerms);
+            }
             chipGroupIngredients.addView(chip);
         }
+    }
+
+    private String[] getDiscoverDefaultIngredientsForLanguage(String languageCode) {
+        Configuration configuration = new Configuration(getResources().getConfiguration());
+        configuration.setLocale(new Locale(languageCode));
+        Context localizedContext = requireContext().createConfigurationContext(configuration);
+        return localizedContext.getResources().getStringArray(R.array.discover_default_ingredients);
+    }
+
+    private List<String> buildIngredientSearchTerms(
+            String visibleIngredient,
+            String[] turkishIngredients,
+            String[] englishIngredients,
+            int index
+    ) {
+        Set<String> terms = new LinkedHashSet<>();
+        addSearchTerm(terms, visibleIngredient);
+        if (index < turkishIngredients.length) {
+            addSearchTerm(terms, turkishIngredients[index]);
+        }
+        if (index < englishIngredients.length) {
+            addSearchTerm(terms, englishIngredients[index]);
+        }
+        return new ArrayList<>(terms);
+    }
+
+    private void addSearchTerm(Set<String> terms, String value) {
+        String normalized = normalizeSearchTerm(value);
+        if (!normalized.isEmpty()) {
+            terms.add(normalized);
+        }
+    }
+
+    private String normalizeSearchTerm(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
     private void performSearch() {
@@ -179,6 +235,7 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
 
     private void loadAllPublicRecipes(List<String> selectedIngredients, String textQuery, String translatedQuery) {
         Set<String> collectedRecipeIds = new LinkedHashSet<>();
+        Set<String> queuedCookbookRecipeIds = new LinkedHashSet<>();
         List<Recipe> allRecipes = new ArrayList<>();
         publicCookbooks.clear();
         
@@ -187,8 +244,10 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
         Runnable checkDone = () -> {
             pending[0]--;
             if (pending[0] == 0) {
-                loadAllOwnersForSearch(allRecipes, () -> 
-                    filterAndDisplay(allRecipes, selectedIngredients, textQuery, translatedQuery)
+                loadCanonicalPublicRecipes(allRecipes, canonicalRecipes ->
+                        loadAllOwnersForSearch(canonicalRecipes, () ->
+                                filterAndDisplay(canonicalRecipes, selectedIngredients, textQuery, translatedQuery)
+                        )
                 );
             }
         };
@@ -219,9 +278,10 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
                             publicCookbooks.add(book);
                             if (book.getRecipeIds() != null) {
                                 for (String rid : book.getRecipeIds()) {
-                                    if (!collectedRecipeIds.contains(rid)) {
+                                    if (rid != null && !rid.isEmpty()
+                                            && !collectedRecipeIds.contains(rid)
+                                            && queuedCookbookRecipeIds.add(rid)) {
                                         recipeIds.add(rid);
-                                        collectedRecipeIds.add(rid);
                                     }
                                 }
                             }
@@ -258,22 +318,78 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
         }
     }
 
+    private interface RecipeListCallback {
+        void onReady(List<Recipe> recipes);
+    }
+
+    private void loadCanonicalPublicRecipes(List<Recipe> recipes, RecipeListCallback callback) {
+        Map<String, Recipe> recipesById = new HashMap<>();
+        Set<String> sourceIdsToFetch = new LinkedHashSet<>();
+
+        for (Recipe recipe : recipes) {
+            if (recipe == null || recipe.getId().isEmpty()) continue;
+            recipesById.put(recipe.getId(), recipe);
+            String sourceId = recipe.getSourceRecipeId();
+            if (!sourceId.isEmpty() && !recipesById.containsKey(sourceId)) {
+                sourceIdsToFetch.add(sourceId);
+            }
+        }
+
+        if (sourceIdsToFetch.isEmpty()) {
+            callback.onReady(keepOriginalPublicRecipesPerFamily(new ArrayList<>(recipesById.values())));
+            return;
+        }
+
+        List<List<String>> chunks = partition(new ArrayList<>(sourceIdsToFetch), 10);
+        final int[] pendingChunks = {chunks.size()};
+
+        for (List<String> chunk : chunks) {
+            db.collection("recipes")
+                    .whereIn(com.google.firebase.firestore.FieldPath.documentId(), chunk)
+                    .get()
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful() && task.getResult() != null) {
+                            for (DocumentSnapshot doc : task.getResult().getDocuments()) {
+                                Recipe sourceRecipe = Recipe.fromDocument(doc);
+                                if (sourceRecipe.isPublic()) {
+                                    recipesById.put(sourceRecipe.getId(), sourceRecipe);
+                                }
+                            }
+                        }
+                        pendingChunks[0]--;
+                        if (pendingChunks[0] == 0) {
+                            callback.onReady(keepOriginalPublicRecipesPerFamily(new ArrayList<>(recipesById.values())));
+                        }
+                    });
+        }
+    }
+
+    private List<Recipe> keepOriginalPublicRecipesPerFamily(List<Recipe> recipes) {
+        Map<String, Recipe> originalsByFamily = new LinkedHashMap<>();
+
+        for (Recipe recipe : recipes) {
+            if (recipe == null || recipe.getId().isEmpty()) continue;
+            if (!recipe.getSourceRecipeId().isEmpty()) continue;
+            originalsByFamily.put(recipe.getId(), recipe);
+        }
+
+        return new ArrayList<>(originalsByFamily.values());
+    }
+
     private void filterAndDisplay(List<Recipe> allRecipes, List<String> selectedIngredients, String textQuery, String translatedQuery) {
         if (!isAdded()) return;
 
         List<Recipe> filtered = new ArrayList<>();
-        Set<String> selectedSet = new HashSet<>(selectedIngredients);
+        List<Set<String>> selectedIngredientGroups = buildIngredientSearchGroups(selectedIngredients);
 
         for (Recipe r : allRecipes) {
             Set<String> recipeSearchTerms = getRecipeSearchTerms(r);
 
-            if (!selectedSet.isEmpty()) {
+            if (!selectedIngredientGroups.isEmpty()) {
                 boolean hasAny = false;
-                for (String sel : selectedSet) {
-                    String translatedSel = applyManualPatchForSearch(sel);
+                for (Set<String> selectedGroup : selectedIngredientGroups) {
                     for (String term : recipeSearchTerms) {
-                        if (term.contains(sel) || sel.contains(term) || 
-                            (!translatedSel.isEmpty() && (term.contains(translatedSel) || translatedSel.contains(term)))) {
+                        if (matchesSelectedIngredient(selectedGroup, term)) {
                             hasAny = true;
                             break;
                         }
@@ -379,7 +495,7 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
 
     private void scoreAndDisplay(List<Recipe> recipes, List<String> selectedIngredients) {
         results.clear();
-        Set<String> selectedSet = new HashSet<>(selectedIngredients);
+        List<Set<String>> selectedIngredientGroups = buildIngredientSearchGroups(selectedIngredients);
 
         for (Recipe recipe : recipes) {
             Set<String> recipeIngs = getRecipeSearchTerms(recipe);
@@ -387,24 +503,22 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
             int matchPercent;
             List<String> missing = new ArrayList<>();
 
-            if (selectedSet.isEmpty()) {
+            if (selectedIngredientGroups.isEmpty()) {
                 matchPercent = 100;
             } else {
                 int matched = 0;
-                for (String sel : selectedSet) {
+                for (Set<String> selectedGroup : selectedIngredientGroups) {
                     boolean found = false;
-                    String trans = applyManualPatchForSearch(sel);
                     for (String ri : recipeIngs) {
-                        if (ri.contains(sel) || sel.contains(ri) || 
-                            (!trans.isEmpty() && (ri.contains(trans) || trans.contains(ri)))) {
+                        if (matchesSelectedIngredient(selectedGroup, ri)) {
                             found = true;
                             break;
                         }
                     }
                     if (found) matched++;
-                    else missing.add(sel);
+                    else missing.add(getDisplayTerm(selectedGroup));
                 }
-                matchPercent = (matched * 100) / selectedSet.size();
+                matchPercent = (matched * 100) / selectedIngredientGroups.size();
             }
 
             results.add(new ScoredRecipe(recipe, matchPercent, missing));
@@ -478,18 +592,76 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
     }
 
     private List<String> getSelectedIngredients() {
-        List<String> selected = new ArrayList<>();
+        Set<String> selected = new LinkedHashSet<>();
         for (int i = 0; i < chipGroupIngredients.getChildCount(); i++) {
             Chip chip = (Chip) chipGroupIngredients.getChildAt(i);
             if (chip.isChecked()) {
-                selected.add(chip.getText().toString().toLowerCase());
+                List<String> searchTerms = ingredientSearchTermsByChipId.get(chip.getId());
+                if (searchTerms != null && !searchTerms.isEmpty()) {
+                    selected.addAll(searchTerms);
+                } else {
+                    addSearchTerm(selected, chip.getText().toString());
+                }
             }
         }
-        return selected;
+        return new ArrayList<>(selected);
+    }
+
+    private List<Set<String>> buildIngredientSearchGroups(List<String> selectedIngredients) {
+        List<Set<String>> groups = new ArrayList<>();
+        Set<String> consumedTerms = new HashSet<>();
+
+        for (String selectedIngredient : selectedIngredients) {
+            String normalized = normalizeSearchTerm(selectedIngredient);
+            if (normalized.isEmpty() || consumedTerms.contains(normalized)) {
+                continue;
+            }
+
+            Set<String> group = new LinkedHashSet<>();
+            List<String> chipTerms = ingredientSearchTermsByTerm.get(normalized);
+            if (chipTerms != null && !chipTerms.isEmpty()) {
+                group.addAll(chipTerms);
+            } else {
+                group.add(normalized);
+                String translated = applyManualPatchForSearch(normalized);
+                if (!translated.isEmpty()) {
+                    group.add(translated);
+                }
+            }
+
+            consumedTerms.addAll(group);
+            groups.add(group);
+        }
+
+        return groups;
+    }
+
+    private boolean matchesSelectedIngredient(Set<String> selectedTerms, String recipeTerm) {
+        if (recipeTerm == null) {
+            return false;
+        }
+
+        String normalizedRecipeTerm = normalizeSearchTerm(recipeTerm);
+        for (String selectedTerm : selectedTerms) {
+            if (normalizedRecipeTerm.contains(selectedTerm) || selectedTerm.contains(normalizedRecipeTerm)) {
+                return true;
+            }
+
+            String translated = applyManualPatchForSearch(selectedTerm);
+            if (!translated.isEmpty()
+                    && (normalizedRecipeTerm.contains(translated) || translated.contains(normalizedRecipeTerm))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String getDisplayTerm(Set<String> selectedGroup) {
+        return selectedGroup.isEmpty() ? "" : selectedGroup.iterator().next();
     }
 
     private String applyManualPatchForSearch(String ingredient) {
-        String lower = ingredient.toLowerCase().trim();
+        String lower = normalizeSearchTerm(ingredient);
         Map<String, String> patches = new HashMap<>();
         // English -> Turkish
         patches.put("egg", "yumurta");
@@ -542,6 +714,7 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
 
     @Override
     public void onRecipeClick(Recipe recipe) {
+        lastClickedRecipeId = recipe.getId();
         android.content.Intent intent = new android.content.Intent(getContext(), RecipeDetailActivity.class);
         intent.putExtra(RecipeDetailActivity.EXTRA_RECIPE, recipe);
         startActivity(intent);
@@ -554,6 +727,7 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
 
     @Override
     public void onAuthorClick(String userId) {
+        lastClickedUserId = userId;
         Intent intent = new Intent(getContext(), com.recipebookpro.presentation.ui.kitchen.PublicProfileActivity.class);
         intent.putExtra(com.recipebookpro.presentation.ui.kitchen.PublicProfileActivity.EXTRA_USER_ID, userId);
         startActivity(intent);
@@ -569,11 +743,11 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
             DocumentSnapshot currentUserDoc = transaction.get(db.collection("users").document(currentUid));
 
             List<String> targetFollowerIds = (List<String>) targetUserDoc.get("followerIds");
-            if (targetFollowerIds == null) targetFollowerIds = new ArrayList<>();
+            targetFollowerIds = targetFollowerIds != null ? new ArrayList<>(targetFollowerIds) : new ArrayList<>();
             long targetFollowerCount = targetUserDoc.getLong("followerCount") != null ? targetUserDoc.getLong("followerCount") : 0;
 
             List<String> currentFollowingIds = (List<String>) currentUserDoc.get("followingIds");
-            if (currentFollowingIds == null) currentFollowingIds = new ArrayList<>();
+            currentFollowingIds = currentFollowingIds != null ? new ArrayList<>(currentFollowingIds) : new ArrayList<>();
             long currentFollowingCount = currentUserDoc.getLong("followingCount") != null ? currentUserDoc.getLong("followingCount") : 0;
 
             if (currentlyFollowing) {
@@ -597,11 +771,33 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
                     "followingCount", currentFollowingCount);
 
             return null;
+        }).addOnSuccessListener(unused -> {
+            updateLocalFollowState(userId, currentUid, currentlyFollowing);
         }).addOnFailureListener(e -> {
             if (getContext() != null) {
                 Toast.makeText(getContext(), R.string.follow_action_failed, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void updateLocalFollowState(String targetUserId, String currentUid, boolean wasFollowing) {
+        User targetUser = ownersById.get(targetUserId);
+        if (targetUser == null || currentUid == null) return;
+
+        List<String> followerIds = new ArrayList<>(targetUser.getFollowerIds());
+        int followerCount = targetUser.getFollowerCount();
+
+        if (wasFollowing) {
+            followerIds.remove(currentUid);
+            followerCount = Math.max(0, followerCount - 1);
+        } else if (!followerIds.contains(currentUid)) {
+            followerIds.add(currentUid);
+            followerCount++;
+        }
+
+        targetUser.setFollowerIds(followerIds);
+        targetUser.setFollowerCount(followerCount);
+        adapter.setOwnerMap(ownersById);
     }
 
     @Override
@@ -616,6 +812,65 @@ public class DiscoverFragment extends Fragment implements DiscoverRecipeAdapter.
         if (view != null) {
             android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (lastClickedUserId != null && db != null) {
+            db.collection("users").document(lastClickedUserId).get()
+                    .addOnSuccessListener(userDoc -> {
+                        if (userDoc.exists()) {
+                            User updatedAuthor = userDoc.toObject(User.class);
+                            if (updatedAuthor != null) {
+                                updatedAuthor.setUid(userDoc.getId());
+                                ownersById.put(updatedAuthor.getUid(), updatedAuthor);
+                                adapter.setOwnerMap(ownersById);
+                            }
+                        }
+                        lastClickedUserId = null;
+                    })
+                    .addOnFailureListener(e -> lastClickedUserId = null);
+        }
+
+        if (lastClickedRecipeId != null && db != null) {
+            db.collection("recipes").document(lastClickedRecipeId).get()
+                    .addOnSuccessListener(doc -> {
+                        if (doc.exists()) {
+                            Recipe updatedRecipe = Recipe.fromDocument(doc);
+                            for (int i = 0; i < results.size(); i++) {
+                                if (results.get(i).recipe.getId().equals(updatedRecipe.getId())) {
+                                    ScoredRecipe oldScored = results.get(i);
+                                    results.set(i, new ScoredRecipe(updatedRecipe, oldScored.matchPercent, oldScored.missingIngredients));
+                                    
+                                    String authorId = updatedRecipe.getUserId();
+                                    if (authorId != null && !authorId.isEmpty()) {
+                                        final int indexToUpdate = i;
+                                        db.collection("users").document(authorId).get()
+                                                .addOnSuccessListener(userDoc -> {
+                                                    if (userDoc.exists()) {
+                                                        User updatedAuthor = userDoc.toObject(User.class);
+                                                        if (updatedAuthor != null) {
+                                                            updatedAuthor.setUid(userDoc.getId());
+                                                            ownersById.put(authorId, updatedAuthor);
+                                                            adapter.setOwnerMap(ownersById);
+                                                        }
+                                                    } else {
+                                                        adapter.notifyItemChanged(indexToUpdate);
+                                                    }
+                                                })
+                                                .addOnFailureListener(e -> adapter.notifyItemChanged(indexToUpdate));
+                                    } else {
+                                        adapter.notifyItemChanged(i);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                        lastClickedRecipeId = null;
+                    })
+                    .addOnFailureListener(e -> lastClickedRecipeId = null);
         }
     }
 

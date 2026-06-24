@@ -1,0 +1,124 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function changedOnly(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    function signedInLikeCounterUpdate() {
+      return isAuthenticated()
+        && changedOnly(['likes'])
+        && request.resource.data.likes is int
+        && (
+          (
+            resource.data.likes is int
+            && (
+              request.resource.data.likes == resource.data.likes + 1
+              || request.resource.data.likes == resource.data.likes - 1
+              || (resource.data.likes <= 0 && request.resource.data.likes == 0)
+            )
+          )
+          || (!resource.data.keys().hasAny(['likes']) && request.resource.data.likes == 1)
+        );
+    }
+
+    function signedInFollowUpdate() {
+      return isAuthenticated()
+        && changedOnly(['followerIds', 'followerCount', 'followingIds', 'followingCount']);
+    }
+
+    function signedInCookbookFollowUpdate() {
+      return isAuthenticated()
+        && changedOnly(['followerIds', 'followerCount']);
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || signedInFollowUpdate();
+      allow delete: if isOwner(userId);
+    }
+
+    match /recipes/{recipeId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid
+        || signedInLikeCounterUpdate()
+      );
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+
+      match /notes/{userId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    match /cookbooks/{cookbookId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.uid in resource.data.collaboratorIds ||
+        request.auth.uid in resource.data.followerIds ||
+        resource.data.isPublic == true ||
+        resource.data.public == true
+      );
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.uid in resource.data.collaboratorIds ||
+        signedInCookbookFollowUpdate()
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.uid in resource.data.collaboratorIds
+      );
+    }
+
+    match /collections/{collectionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /shopping_lists/{listId} {
+      allow read, update, delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.uid in resource.data.collaboratorIds
+      );
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /meal_plans/{planId} {
+      allow read, update, delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.uid in resource.data.collaboratorIds
+      );
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /invitations/{invitationId} {
+      allow read, update, delete: if isAuthenticated() && (
+        resource.data.fromUserId == request.auth.uid ||
+        resource.data.toUserId == request.auth.uid
+      );
+      allow create: if isAuthenticated() && request.resource.data.fromUserId == request.auth.uid;
+    }
+
+    match /notifications/{notificationId} {
+      allow read, update, delete: if isAuthenticated() && (
+        resource.data.recipientId == request.auth.uid ||
+        resource.data.userId == request.auth.uid ||
+        resource.data.toUserId == request.auth.uid
+      );
+      allow create: if isAuthenticated();
+    }
+  }
+}

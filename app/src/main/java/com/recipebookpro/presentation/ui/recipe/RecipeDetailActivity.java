@@ -8,28 +8,27 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-import java.util.Locale;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.recipebookpro.R;
+import com.recipebookpro.data.repository.RecipeRepositoryImpl;
 import com.recipebookpro.domain.model.Recipe;
 import com.recipebookpro.domain.model.User;
+import com.recipebookpro.domain.repository.RecipeRepository;
 import com.recipebookpro.presentation.ui.BaseActivity;
 import com.recipebookpro.presentation.share.PublicShareIntentHelper;
 import com.recipebookpro.presentation.ui.recipe.adapter.RecipeDetailPagerAdapter;
@@ -47,6 +46,7 @@ import coil.Coil;
 import coil.request.ImageRequest;
 import com.recipebookpro.domain.service.TranslationService;
 import com.recipebookpro.data.remote.MLKitTranslationService;
+import com.recipebookpro.domain.usecase.ToggleRecipeLikeUseCase;
 import com.recipebookpro.domain.usecase.TranslateRecipeUseCase;
 
 public class RecipeDetailActivity extends BaseActivity {
@@ -57,15 +57,33 @@ public class RecipeDetailActivity extends BaseActivity {
     private FirebaseFirestore db;
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
-    
-    private ArrayList<String> userAllergens = new ArrayList<>();
+
+    private List<String> userHealthConditions = new ArrayList<>();
+    private List<String> userCustomHealthConditions = new ArrayList<>();
+    private List<com.recipebookpro.domain.model.LocalizedText> activeCustomHealthConditionsI18n = new ArrayList<>();
+    private java.util.Map<String, java.util.List<String>> userHealthTriggers = new java.util.HashMap<>();
+
+    private RecipeDetailViewModel viewModel;
+
     private boolean isLiked = false;
+    private boolean healthWarningExpanded = false;
     private MenuItem likeMenuItem;
     private ListenerRegistration likeStateListener;
     private TranslationService translationService;
     private TranslateRecipeUseCase translateRecipeUseCase;
+    private ToggleRecipeLikeUseCase toggleRecipeLikeUseCase;
     private TabLayoutMediator recipeTabLayoutMediator;
     private boolean firstResume = true;
+    private List<String> currentRiskyIngredients = new ArrayList<>();
+    private List<String> currentRiskyMatchTerms = new ArrayList<>();
+
+    public List<String> getRiskyIngredients() {
+        return currentRiskyIngredients;
+    }
+
+    public List<String> getRiskyMatchTerms() {
+        return currentRiskyMatchTerms;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,6 +109,9 @@ public class RecipeDetailActivity extends BaseActivity {
         db = FirebaseFirestore.getInstance();
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
+        toggleRecipeLikeUseCase = new ToggleRecipeLikeUseCase(new RecipeRepositoryImpl());
+
+        viewModel = new ViewModelProvider(this).get(RecipeDetailViewModel.class);
 
         Runnable afterRecipeReady = () -> {
             setupToolbar();
@@ -105,7 +126,6 @@ public class RecipeDetailActivity extends BaseActivity {
             });
 
             findViewById(R.id.btnRevertTranslation).setOnClickListener(v -> revertTranslation());
-            translateRecipe();
         };
 
         String recipeId = recipe.getId();
@@ -128,7 +148,8 @@ public class RecipeDetailActivity extends BaseActivity {
         db = FirebaseFirestore.getInstance();
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
-        
+        toggleRecipeLikeUseCase = new ToggleRecipeLikeUseCase(new RecipeRepositoryImpl());
+
         db.collection("recipes").document(recipeId).get().addOnSuccessListener(doc -> {
             if (doc.exists()) {
                 recipe = Recipe.fromDocument(doc);
@@ -143,7 +164,6 @@ public class RecipeDetailActivity extends BaseActivity {
                     findViewById(R.id.cardTranslation).setVisibility(View.GONE);
                 });
                 findViewById(R.id.btnRevertTranslation).setOnClickListener(v -> revertTranslation());
-                translateRecipe();
             } else {
                 Toast.makeText(this, R.string.recipe_not_found, Toast.LENGTH_SHORT).show();
                 finish();
@@ -156,11 +176,11 @@ public class RecipeDetailActivity extends BaseActivity {
 
     private void setupToolbar() {
         MaterialToolbar toolbar = findViewById(R.id.toolbarDetail);
-        String currentLang = Locale.getDefault().getLanguage();
+        String currentLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
         toolbar.setTitle(recipe.getDisplayTitle(currentLang));
 
         toolbar.setNavigationOnClickListener(v -> finish());
-        
+
         toolbar.setOnMenuItemClickListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.action_share) {
@@ -182,7 +202,7 @@ public class RecipeDetailActivity extends BaseActivity {
                 addToShoppingList();
                 return true;
             } else if (itemId == R.id.action_translate) {
-                translateRecipe();
+                translateRecipe(() -> checkHealthConditions());
                 return true;
             }
             return false;
@@ -203,7 +223,7 @@ public class RecipeDetailActivity extends BaseActivity {
         ivRecipeCover.setScaleType(ImageView.ScaleType.FIT_CENTER);
         ivRecipeCover.setImageResource(R.drawable.ic_cook);
         ivRecipeCover.setPadding(0, 0, 0, 0);
-        
+
         android.util.TypedValue typedValue = new android.util.TypedValue();
         getTheme().resolveAttribute(com.google.android.material.R.attr.colorPrimaryContainer, typedValue, true);
         ivRecipeCover.setBackgroundColor(typedValue.data);
@@ -212,89 +232,134 @@ public class RecipeDetailActivity extends BaseActivity {
 
         if (!TextUtils.isEmpty(recipe.getImageUrl())) {
             ImageRequest request = new ImageRequest.Builder(this)
-                .data(recipe.getImageUrl())
-                .target(new coil.target.Target() {
-                    @Override
-                    public void onStart(@Nullable android.graphics.drawable.Drawable placeholder) {}
+                    .data(recipe.getImageUrl())
+                    .target(new coil.target.Target() {
+                        @Override
+                        public void onStart(@Nullable android.graphics.drawable.Drawable placeholder) {
+                        }
 
-                    @Override
-                    public void onSuccess(@NonNull android.graphics.drawable.Drawable result) {
-                        ivRecipeCover.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                        ivRecipeCover.setBackground(null);
-                        ivRecipeCover.setImageTintList(null);
-                        ivRecipeCover.setImageDrawable(result);
-                    }
+                        @Override
+                        public void onSuccess(@NonNull android.graphics.drawable.Drawable result) {
+                            ivRecipeCover.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                            ivRecipeCover.setBackground(null);
+                            ivRecipeCover.setImageTintList(null);
+                            ivRecipeCover.setImageDrawable(result);
+                        }
 
-                    @Override
-                    public void onError(@Nullable android.graphics.drawable.Drawable error) {
-                        // Keep the placeholder state
-                    }
-                })
-                .build();
+                        @Override
+                        public void onError(@Nullable android.graphics.drawable.Drawable error) {
+                            // Keep the placeholder state
+                        }
+                    })
+                    .build();
             Coil.imageLoader(this).enqueue(request);
         }
+        subscribeLikeState();
     }
 
     private void loadUserAllergensAndSetupPager() {
-        if (currentUser == null) {
-            setupViewPagerAndTabs();
-            return;
-        }
+        viewModel.getUserData(currentUser).observe(this, userData -> {
+            userHealthConditions.clear();
+            userCustomHealthConditions.clear();
+            activeCustomHealthConditionsI18n.clear();
+            userHealthTriggers.clear();
 
-        db.collection("users").document(currentUser.getUid()).get()
-          .addOnSuccessListener(documentSnapshot -> {
-              if (documentSnapshot.exists()) {
-                  User user = documentSnapshot.toObject(User.class);
-                  if (user != null && user.getAllergens() != null) {
-                      userAllergens.addAll(user.getAllergens());
-                  }
-              }
-              checkAllergens();
-              setupViewPagerAndTabs();
-          })
-          .addOnFailureListener(e -> {
-              setupViewPagerAndTabs(); // setup anyway
-          });
-    }
-
-    private void checkAllergens() {
-        if (userAllergens.isEmpty() || recipe.getAllergens().isEmpty()) return;
-
-        List<String> matchingAllergens = new ArrayList<>();
-        String currentLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
-        List<String> displayAllergens = recipe.getDisplayAllergens(currentLang);
-        List<String> originalAllergens = recipe.getAllergens();
-
-        for (String userAllergen : userAllergens) {
-            boolean matched = false;
-            // Check original allergens
-            for (String recipeAllergen : originalAllergens) {
-                if (userAllergen.equalsIgnoreCase(recipeAllergen)) {
-                    matchingAllergens.add(recipeAllergen);
-                    matched = true;
-                    break;
+            if (userData != null) {
+                if (userData.getHealthConditions() != null)
+                    userHealthConditions.addAll(userData.getHealthConditions());
+                if (userData.getCustomHealthConditionsForLang(
+                        com.recipebookpro.presentation.ui.LocaleHelper
+                                .getLanguage(RecipeDetailActivity.this)) != null) {
+                    userCustomHealthConditions.addAll(userData.getCustomHealthConditionsForLang(
+                            com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(RecipeDetailActivity.this)));
                 }
-            }
-            // If not matched, check translated allergens
-            if (!matched && displayAllergens != null) {
-                for (String translatedAllergen : displayAllergens) {
-                    if (userAllergen.equalsIgnoreCase(translatedAllergen) || 
-                        translatedAllergen.toLowerCase().contains(userAllergen.toLowerCase()) || 
-                        userAllergen.toLowerCase().contains(translatedAllergen.toLowerCase())) {
-                        matchingAllergens.add(translatedAllergen);
-                        break;
+                if (userData.resolveActiveCustomHealthConditionsI18n() != null) {
+                    activeCustomHealthConditionsI18n.addAll(userData.resolveActiveCustomHealthConditionsI18n());
+                }
+                userHealthTriggers.putAll(userData.getActiveHealthTriggers());
+
+                // Merge built-in triggers for static health conditions
+                for (String condition : userHealthConditions) {
+                    List<String> builtIn = com.recipebookpro.domain.model.BuiltInHealthTriggers
+                            .getTriggersFor(condition);
+                    if (builtIn != null) {
+                        userHealthTriggers.put(condition, builtIn);
                     }
                 }
             }
-        }
 
-        if (!matchingAllergens.isEmpty()) {
-            MaterialCardView cardAllergy = findViewById(R.id.cardAllergyWarning);
-            TextView tvAllergyWarning = findViewById(R.id.tvAllergyWarning);
-            cardAllergy.setVisibility(View.VISIBLE);
-            String allergensText = TextUtils.join(", ", matchingAllergens);
-            tvAllergyWarning.setText(getString(R.string.allergy_contains, allergensText));
-        }
+            setupViewPagerAndTabs();
+
+            String uiLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(RecipeDetailActivity.this);
+            String recipeLang = detectRecipeLanguage(recipe);
+
+            if (!uiLang.equals(recipeLang)) {
+                translateRecipe(() -> checkHealthConditions());
+            } else {
+                checkHealthConditions();
+            }
+
+            // Detect and fix Firestore dirty state if Room has 0 active chips (optimized
+            // with SharedPreferences)
+            if (currentUser != null && userHealthConditions.isEmpty() && activeCustomHealthConditionsI18n.isEmpty()) {
+                android.content.SharedPreferences prefs = getSharedPreferences("HealthCheckPrefs", MODE_PRIVATE);
+                boolean isSanitized = prefs.getBoolean("firestore_sanitized_v1", false);
+                if (!isSanitized) {
+                    final String uid = currentUser.getUid();
+                    com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                            .collection("users").document(uid).get()
+                            .addOnSuccessListener(doc -> {
+                                if (doc.exists()) {
+                                    java.util.List<?> firestoreHealth = (java.util.List<?>) doc.get("healthConditions");
+                                    java.util.List<?> firestoreActiveKeys = (java.util.List<?>) doc
+                                            .get("activeCustomHealthConditionKeys");
+
+                                    boolean firestoreIsDirty = (firestoreHealth != null && !firestoreHealth.isEmpty())
+                                            ||
+                                            (firestoreActiveKeys != null && !firestoreActiveKeys.isEmpty());
+
+                                    if (firestoreIsDirty) {
+                                        // Firestore has dirty data but Room has 0 active chips!
+                                        // Force overwrite Firestore with empty values to sanitize it
+                                        java.util.Map<String, Object> forceCleanUpdates = new java.util.HashMap<>();
+                                        forceCleanUpdates.put("healthConditions", new java.util.ArrayList<>());
+                                        forceCleanUpdates.put("customHealthConditions", new java.util.ArrayList<>());
+                                        forceCleanUpdates.put("customHealthConditionsI18n",
+                                                new java.util.ArrayList<>());
+                                        forceCleanUpdates.put("activeCustomHealthConditionKeys",
+                                                new java.util.ArrayList<>());
+                                        forceCleanUpdates.put("healthTriggers", new java.util.HashMap<>());
+                                        forceCleanUpdates.put("healthWarningTemplates", new java.util.HashMap<>());
+
+                                        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                                .collection("users").document(uid).update(forceCleanUpdates)
+                                                .addOnSuccessListener(aVoid -> {
+                                                    prefs.edit().putBoolean("firestore_sanitized_v1", true).apply();
+                                                    activeCustomHealthConditionsI18n.clear();
+                                                    userHealthTriggers.clear();
+                                                    String uiLangInner = com.recipebookpro.presentation.ui.LocaleHelper
+                                                            .getLanguage(RecipeDetailActivity.this);
+                                                    String recipeLangInner = detectRecipeLanguage(recipe);
+                                                    if (!uiLangInner.equals(recipeLangInner)) {
+                                                        translateRecipe(() -> checkHealthConditions());
+                                                    } else {
+                                                        checkHealthConditions();
+                                                    }
+                                                });
+                                    } else {
+                                        // Already clean, mark true to prevent subsequent checks
+                                        prefs.edit().putBoolean("firestore_sanitized_v1", true).apply();
+                                    }
+                                } else {
+                                    prefs.edit().putBoolean("firestore_sanitized_v1", true).apply();
+                                }
+                            })
+                            .addOnFailureListener(e -> {
+                                // Don't mark true, so we can retry on next connection
+                            });
+                }
+            }
+        });
     }
 
     private void setupViewPagerAndTabs() {
@@ -306,18 +371,17 @@ public class RecipeDetailActivity extends BaseActivity {
             recipeTabLayoutMediator = null;
         }
 
-        RecipeDetailPagerAdapter pagerAdapter = new RecipeDetailPagerAdapter(this, recipe, userAllergens);
+        RecipeDetailPagerAdapter pagerAdapter = new RecipeDetailPagerAdapter(this, recipe);
         viewPager.setAdapter(pagerAdapter);
 
         String[] tabTitles = {
-            getString(R.string.tab_ingredients),
-            getString(R.string.tab_steps),
-            getString(R.string.tab_notes)
+                getString(R.string.tab_ingredients),
+                getString(R.string.tab_steps),
+                getString(R.string.tab_notes)
         };
 
         recipeTabLayoutMediator = new TabLayoutMediator(tabLayout, viewPager,
-                (tab, position) -> tab.setText(tabTitles[position])
-        );
+                (tab, position) -> tab.setText(tabTitles[position]));
         recipeTabLayoutMediator.attach();
     }
 
@@ -342,32 +406,40 @@ public class RecipeDetailActivity extends BaseActivity {
     }
 
     private void shareRecipe() {
-        if (recipe == null) return;
+        if (recipe == null)
+            return;
         startActivity(PublicShareIntentHelper.createRecipeShareChooserIntent(this, recipe));
     }
 
     private void toggleLike(MenuItem item) {
-        if (currentUser == null) return;
+        if (currentUser == null)
+            return;
         boolean shouldLike = !isLiked;
         String uid = currentUser.getUid();
         String recipeId = recipe.getId();
-        if (TextUtils.isEmpty(recipeId)) return;
+        if (TextUtils.isEmpty(recipeId))
+            return;
 
         item.setEnabled(false);
-        db.collection("users").document(uid)
-                .update("likedRecipeIds", shouldLike
-                        ? FieldValue.arrayUnion(recipeId)
-                        : FieldValue.arrayRemove(recipeId))
-                .addOnSuccessListener(unused -> {
-                    db.collection("recipes").document(recipeId)
-                            .update("likes", FieldValue.increment(shouldLike ? 1 : -1))
-                            .addOnCompleteListener(task -> item.setEnabled(true));
-                    Toast.makeText(this, shouldLike ? getString(R.string.liked) : getString(R.string.like_removed), Toast.LENGTH_SHORT).show();
-                })
-                .addOnFailureListener(e -> {
-                    item.setEnabled(true);
-                    Toast.makeText(this, R.string.error_generic, Toast.LENGTH_SHORT).show();
-                });
+        toggleRecipeLikeUseCase.execute(uid, recipeId, shouldLike, new RecipeRepository.OnRecipeActionCompleteListener() {
+            @Override
+            public void onSuccess() {
+                item.setEnabled(true);
+                isLiked = shouldLike;
+                item.setIcon(isLiked ? R.drawable.ic_heart_filled : R.drawable.ic_heart_outline);
+                int delta = shouldLike ? 1 : -1;
+                recipe.setLikes(Math.max(0, recipe.getLikes() + delta));
+                Toast.makeText(RecipeDetailActivity.this,
+                        shouldLike ? getString(R.string.liked) : getString(R.string.like_removed),
+                        Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onError(Exception e) {
+                item.setEnabled(true);
+                Toast.makeText(RecipeDetailActivity.this, R.string.error_generic, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void showDeleteDialog() {
@@ -380,64 +452,97 @@ public class RecipeDetailActivity extends BaseActivity {
     }
 
     private void deleteRecipe() {
-        db.collection("recipes").document(recipe.getId())
+        String recipeId = recipe.getId();
+        db.collection("recipes").document(recipeId)
                 .delete()
                 .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(RecipeDetailActivity.this, R.string.recipe_deleted, Toast.LENGTH_SHORT).show();
-                    finish();
+                    db.collection("cookbooks")
+                            .whereArrayContains("recipeIds", recipeId)
+                            .get()
+                            .addOnSuccessListener(snap -> {
+                                List<com.google.android.gms.tasks.Task<Void>> updates = new java.util.ArrayList<>();
+                                for (com.google.firebase.firestore.DocumentSnapshot doc : snap.getDocuments()) {
+                                    updates.add(doc.getReference().update("recipeIds", com.google.firebase.firestore.FieldValue.arrayRemove(recipeId)));
+                                }
+                                if (updates.isEmpty()) {
+                                    Toast.makeText(RecipeDetailActivity.this, R.string.recipe_deleted, Toast.LENGTH_SHORT).show();
+                                    finish();
+                                } else {
+                                    com.google.android.gms.tasks.Tasks.whenAll(updates).addOnCompleteListener(task -> {
+                                        Toast.makeText(RecipeDetailActivity.this, R.string.recipe_deleted, Toast.LENGTH_SHORT).show();
+                                        finish();
+                                    });
+                                }
+                            })
+                            .addOnFailureListener(e -> {
+                                Toast.makeText(RecipeDetailActivity.this, R.string.recipe_deleted, Toast.LENGTH_SHORT).show();
+                                finish();
+                            });
                 })
-                .addOnFailureListener(e -> 
-                    Toast.makeText(RecipeDetailActivity.this, R.string.recipe_delete_failed, Toast.LENGTH_SHORT).show()
-                );
+                .addOnFailureListener(e -> Toast
+                        .makeText(RecipeDetailActivity.this, R.string.recipe_delete_failed, Toast.LENGTH_SHORT).show());
     }
 
     private void addToShoppingList() {
-        if (currentUser == null) return;
-        
+        if (currentUser == null)
+            return;
+
         String listName = getString(R.string.shopping_list_for_recipe, recipe.getTitle());
-        
+
         Data inputData = new Data.Builder()
-            .putString(MergeIngredientsWorker.KEY_USER_ID, currentUser.getUid())
-            .putStringArray(MergeIngredientsWorker.KEY_RECIPE_IDS, new String[]{recipe.getId()})
-            .putString(MergeIngredientsWorker.KEY_LIST_NAME, listName)
-            .putString(MergeIngredientsWorker.KEY_TARGET_LANGUAGE, com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this))
-            .build();
-            
+                .putString(MergeIngredientsWorker.KEY_USER_ID, currentUser.getUid())
+                .putStringArray(MergeIngredientsWorker.KEY_RECIPE_IDS, new String[] { recipe.getId() })
+                .putString(MergeIngredientsWorker.KEY_LIST_NAME, listName)
+                .putString(MergeIngredientsWorker.KEY_TARGET_LANGUAGE,
+                        com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this))
+                .build();
+
         OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(MergeIngredientsWorker.class)
-            .setInputData(inputData)
-            .build();
-            
+                .setInputData(inputData)
+                .build();
+
         WorkManager.getInstance(this).enqueue(workRequest);
         Toast.makeText(this, R.string.shopping_ingredients_preparing, Toast.LENGTH_SHORT).show();
     }
 
-    private void translateRecipe() {
-        if (recipe == null) return;
-        
+    private void translateRecipe(final Runnable onComplete) {
+        if (recipe == null) {
+            if (onComplete != null)
+                onComplete.run();
+            return;
+        }
+
         findViewById(R.id.pbTranslation).setVisibility(View.VISIBLE);
         ((android.widget.TextView) findViewById(R.id.tvTranslatedContent)).setText(R.string.downloading_model);
-        
+
         String targetLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
         translateRecipeUseCase.execute(recipe, targetLang, new TranslationService.TranslationCallback() {
             @Override
             public void onSuccess(String message) {
                 findViewById(R.id.pbTranslation).setVisibility(View.GONE);
                 findViewById(R.id.btnRevertTranslation).setVisibility(View.VISIBLE);
-                ((android.widget.TextView) findViewById(R.id.tvTranslatedContent)).setText(R.string.translation_completed);
-                
+                ((android.widget.TextView) findViewById(R.id.tvTranslatedContent))
+                        .setText(R.string.translation_completed);
+
                 // Refresh all views with the new translated data
                 setupToolbar();
                 setupViewPagerAndTabs();
-                
-                // Update original language in Firestore for future persistence
-                FirebaseFirestore.getInstance().collection("recipes").document(recipe.getId())
-                        .update("originalLanguage", recipe.getOriginalLanguage());
+
+                saveTranslatedToFirestore();
+
+                if (onComplete != null) {
+                    onComplete.run();
+                }
             }
 
             @Override
             public void onFailure(Exception e) {
                 findViewById(R.id.pbTranslation).setVisibility(View.GONE);
-                Toast.makeText(RecipeDetailActivity.this, getString(R.string.error_with_reason, e.getMessage()), Toast.LENGTH_LONG).show();
+                Toast.makeText(RecipeDetailActivity.this, getString(R.string.error_with_reason, e.getMessage()),
+                        Toast.LENGTH_LONG).show();
+                if (onComplete != null) {
+                    onComplete.run();
+                }
             }
 
             @Override
@@ -453,58 +558,43 @@ public class RecipeDetailActivity extends BaseActivity {
         });
     }
 
-    private void showTranslation(String title, String content) {
-        View card = findViewById(R.id.cardTranslation);
-        card.setVisibility(View.VISIBLE);
-        ((TextView) findViewById(R.id.tvTranslatedTitle)).setText(title);
-        ((TextView) findViewById(R.id.tvTranslatedContent)).setText(content);
-        
-        // Localize card labels
-        TextView tvLabel = card.findViewById(R.id.tvTranslationLabel);
-        if (tvLabel != null) tvLabel.setText(R.string.translation_title);
-        
-        // Scroll to the top of the card if needed, or just let the user see it
-        AppBarLayout appBarLayout = findViewById(R.id.appBarLayout);
-        if (appBarLayout != null) {
-            appBarLayout.setExpanded(true, true);
-        }
-    }
-
     private void setupOwnerCard() {
-        if (recipe == null || TextUtils.isEmpty(recipe.getUserId())) return;
-        
+        if (recipe == null || TextUtils.isEmpty(recipe.getUserId()))
+            return;
+
         View card = findViewById(R.id.cardOwnerInfo);
         TextView tvOwner = findViewById(R.id.tvOwnerName);
         ImageView ivAvatar = findViewById(R.id.ivOwnerAvatar);
-        
-        db.collection("users").document(recipe.getUserId()).get()
-          .addOnSuccessListener(doc -> {
-              if (doc.exists()) {
-                  User user = doc.toObject(User.class);
-                  if (user != null) {
-                      tvOwner.setText(user.getDisplayName());
-                      if (!TextUtils.isEmpty(user.getProfileImageUrl())) {
-                          ImageRequest request = new ImageRequest.Builder(this)
-                              .data(user.getProfileImageUrl())
-                              .target(ivAvatar)
-                              .crossfade(true)
-                              .transformations(new coil.transform.CircleCropTransformation())
-                              .placeholder(R.drawable.ic_nav_profile)
-                              .build();
-                          Coil.imageLoader(this).enqueue(request);
-                      }
-                      String uid = user.getUid();
-                      if (TextUtils.isEmpty(uid)) uid = doc.getId();
-                      final String finalUid = uid;
 
-                      card.setOnClickListener(v -> {
-                          Intent intent = new Intent(RecipeDetailActivity.this, PublicProfileActivity.class);
-                          intent.putExtra(PublicProfileActivity.EXTRA_USER_ID, finalUid);
-                          startActivity(intent);
-                      });
-                  }
-              }
-          });
+        db.collection("users").document(recipe.getUserId()).get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        User user = doc.toObject(User.class);
+                        if (user != null) {
+                            tvOwner.setText(user.getDisplayName());
+                            if (!TextUtils.isEmpty(user.getProfileImageUrl())) {
+                                ImageRequest request = new ImageRequest.Builder(this)
+                                        .data(user.getProfileImageUrl())
+                                        .target(ivAvatar)
+                                        .crossfade(true)
+                                        .transformations(new coil.transform.CircleCropTransformation())
+                                        .placeholder(R.drawable.ic_nav_profile)
+                                        .build();
+                                Coil.imageLoader(this).enqueue(request);
+                            }
+                            String uid = user.getUid();
+                            if (TextUtils.isEmpty(uid))
+                                uid = doc.getId();
+                            final String finalUid = uid;
+
+                            card.setOnClickListener(v -> {
+                                Intent intent = new Intent(RecipeDetailActivity.this, PublicProfileActivity.class);
+                                intent.putExtra(PublicProfileActivity.EXTRA_USER_ID, finalUid);
+                                startActivity(intent);
+                            });
+                        }
+                    }
+                });
     }
 
     private void revertTranslation() {
@@ -513,15 +603,16 @@ public class RecipeDetailActivity extends BaseActivity {
             setupToolbar();
             setupViewPagerAndTabs();
             findViewById(R.id.cardTranslation).setVisibility(View.GONE);
-            
+
             // Also update Firestore to clear the translations permanently
             saveTranslatedToFirestore();
         }
     }
 
     private void saveTranslatedToFirestore() {
-        if (recipe == null || TextUtils.isEmpty(recipe.getId())) return;
-        
+        if (recipe == null || TextUtils.isEmpty(recipe.getId()))
+            return;
+
         db.collection("recipes").document(recipe.getId())
                 .set(recipe) // Save the entire updated object to ensure all translated fields are persisted
                 .addOnFailureListener(e -> {
@@ -552,8 +643,15 @@ public class RecipeDetailActivity extends BaseActivity {
                     recipe = Recipe.fromDocument(doc);
                     setupToolbar();
                     setupViewPagerAndTabs();
-                    checkAllergens();
                     setupFAB();
+                    String uiLang = com.recipebookpro.presentation.ui.LocaleHelper
+                            .getLanguage(RecipeDetailActivity.this);
+                    String recipeLang = detectRecipeLanguage(recipe);
+                    if (!uiLang.equals(recipeLang)) {
+                        translateRecipe(() -> checkHealthConditions());
+                    } else {
+                        checkHealthConditions();
+                    }
                 });
     }
 
@@ -573,13 +671,15 @@ public class RecipeDetailActivity extends BaseActivity {
     }
 
     private void subscribeLikeState() {
-        if (currentUser == null || recipe == null || TextUtils.isEmpty(recipe.getId())) return;
+        if (currentUser == null || recipe == null || TextUtils.isEmpty(recipe.getId()))
+            return;
         if (likeStateListener != null) {
             likeStateListener.remove();
         }
         likeStateListener = db.collection("users").document(currentUser.getUid())
                 .addSnapshotListener((doc, e) -> {
-                    if (e != null || doc == null || !doc.exists()) return;
+                    if (e != null || doc == null || !doc.exists())
+                        return;
                     List<String> likedIds = (List<String>) doc.get("likedRecipeIds");
                     boolean newState = likedIds != null && likedIds.contains(recipe.getId());
                     isLiked = newState;
@@ -599,5 +699,262 @@ public class RecipeDetailActivity extends BaseActivity {
             translationService.close();
         }
         super.onDestroy();
+    }
+
+    private void checkHealthConditions() {
+        MaterialCardView cardHealth = findViewById(R.id.cardHealthWarning);
+        TextView tvHealthText = findViewById(R.id.tvHealthWarningText);
+        ImageView ivIcon = findViewById(R.id.ivHealthWarningIcon);
+        android.view.View llHeader = findViewById(R.id.llHealthWarningHeader);
+
+        if (cardHealth == null || tvHealthText == null)
+            return;
+
+        if (currentUser == null) {
+            cardHealth.setVisibility(View.GONE);
+            return;
+        }
+
+        cardHealth.setVisibility(View.VISIBLE);
+
+        boolean hasConditions = !userHealthConditions.isEmpty()
+                || !userCustomHealthConditions.isEmpty()
+                || !userHealthTriggers.isEmpty();
+
+        if (!hasConditions) {
+            applyBannerSurface();
+            tvHealthText.setText(R.string.health_warning_no_conditions);
+            if (ivIcon != null)
+                ivIcon.setImageResource(R.drawable.ic_cook);
+            return;
+        }
+
+        // Setup expand toggle
+        if (llHeader != null) {
+            llHeader.setOnClickListener(v -> toggleHealthWarningExpand());
+        }
+
+        applyBannerSurface();
+        tvHealthText.setText(R.string.health_warning_checking);
+        if (ivIcon != null)
+            ivIcon.setImageResource(R.drawable.ic_cook);
+
+        com.recipebookpro.domain.repository.HealthCheckRepository repository = new com.recipebookpro.data.repository.HealthCheckRepositoryImpl();
+        com.recipebookpro.domain.usecase.CheckRecipeSafetyUseCase useCase = new com.recipebookpro.domain.usecase.CheckRecipeSafetyUseCase(
+                repository);
+        String uiLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
+        useCase.execute(recipe, userHealthConditions, userCustomHealthConditions, new ArrayList<>(),
+                userHealthTriggers, uiLang,
+                new com.recipebookpro.domain.repository.HealthCheckRepository.HealthCheckCallback() {
+                    @Override
+                    public void onResult(String resultRecipeId, boolean isSafe, String rationale,
+                            List<String> riskyIngredients) {
+                        if (isDestroyed() || isFinishing() || !recipe.getId().equals(resultRecipeId))
+                            return;
+                        deliverHealthCheckResult(isSafe, rationale, riskyIngredients);
+                    }
+
+                    @Override
+                    public void onError(String resultRecipeId, String errorMessage) {
+                        if (isDestroyed() || isFinishing() || !recipe.getId().equals(resultRecipeId))
+                            return;
+                        applyBannerError();
+                        TextView tv = findViewById(R.id.tvHealthWarningText);
+                        if (tv != null)
+                            tv.setText(getString(R.string.health_warning_error));
+                        ImageView iv = findViewById(R.id.ivHealthWarningIcon);
+                        if (iv != null)
+                            iv.setImageResource(R.drawable.ic_remove);
+                    }
+                });
+    }
+
+    private String detectRecipeLanguage(Recipe recipe) {
+        return com.recipebookpro.util.RecipeLanguageDetector.detectFromRecipe(recipe);
+    }
+
+    private void deliverHealthCheckResult(boolean isSafe, String rationale, List<String> riskyIngredients) {
+        if ((riskyIngredients == null || riskyIngredients.isEmpty()) && !isSafe) {
+            String uiLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
+            riskyIngredients = com.recipebookpro.util.RiskyIngredientResolver.resolveFromRecipe(
+                    recipe, userHealthConditions, userCustomHealthConditions, userHealthTriggers,
+                    rationale, uiLang);
+        }
+        if (riskyIngredients == null || riskyIngredients.isEmpty()) {
+            currentRiskyIngredients = new ArrayList<>();
+            currentRiskyMatchTerms = new ArrayList<>();
+            finalizeHealthCheck(isSafe, rationale, currentRiskyIngredients);
+            return;
+        }
+        final List<String> originalLabels = new ArrayList<>(riskyIngredients);
+        String uiLang = com.recipebookpro.presentation.ui.LocaleHelper.getLanguage(this);
+        String recipeLang = detectRecipeLanguage(recipe);
+
+        com.recipebookpro.util.RiskyIngredientLocaleHelper.ensureLanguage(this, originalLabels, uiLang, uiLabels -> {
+            if (isDestroyed() || isFinishing())
+                return;
+            currentRiskyIngredients = uiLabels;
+
+            com.recipebookpro.util.RiskyIngredientLocaleHelper.ensureLanguage(RecipeDetailActivity.this, originalLabels,
+                    recipeLang, recipeLabels -> {
+                        if (isDestroyed() || isFinishing())
+                            return;
+
+                        List<String> allLabels = new ArrayList<>(originalLabels);
+                        for (String label : uiLabels) {
+                            if (!allLabels.contains(label)) {
+                                allLabels.add(label);
+                            }
+                        }
+                        for (String label : recipeLabels) {
+                            if (!allLabels.contains(label)) {
+                                allLabels.add(label);
+                            }
+                        }
+
+                        currentRiskyMatchTerms = com.recipebookpro.util.RiskyIngredientMatcher.buildMatchTerms(recipe,
+                                allLabels);
+                        finalizeHealthCheck(isSafe, rationale, currentRiskyIngredients);
+                    });
+        });
+    }
+
+    private void finalizeHealthCheck(boolean isSafe, String rationale, List<String> riskyIngredients) {
+        applyHealthWarningState(isSafe, rationale, riskyIngredients);
+
+        // Notify ViewModel instead of fragile fragment tag
+        if (viewModel != null) {
+            viewModel.setRiskyMatchTerms(currentRiskyMatchTerms);
+        }
+    }
+
+    private void toggleHealthWarningExpand() {
+        android.view.View expanded = findViewById(R.id.llHealthWarningExpanded);
+        ImageView chevron = findViewById(R.id.ivHealthWarningChevron);
+        if (expanded == null)
+            return;
+        healthWarningExpanded = !healthWarningExpanded;
+        expanded.setVisibility(healthWarningExpanded ? View.VISIBLE : View.GONE);
+        if (chevron != null) {
+            chevron.animate().rotation(healthWarningExpanded ? 180f : 0f).setDuration(200).start();
+        }
+    }
+
+    private void applyHealthWarningState(boolean isSafe, String rationale, List<String> riskyIngredients) {
+        TextView tvSummary = findViewById(R.id.tvHealthWarningText);
+        TextView tvRationale = findViewById(R.id.tvHealthWarningRationale);
+        TextView tvDisclaimer = findViewById(R.id.tvHealthWarningDisclaimer);
+        ImageView ivIcon = findViewById(R.id.ivHealthWarningIcon);
+        ImageView ivChevron = findViewById(R.id.ivHealthWarningChevron);
+        MaterialCardView card = findViewById(R.id.cardHealthWarning);
+        if (tvSummary == null || card == null)
+            return;
+
+        // --- Pick colors ---
+        int bgAttr, fgAttr;
+        if (isSafe) {
+            // Green: use a custom green background
+            bgAttr = -1; // handled manually below
+            fgAttr = -1;
+        } else {
+            bgAttr = com.google.android.material.R.attr.colorErrorContainer;
+            fgAttr = com.google.android.material.R.attr.colorOnErrorContainer;
+        }
+
+        android.util.TypedValue tv = new android.util.TypedValue();
+        int fgColor;
+        if (isSafe) {
+            // Soft green card background
+            card.setCardBackgroundColor(android.graphics.Color.parseColor("#D0F0C0"));
+            fgColor = android.graphics.Color.parseColor("#1B5E20");
+        } else {
+            getTheme().resolveAttribute(com.google.android.material.R.attr.colorErrorContainer, tv, true);
+            card.setCardBackgroundColor(tv.data);
+            getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnErrorContainer, tv, true);
+            fgColor = tv.data;
+        }
+
+        // Apply label color
+        tvSummary.setTextColor(fgColor);
+        if (tvDisclaimer != null)
+            tvDisclaimer.setTextColor(fgColor);
+        if (tvRationale != null)
+            tvRationale.setTextColor(fgColor);
+
+        // --- Summary label (always visible, locale-aware) ---
+        tvSummary.setText(isSafe ? getString(R.string.health_warning_safe) : getString(R.string.health_warning_unsafe));
+
+        // --- Icon ---
+        if (ivIcon != null) {
+            ivIcon.setImageResource(isSafe ? R.drawable.ic_cook : R.drawable.ic_remove);
+            ivIcon.setColorFilter(fgColor);
+        }
+
+        // --- Rationale in the expanded view ---
+        if (tvRationale != null) {
+            StringBuilder rationaleBuilder = new StringBuilder();
+            if (!TextUtils.isEmpty(rationale)) {
+                rationaleBuilder.append(rationale);
+            }
+            // Append risky ingredients if available
+            if (riskyIngredients != null && !riskyIngredients.isEmpty()) {
+                if (rationaleBuilder.length() > 0)
+                    rationaleBuilder.append("\n\n");
+                rationaleBuilder.append(getString(R.string.risky_ingredients_label,
+                        TextUtils.join(", ", riskyIngredients)));
+            }
+            if (rationaleBuilder.length() > 0) {
+                tvRationale.setText(rationaleBuilder.toString());
+                // Show chevron to indicate expandability
+                if (ivChevron != null) {
+                    ivChevron.setVisibility(View.VISIBLE);
+                    ivChevron.setColorFilter(fgColor);
+                }
+            } else {
+                tvRationale.setText("");
+                if (ivChevron != null)
+                    ivChevron.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    private void applyBannerSurface() {
+        MaterialCardView card = findViewById(R.id.cardHealthWarning);
+        if (card == null)
+            return;
+        android.util.TypedValue tv = new android.util.TypedValue();
+        getTheme().resolveAttribute(com.google.android.material.R.attr.colorSurfaceVariant, tv, true);
+        card.setCardBackgroundColor(tv.data);
+        getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurfaceVariant, tv, true);
+        int fg = tv.data;
+        TextView tvText = findViewById(R.id.tvHealthWarningText);
+        TextView tvDisc = findViewById(R.id.tvHealthWarningDisclaimer);
+        ImageView ivIcon = findViewById(R.id.ivHealthWarningIcon);
+        if (tvText != null)
+            tvText.setTextColor(fg);
+        if (tvDisc != null)
+            tvDisc.setTextColor(fg);
+        if (ivIcon != null)
+            ivIcon.setColorFilter(fg);
+    }
+
+    private void applyBannerError() {
+        MaterialCardView card = findViewById(R.id.cardHealthWarning);
+        if (card == null)
+            return;
+        android.util.TypedValue tv = new android.util.TypedValue();
+        getTheme().resolveAttribute(com.google.android.material.R.attr.colorErrorContainer, tv, true);
+        card.setCardBackgroundColor(tv.data);
+        getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnErrorContainer, tv, true);
+        int fg = tv.data;
+        TextView tvText = findViewById(R.id.tvHealthWarningText);
+        TextView tvDisc = findViewById(R.id.tvHealthWarningDisclaimer);
+        ImageView ivIcon = findViewById(R.id.ivHealthWarningIcon);
+        if (tvText != null)
+            tvText.setTextColor(fg);
+        if (tvDisc != null)
+            tvDisc.setTextColor(fg);
+        if (ivIcon != null)
+            ivIcon.setColorFilter(fg);
     }
 }

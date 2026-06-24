@@ -18,14 +18,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.FileProvider;
-import android.content.Intent;
-import android.provider.MediaStore;
+
 import android.Manifest;
 import android.content.pm.PackageManager;
 import androidx.core.content.ContextCompat;
 
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import android.graphics.Rect;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
@@ -41,8 +38,6 @@ import com.recipebookpro.domain.model.Recipe;
 import com.recipebookpro.domain.model.Step;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
-import java.util.UUID;
-import com.recipebookpro.domain.service.TranslationService;
 import com.recipebookpro.data.remote.MLKitTranslationService;
 import com.recipebookpro.data.remote.CookbookDescriptionLocalizer;
 import com.recipebookpro.domain.usecase.TranslateRecipeUseCase;
@@ -54,7 +49,6 @@ import com.recipebookpro.presentation.ui.recipe.adapter.EditableStepAdapter;
 import com.recipebookpro.util.NotificationTrigger;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,7 +75,7 @@ public class RecipeAddEditActivity extends BaseActivity {
     private View llImagePlaceholder;
     private TextInputEditText etTitle, etDescription, etServings, etCalories, etRecipeNotes;
     private AutoCompleteTextView actvCategory, actvCookbook;
-    private ChipGroup cgAllergens;
+
     private RecyclerView rvIngredientsEdit, rvStepsEdit;
     private MaterialButton btnSave;
     private CircularProgressIndicator progressSave;
@@ -105,7 +99,7 @@ public class RecipeAddEditActivity extends BaseActivity {
     private String snapDescription;
     private List<Recipe.Ingredient> snapIngredients;
     private List<Step> snapSteps;
-    private List<String> snapAllergens;
+
 
     // Permissions
     private final ActivityResultLauncher<String[]> permissionLauncher = registerForActivityResult(
@@ -181,7 +175,7 @@ public class RecipeAddEditActivity extends BaseActivity {
 
         initViews();
         setupAdapters();
-        setupAllergens();
+
         fetchCookbooks();
         
         translateRecipeUseCase = new TranslateRecipeUseCase(new MLKitTranslationService(this));
@@ -219,13 +213,14 @@ public class RecipeAddEditActivity extends BaseActivity {
         ivPreview = findViewById(R.id.ivPreview);
         llImagePlaceholder = findViewById(R.id.llImagePlaceholder);
         etTitle = findViewById(R.id.etTitle);
+        RecipeTitleInputConfigurator.configure(etTitle);
         etDescription = findViewById(R.id.etDescription);
         etServings = findViewById(R.id.etServings);
         etCalories = findViewById(R.id.etCalories);
         etRecipeNotes = findViewById(R.id.etRecipeNotes);
         actvCategory = findViewById(R.id.actvCategory);
         actvCookbook = findViewById(R.id.actvCookbook);
-        cgAllergens = findViewById(R.id.cgAllergens);
+
         rvIngredientsEdit = findViewById(R.id.rvIngredientsEdit);
         rvStepsEdit = findViewById(R.id.rvStepsEdit);
         btnSave = findViewById(R.id.btnSave);
@@ -234,7 +229,7 @@ public class RecipeAddEditActivity extends BaseActivity {
 
         findViewById(R.id.btnCamera).setOnClickListener(v -> checkCameraPermissionAndTake());
         findViewById(R.id.btnGallery).setOnClickListener(v -> galleryLauncher.launch("image/*"));
-        findViewById(R.id.btnAddCustomAllergen).setOnClickListener(v -> showAddCustomAllergenDialog());
+
 
         String[] categories = getResources().getStringArray(R.array.recipe_category_labels);
         ArrayAdapter<String> catAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, categories);
@@ -279,12 +274,6 @@ public class RecipeAddEditActivity extends BaseActivity {
         });
     }
 
-    private int[] viewLocationOnScreen(View v) {
-        int[] location = new int[2];
-        v.getLocationOnScreen(location);
-        return location;
-    }
-
     private void setupAdapters() {
         String[] units = getResources().getStringArray(R.array.ingredient_units);
         
@@ -309,37 +298,7 @@ public class RecipeAddEditActivity extends BaseActivity {
         itemTouchHelper.attachToRecyclerView(rvStepsEdit);
     }
 
-    private void setupAllergens() {
-        String[] allergenTags = getResources().getStringArray(R.array.allergen_tags);
-        for (String tag : allergenTags) {
-            addAllergenChip(tag);
-        }
-    }
 
-    private void addAllergenChip(String tag) {
-        Chip chip = new Chip(this);
-        chip.setText(tag);
-        chip.setCheckable(true);
-        chip.setCheckedIconVisible(true);
-        cgAllergens.addView(chip);
-    }
-
-    private void showAddCustomAllergenDialog() {
-        android.widget.EditText et = new android.widget.EditText(this);
-        et.setHint(R.string.allergen_name);
-        new AlertDialog.Builder(this)
-            .setTitle(R.string.add_custom_allergen)
-            .setView(et)
-            .setPositiveButton(R.string.add_custom, (d, w) -> {
-                String name = et.getText().toString().trim();
-                if (!TextUtils.isEmpty(name)) {
-                    addAllergenChip(name);
-                    ((Chip) cgAllergens.getChildAt(cgAllergens.getChildCount() - 1)).setChecked(true);
-                }
-            })
-            .setNegativeButton(R.string.cancel, null)
-            .show();
-    }
 
     private void fetchCookbooks() {
         db.collection("cookbooks")
@@ -540,7 +499,7 @@ public class RecipeAddEditActivity extends BaseActivity {
             for (Step s : currentRecipe.getStepList()) {
                 snapSteps.add(copyStepSnapshot(s));
             }
-            snapAllergens = new ArrayList<>(currentRecipe.getAllergens());
+
             etTitle.setText(pickTranslatedText(currentRecipe.getTranslatedTitle(), snapTitle));
             etDescription.setText(pickTranslatedText(currentRecipe.getTranslatedDescription(), snapDescription));
         } else {
@@ -548,7 +507,7 @@ public class RecipeAddEditActivity extends BaseActivity {
             snapDescription = null;
             snapIngredients = null;
             snapSteps = null;
-            snapAllergens = null;
+
             etTitle.setText(currentRecipe.getTitle());
             etDescription.setText(currentRecipe.getDescription());
         }
@@ -618,16 +577,7 @@ public class RecipeAddEditActivity extends BaseActivity {
         }
         stepAdapter.notifyDataSetChanged();
 
-        List<String> selectedAllergens;
-        if (editFormUsesTranslatedLayer && !currentRecipe.getTranslatedAllergens().isEmpty()) {
-            selectedAllergens = new ArrayList<>(currentRecipe.getTranslatedAllergens());
-        } else {
-            selectedAllergens = new ArrayList<>(currentRecipe.getAllergens());
-        }
-        for (int i = 0; i < cgAllergens.getChildCount(); i++) {
-            Chip chip = (Chip) cgAllergens.getChildAt(i);
-            chip.setChecked(selectedAllergens.contains(chip.getText().toString()));
-        }
+
         loadUserNoteIfEditing();
     }
 
@@ -768,17 +718,12 @@ public class RecipeAddEditActivity extends BaseActivity {
             }
         }
 
-        List<String> chipAllergens = new ArrayList<>();
-        for (int i = 0; i < cgAllergens.getChildCount(); i++) {
-            Chip chip = (Chip) cgAllergens.getChildAt(i);
-            if (chip.isChecked()) {
-                chipAllergens.add(chip.getText().toString());
-            }
-        }
 
-        if (editFormUsesTranslatedLayer && snapIngredients != null && snapSteps != null && snapAllergens != null) {
+
+        if (editFormUsesTranslatedLayer && snapIngredients != null && snapSteps != null) {
             currentRecipe.setTitle(snapTitle != null ? snapTitle : currentRecipe.getTitle());
             currentRecipe.setTranslatedTitle(formTitle);
+            currentRecipe.setTranslationLanguage(LocaleHelper.getLanguage(this));
             currentRecipe.setDescription(snapDescription != null ? snapDescription : currentRecipe.getDescription());
             currentRecipe.setTranslatedDescription(formDescription);
 
@@ -801,8 +746,7 @@ public class RecipeAddEditActivity extends BaseActivity {
             currentRecipe.setSteps(buildLegacyStepsText(mergedSteps));
             currentRecipe.setTranslatedInstructions(buildTranslatedInstructionsText(mergedSteps));
 
-            currentRecipe.setAllergens(new ArrayList<>(snapAllergens));
-            currentRecipe.setTranslatedAllergens(chipAllergens);
+
         } else {
             for (Recipe.Ingredient ing : validIngredients) {
                 ing.clearTranslation();
@@ -817,8 +761,7 @@ public class RecipeAddEditActivity extends BaseActivity {
             currentRecipe.setStepList(validSteps);
             currentRecipe.setSteps(buildLegacyStepsText(validSteps));
             currentRecipe.setTranslatedInstructions(null);
-            currentRecipe.setAllergens(chipAllergens);
-            currentRecipe.setTranslatedAllergens(new ArrayList<>());
+
 
             String appLang = LocaleHelper.getLanguage(this);
             String orig = currentRecipe.getOriginalLanguage();

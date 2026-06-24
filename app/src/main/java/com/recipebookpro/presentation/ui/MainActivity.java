@@ -1,6 +1,8 @@
 package com.recipebookpro.presentation.ui;
 
 import android.Manifest;
+import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -28,22 +30,37 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.recipebookpro.R;
 import com.recipebookpro.data.repository.NotificationRepositoryImpl;
 import com.recipebookpro.domain.repository.NotificationRepository;
-import com.recipebookpro.util.LocaleUtils;
 import com.recipebookpro.util.NotificationHelper;
 import com.recipebookpro.service.NotificationService;
-import android.content.Intent;
 
 public class MainActivity extends BaseActivity {
 
+    private static final String EXTRA_START_DESTINATION =
+            "com.recipebookpro.presentation.ui.MainActivity.EXTRA_START_DESTINATION";
+
     private NavController navController;
-    private static final int NOTIFICATION_PERMISSION_CODE = 101;
     private NotificationRepository notificationRepository;
     private BadgeDrawable badgeDrawable;
-    private long lastAlertTimestamp = System.currentTimeMillis();
+
+    public static Intent createIntent(Context context) {
+        return new Intent(context, MainActivity.class);
+    }
+
+    public static Intent createProfileStartIntent(Context context) {
+        return createIntent(context).putExtra(EXTRA_START_DESTINATION, R.id.profileFragment);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        // Clean up legacy health cache preferences to avoid stale data showing across profiles
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            deleteSharedPreferences("HealthWarningCachePrefs");
+        } else {
+            getSharedPreferences("HealthWarningCachePrefs", android.content.Context.MODE_PRIVATE).edit().clear().apply();
+        }
+        
         setContentView(R.layout.activity_main);
 
         // Apply top inset to AppBarLayout so toolbar doesn't go behind status bar
@@ -92,6 +109,8 @@ public class MainActivity extends BaseActivity {
                 }
                 return NavigationUI.onNavDestinationSelected(item, navController);
             });
+
+            handleRequestedStartDestination(bottomNav, savedInstanceState);
         }
 
         notificationRepository = new NotificationRepositoryImpl();
@@ -99,6 +118,16 @@ public class MainActivity extends BaseActivity {
         checkNotificationPermission();
         observeNotifications();
         startNotificationService();
+    }
+
+    private void handleRequestedStartDestination(BottomNavigationView bottomNav, Bundle savedInstanceState) {
+        if (savedInstanceState != null) {
+            return;
+        }
+        int requestedDestination = getIntent().getIntExtra(EXTRA_START_DESTINATION, 0);
+        if (requestedDestination == R.id.profileFragment) {
+            bottomNav.post(() -> bottomNav.setSelectedItemId(R.id.profileFragment));
+        }
     }
 
     private void startNotificationService() {
@@ -161,7 +190,6 @@ public class MainActivity extends BaseActivity {
             
             MaterialToolbar toolbar = findViewById(R.id.topAppBar);
             toolbar.post(() -> {
-                int count = 0; // Temporary, will be updated by observer
                 BadgeUtils.attachBadgeDrawable(badgeDrawable, toolbar, R.id.action_notifications);
             });
         }

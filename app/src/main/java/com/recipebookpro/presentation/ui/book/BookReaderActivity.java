@@ -7,16 +7,12 @@ import com.recipebookpro.presentation.ui.BaseActivity;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
-import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textview.MaterialTextView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldPath;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.recipebookpro.R;
@@ -26,10 +22,7 @@ import com.recipebookpro.presentation.ui.recipe.StickerSelectorBottomSheet;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
 
 public class BookReaderActivity extends BaseActivity {
 
@@ -47,7 +40,6 @@ public class BookReaderActivity extends BaseActivity {
     private java.util.Map<String, java.util.List<String>> recipeToCookbookMap = new java.util.HashMap<>();
     private android.widget.LinearLayout layoutEditActions;
     private android.widget.LinearLayout layoutNormalActions;
-    private boolean isEditMode = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -267,10 +259,6 @@ public class BookReaderActivity extends BaseActivity {
         viewPager.setCurrentItem(position + 2, true);
     }
 
-    private void updateIndicator(int position) {
-        // No-op. Page specific indicators are in the fragments.
-    }
-
     private void showLoading() {
         progressBar.setVisibility(View.VISIBLE);
         viewPager.setVisibility(View.GONE);
@@ -292,7 +280,6 @@ public class BookReaderActivity extends BaseActivity {
     }
 
     private void toggleEditMode(boolean enabled) {
-        this.isEditMode = enabled;
         layoutNormalActions.setVisibility(enabled ? View.GONE : View.VISIBLE);
         layoutEditActions.setVisibility(enabled ? View.VISIBLE : View.GONE);
         viewPager.setUserInputEnabled(!enabled); // Düzenleme modunda kaydırmayı devre dışı bırak / Disable swiping in edit mode

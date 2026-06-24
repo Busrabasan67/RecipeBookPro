@@ -10,41 +10,6 @@ public final class UnitConverter {
     }
 
     /**
-     * Convert an amount using the factor at the given unit index.
-     *
-     * @param amount    the source amount
-     * @param unitIndex index into the conversion_factors array
-     * @param factors   the conversion factor strings from resources
-     * @return converted amount
-     */
-    public static double convert(double amount, int unitIndex, String[] factors) {
-        if (unitIndex < 0 || unitIndex >= factors.length) {
-            return amount;
-        }
-        try {
-            double factor = Double.parseDouble(factors[unitIndex]);
-            return amount * factor;
-        } catch (NumberFormatException e) {
-            return amount;
-        }
-    }
-
-    /**
-     * Format a conversion result to a readable string.
-     * Shows up to 2 decimal places, strips trailing zeros.
-     */
-    public static String formatResult(double value) {
-        if (value == (long) value) {
-            return String.valueOf((long) value);
-        }
-        String formatted = String.format("%.2f", value);
-        // Remove trailing zeros after decimal point
-        formatted = formatted.replaceAll("0+$", "");
-        formatted = formatted.replaceAll("\\.$", "");
-        return formatted;
-    }
-
-    /**
      * Converts a given amount from one string unit to another.
      * Returns -1 if conversion is not directly supported.
      */

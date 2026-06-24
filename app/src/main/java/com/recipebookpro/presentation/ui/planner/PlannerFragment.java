@@ -75,7 +75,6 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
     private DayCardAdapter dayCardAdapter;
     private ShoppingListAdapter shoppingListAdapter;
     private final List<ShoppingList> shoppingLists = new ArrayList<>();
-    private ListenerRegistration shoppingListsListener;
 
     private final Map<String, List<Recipe>> resolvedRecipes = new HashMap<>();
     private ListenerRegistration currentPlanListener;
@@ -438,20 +437,27 @@ public class PlannerFragment extends Fragment implements DayCardAdapter.OnDayInt
         if (coverage == PlannerCalorieSummary.Coverage.ALL_KNOWN) {
             tvTotalCalories.setText(getString(R.string.meal_plan_total_calories, summary.getTotalKnownCalories()));
         } else if (coverage == PlannerCalorieSummary.Coverage.PARTIAL) {
-            tvTotalCalories.setText(getString(R.string.meal_plan_total_calories_partial,
-                    summary.getTotalKnownCalories(), summary.getUnknownRecipeCount()));
+            int unknownCount = summary.getUnknownRecipeCount();
+            tvTotalCalories.setText(getResources().getQuantityString(
+                    R.plurals.meal_plan_unknown_recipes_partial,
+                    unknownCount,
+                    summary.getTotalKnownCalories(),
+                    unknownCount));
         } else {
-            tvTotalCalories.setText(getString(R.string.meal_plan_total_calories_pending,
-                    summary.getUnknownRecipeCount()));
+            int unknownCount = summary.getUnknownRecipeCount();
+            tvTotalCalories.setText(getResources().getQuantityString(
+                    R.plurals.meal_plan_unknown_recipes_pending,
+                    unknownCount,
+                    unknownCount));
         }
     }
 
     @Override
-    public void onAddRecipeClick(String dayKey, int dayIndex) {
+    public void onAddRecipeClick(String dayKey) {
         RecipeSearchBottomSheet sheet = RecipeSearchBottomSheet.newInstance(dayKey);
         sheet.setOnRecipeSelectedListener((key, recipe) -> {
             if (currentPlan == null) return;
-            
+
             List<String> dayIds = currentPlan.getDays().get(key);
             if (dayIds == null) {
                 dayIds = new ArrayList<>();
