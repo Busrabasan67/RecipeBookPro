@@ -23,16 +23,37 @@
 Developed as a team project for the **Mobile Programming** course at the university, under the guidance of **Abdullah Talha Kabakuş**.
 
 ---
+
 ## Screenshots
 
 <div align="center">
-  <img src="docs/screenshots/home.png" width="230" alt="Home screen">
-  <img src="docs/screenshots/recipe-detail-warning.png" width="230" alt="Recipe detail with health warning">
-  <img src="docs/screenshots/recipe-journal.png" width="230" alt="Recipe journal page">
+  <img src="docs/screenshots/home-recipe-list.jpg" width="230" alt="Home screen">
+  <img src="docs/screenshots/recipe-detail-health-warning.jpg" width="230" alt="Recipe detail with health warning">
+  <img src="docs/screenshots/add-recipe-form.jpg" width="230" alt="Add recipe form">
+  <img src="docs/screenshots/weekly-meal-planner.jpg" width="230" alt="Weekly meal planner">
 </div>
 
 <p align="center">
-  Home feed with category filtering • Personalized recipe warnings • Recipe journal view
+  Home feed with category filtering • Recipe detail with health warning • Add recipe form • Weekly meal planner
+</p>
+
+---
+
+## 🎥 Demo GIFs
+
+### Weekly Planner & Auto Shopping List
+<p align="center">
+  <img src="assets/gifs/planner-shopping-list.gif" width="320" alt="Weekly planner and automatic shopping list demo"/>
+</p>
+
+### AI Allergy Standardization
+<p align="center">
+  <img src="assets/gifs/ai-allergy-standardization.gif" width="320" alt="AI allergy standardization demo"/>
+</p>
+
+### Drag & Drop Recipe Steps
+<p align="center">
+  <img src="assets/gifs/drag-drop-steps.gif" width="320" alt="Drag and drop recipe steps demo"/>
 </p>
 
 ---
@@ -122,25 +143,25 @@ RecipeBookPro/
 ### Setup
 
 1. **Clone the repository:**
-   ```bash
+```bash
    git clone https://github.com/Busrabasan67/RecipeBookPro.git
    cd RecipeBookPro
-   ```
+```
 
 2. **Open in Android Studio** and sync Gradle.
 
 3. **Add your Firebase config file** at:
-   ```
+```
    app/google-services.json
-   ```
+```
 
 4. **Add the following to `local.properties`:**
-   ```properties
+```properties
    GROQ_API_KEY="your_groq_api_key"
    SMTP_EMAIL="your_email@gmail.com"
    SMTP_PASSWORD="your_app_password"
    SHARE_HTTPS_REDIRECT_BASE="your_firebase_hosting_url"
-   ```
+```
 
 5. **Build and run** on an emulator (API 33+) or a physical device.
 
